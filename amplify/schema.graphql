@@ -1,0 +1,62 @@
+enum Role {
+  worker
+  employer
+  admin
+}
+
+enum UrgentShiftStatus {
+  draft
+  open
+  filled
+  in_progress
+  completed
+  cancelled
+}
+
+enum ShiftBookingStatus {
+  accepted
+  checked_in
+  checked_out
+  completed
+  cancelled
+  disputed
+}
+
+enum PaymentStatus {
+  hold_pending
+  held
+  release_pending
+  released
+  refund_pending
+  refunded
+  failed
+  disputed
+}
+
+type UrgentShiftJob @model @auth(rules: [{ allow: private }]) {
+  id: ID!
+  employerId: ID!
+  title: String!
+  category: String!
+  address: String!
+  latitude: Float!
+  longitude: Float!
+  startTime: AWSDateTime!
+  endTime: AWSDateTime!
+  payAmount: Int!
+  currency: String!
+  requiredWorkers: Int!
+  acceptedWorkers: Int!
+  status: UrgentShiftStatus!
+}
+
+type ShiftBooking @model @auth(rules: [{ allow: private }]) {
+  id: ID!
+  jobId: ID!
+  workerId: ID!
+  status: ShiftBookingStatus!
+  paymentStatus: PaymentStatus!
+  checkInAt: AWSDateTime
+  checkOutAt: AWSDateTime
+  employerConfirmedAt: AWSDateTime
+}
