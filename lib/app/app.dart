@@ -1,18 +1,40 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
+import '../core/localization/app_language_controller.dart';
+import '../core/localization/app_localizations.dart';
+import '../core/theme/app_theme.dart';
+import '../core/theme/app_theme_controller.dart';
 import 'router.dart';
-import 'theme.dart';
 
-class TempJobsApp extends StatelessWidget {
+class TempJobsApp extends ConsumerWidget {
   const TempJobsApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final router = ref.watch(appRouterProvider);
+    final themeMode =
+        ref.watch(appThemeControllerProvider).asData?.value ?? ThemeMode.system;
+    final locale =
+        ref.watch(appLanguageControllerProvider).asData?.value ??
+        const Locale('vi');
+
     return MaterialApp.router(
-      title: 'Oppo Temp Jobs',
+      title: 'Ốp Pờ',
       debugShowCheckedModeBanner: false,
-      routerConfig: appRouter,
-      theme: buildAppTheme(),
+      routerConfig: router,
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: themeMode,
+      locale: locale,
+      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
     );
   }
 }

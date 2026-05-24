@@ -1,1 +1,1 @@
-"""FastAPI backend for Oppo temporary jobs."""
+"""FastAPI backend for Ốp Pờ."""

@@ -1,4 +1,4 @@
-# Oppo Temp Jobs
+# Ốp Pờ
 
 A Flutter + FastAPI + AWS Amplify scaffold for a temporary job recruitment app. V1 focuses on urgent shift-based jobs before adding part-time recruitment, agreements, CV processing, and AI matching.
 

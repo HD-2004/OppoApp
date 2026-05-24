@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/localization/app_localizations.dart';
 import '../application/urgent_shift_providers.dart';
 import '../domain/urgent_shift_job.dart';
 import 'job_status_chip.dart';
@@ -15,9 +16,10 @@ class ShiftDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final jobsAsync = ref.watch(openUrgentJobsProvider);
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Shift details')),
+      appBar: AppBar(title: Text(l10n.jobDetails)),
       body: SafeArea(
         child: jobsAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
@@ -26,7 +28,7 @@ class ShiftDetailScreen extends ConsumerWidget {
             final matches = jobs.where((item) => item.jobId == jobId);
             final job = matches.isEmpty ? null : matches.first;
             if (job == null) {
-              return const Center(child: Text('This shift is no longer open.'));
+              return Center(child: Text(l10n.noJobsFound));
             }
             return _ShiftDetailBody(job: job);
           },
@@ -53,6 +55,7 @@ class _ShiftDetailBodyState extends ConsumerState<_ShiftDetailBody> {
     final job = widget.job;
     final pay = NumberFormat.decimalPattern().format(job.payAmount);
     final formatter = DateFormat('EEE, MMM d - HH:mm');
+    final l10n = AppLocalizations.of(context);
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -79,11 +82,11 @@ class _ShiftDetailBodyState extends ConsumerState<_ShiftDetailBody> {
         ),
         _DetailTile(
           icon: Icons.payments_outlined,
-          label: '$pay ${job.currency} held before shift start',
+          label: '$pay ${job.currency} ${l10n.salary}',
         ),
         _DetailTile(
           icon: Icons.groups_outlined,
-          label: '${job.requiredWorkers - job.acceptedWorkers} slots left',
+          label: '${job.requiredWorkers - job.acceptedWorkers}',
         ),
         const SizedBox(height: 24),
         FilledButton.icon(
@@ -94,7 +97,7 @@ class _ShiftDetailBodyState extends ConsumerState<_ShiftDetailBody> {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
               : const Icon(Icons.flash_on_outlined),
-          label: const Text('Claim this shift'),
+          label: Text(l10n.apply),
         ),
       ],
     );

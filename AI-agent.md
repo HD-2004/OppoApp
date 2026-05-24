@@ -1,7 +1,7 @@
 # AI Agent Guide
 
 ## Project Overview
-Oppo Temp Jobs is a temporary job recruitment app. V1 prioritizes urgent shift-based work: employers publish short shifts, workers claim available slots, workers check in/out, employers confirm completion, and payment state moves through an escrow-like ledger.
+Ốp Pờ is a temporary job recruitment app. V1 prioritizes urgent shift-based work: employers publish short shifts, workers claim available slots, workers check in/out, employers confirm completion, and payment state moves through an escrow-like ledger.
 
 Part-time jobs, interview flows, signed agreements, CV storage, and AI matching are planned after the urgent shift flow is stable.
 

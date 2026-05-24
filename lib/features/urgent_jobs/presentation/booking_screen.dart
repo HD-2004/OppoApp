@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/localization/app_localizations.dart';
 import '../application/urgent_shift_providers.dart';
 import '../domain/shift_booking.dart';
 import 'job_status_chip.dart';
@@ -14,16 +15,17 @@ class BookingScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final bookingAsync = ref.watch(bookingProvider(bookingId));
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Shift booking')),
+      appBar: AppBar(title: Text(l10n.jobDetails)),
       body: SafeArea(
         child: bookingAsync.when(
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (error, stackTrace) => Center(child: Text(error.toString())),
           data: (booking) {
             if (booking == null) {
-              return const Center(child: Text('Booking not found.'));
+              return Center(child: Text(l10n.text('noJobsFound')));
             }
             return _BookingBody(booking: booking);
           },
@@ -41,6 +43,7 @@ class _BookingBody extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final repository = ref.read(urgentShiftRepositoryProvider);
+    final l10n = AppLocalizations.of(context);
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -49,7 +52,7 @@ class _BookingBody extends ConsumerWidget {
           children: [
             Expanded(
               child: Text(
-                'Booking ${booking.bookingId}',
+                '${l10n.jobDetails} ${booking.bookingId}',
                 style: Theme.of(context).textTheme.titleLarge,
               ),
             ),
@@ -58,22 +61,22 @@ class _BookingBody extends ConsumerWidget {
         ),
         const SizedBox(height: 16),
         _TimelineRow(
-          label: 'Payment',
+          label: l10n.paymentUpdates,
           value: booking.paymentStatus.name,
           icon: Icons.account_balance_wallet_outlined,
         ),
         _TimelineRow(
-          label: 'Check-in',
+          label: l10n.checkIn,
           value: _formatDate(booking.checkInAt),
           icon: Icons.login,
         ),
         _TimelineRow(
-          label: 'Check-out',
+          label: l10n.checkOut,
           value: _formatDate(booking.checkOutAt),
           icon: Icons.logout,
         ),
         _TimelineRow(
-          label: 'Employer confirmation',
+          label: l10n.employer,
           value: _formatDate(booking.employerConfirmedAt),
           icon: Icons.verified_outlined,
         ),
@@ -87,21 +90,21 @@ class _BookingBody extends ConsumerWidget {
                   ? () => repository.checkIn(booking.bookingId)
                   : null,
               icon: const Icon(Icons.login),
-              label: const Text('Check in'),
+              label: Text(l10n.checkIn),
             ),
             FilledButton.icon(
               onPressed: booking.status == ShiftBookingStatus.checkedIn
                   ? () => repository.checkOut(booking.bookingId)
                   : null,
               icon: const Icon(Icons.logout),
-              label: const Text('Check out'),
+              label: Text(l10n.checkOut),
             ),
             FilledButton.icon(
               onPressed: booking.status == ShiftBookingStatus.checkedOut
                   ? () => repository.confirm(booking.bookingId)
                   : null,
               icon: const Icon(Icons.verified_outlined),
-              label: const Text('Confirm'),
+              label: Text(l10n.confirm),
             ),
             OutlinedButton.icon(
               onPressed:
@@ -110,7 +113,7 @@ class _BookingBody extends ConsumerWidget {
                   ? null
                   : () => repository.dispute(booking.bookingId),
               icon: const Icon(Icons.report_problem_outlined),
-              label: const Text('Dispute'),
+              label: Text(l10n.error),
             ),
           ],
         ),
