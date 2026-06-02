@@ -254,12 +254,6 @@ class AuthService {
     }
 
     if (profile.role == AppRole.candidate) {
-      if (!profile.kycCompleted) {
-        return '/candidate/kyc';
-      }
-      if (!profile.profileCompleted) {
-        return '/candidate/update-profile';
-      }
       return '/candidate';
     }
 

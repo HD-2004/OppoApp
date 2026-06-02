@@ -106,6 +106,23 @@ class AppLocalizations {
   String get applicationUpdates => text('applicationUpdates');
   String get paymentUpdates => text('paymentUpdates');
   String get systemAnnouncements => text('systemAnnouncements');
+  String get postsTabTitle => text('postsTabTitle');
+  String get myProfileTabTitle => text('myProfileTabTitle');
+  String get homeWelcomeSubtitle => text('homeWelcomeSubtitle');
+  String get findJobsButton => text('findJobsButton');
+  String get updateCvButton => text('updateCvButton');
+  String get statsAppliedJobs => text('statsAppliedJobs');
+  String get statsSavedJobs => text('statsSavedJobs');
+  String get statsProfileViews => text('statsProfileViews');
+  String get statsMatchedJobs => text('statsMatchedJobs');
+  String get recentLabel => text('recentLabel');
+  String get thisWeekLabel => text('thisWeekLabel');
+  String get thisMonthLabel => text('thisMonthLabel');
+  String get currentJobsTitle => text('currentJobsTitle');
+  String get noCurrentJobs => text('noCurrentJobs');
+  String get notificationViewed => text('notificationViewed');
+  String get notificationMessage => text('notificationMessage');
+  String get notificationAccepted => text('notificationAccepted');
 }
 
 class _AppLocalizationsDelegate
@@ -330,6 +347,23 @@ const _vi = {
       'Vui lòng xác nhận rằng bạn hiểu tác động của yêu cầu này.',
   'checkIn': 'Vào ca',
   'checkOut': 'Rời ca',
+  'postsTabTitle': 'Bài đăng',
+  'myProfileTabTitle': 'Hồ sơ của tôi',
+  'homeWelcomeSubtitle': 'Chúc bạn một ngày làm việc hiệu quả!',
+  'findJobsButton': 'Tìm Việc Làm',
+  'updateCvButton': 'Cập nhật CV',
+  'statsAppliedJobs': 'HỒ SƠ ĐÃ NỘP',
+  'statsSavedJobs': 'VIỆC ĐÃ LƯU',
+  'statsProfileViews': 'LƯỢT XEM HỒ SƠ',
+  'statsMatchedJobs': 'JOB MATCH THÀNH CÔNG',
+  'recentLabel': 'gần đây',
+  'thisWeekLabel': 'tuần này',
+  'thisMonthLabel': 'tháng này',
+  'currentJobsTitle': 'Công việc hiện tại',
+  'noCurrentJobs': 'Chưa có công việc tuyển gấp nào.',
+  'notificationViewed': 'Hồ sơ đã được xem',
+  'notificationMessage': 'Tin nhắn mới',
+  'notificationAccepted': 'CV được chấp nhận',
 };
 
 const _en = {
@@ -539,6 +573,23 @@ const _en = {
       'Please confirm that you understand the impact of this request.',
   'checkIn': 'Check in',
   'checkOut': 'Check out',
+  'postsTabTitle': 'Posts',
+  'myProfileTabTitle': 'My Profile',
+  'homeWelcomeSubtitle': 'Have a productive working day!',
+  'findJobsButton': 'Find Jobs',
+  'updateCvButton': 'Update CV',
+  'statsAppliedJobs': 'APPLIED JOBS',
+  'statsSavedJobs': 'SAVED JOBS',
+  'statsProfileViews': 'PROFILE VIEWS',
+  'statsMatchedJobs': 'SUCCESSFUL MATCHES',
+  'recentLabel': 'recent',
+  'thisWeekLabel': 'this week',
+  'thisMonthLabel': 'this month',
+  'currentJobsTitle': 'Current Jobs',
+  'noCurrentJobs': 'No urgent jobs at the moment.',
+  'notificationViewed': 'Profile viewed',
+  'notificationMessage': 'New message',
+  'notificationAccepted': 'CV accepted',
 };
 
 const _localizedValues = {'vi': _vi, 'en': _en};

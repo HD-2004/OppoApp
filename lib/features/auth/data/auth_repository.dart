@@ -153,11 +153,27 @@ class AuthRepository {
     required String userId,
     required bool completed,
     String? fullName,
+    String? phone,
+    String? cccd,
+    String? dateOfBirth,
+    String? location,
+    String? title,
+    String? bio,
+    List<String>? skills,
+    String? profileImage,
   }) {
     return _userProfileRepository.updateProfileCompleted(
       userId: userId,
       completed: completed,
       fullName: fullName,
+      phone: phone,
+      cccd: cccd,
+      dateOfBirth: dateOfBirth,
+      location: location,
+      title: title,
+      bio: bio,
+      skills: skills,
+      profileImage: profileImage,
     );
   }
 }

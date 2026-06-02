@@ -1,0 +1,262 @@
+import 'dart:convert';
+import 'package:amplify_auth_cognito/amplify_auth_cognito.dart';
+import 'package:amplify_flutter/amplify_flutter.dart';
+import 'package:http/http.dart' as http;
+
+import '../../../shared/domain/app_role.dart';
+import '../domain/auth_user_profile.dart';
+import 'user_profile_repository.dart';
+
+class AwsUserProfileRepository implements UserProfileRepository {
+  static const _apiBaseUrl = 'https://sd7ds72m8g.execute-api.ap-southeast-1.amazonaws.com/prod';
+
+  Future<String?> _getAuthToken() async {
+    try {
+      final cognitoPlugin = Amplify.Auth.getPlugin(
+        AmplifyAuthCognito.pluginKey,
+      );
+      final session = await cognitoPlugin.fetchAuthSession();
+      final tokens = session.userPoolTokensResult.valueOrNull;
+      return tokens?.idToken.raw;
+    } catch (e) {
+      safePrint('Error getting auth token: $e');
+      return null;
+    }
+  }
+
+  Map<String, String> _buildHeaders(String? token) {
+    return {
+      'Content-Type': 'application/json',
+      if (token != null) 'Authorization': 'Bearer $token',
+    };
+  }
+
+  @override
+  Future<void> savePendingRegistration(PendingRegistrationProfile profile) async {
+    // No-op for direct DynamoDB flow since registrations are saved on Cognito signup 
+    // and profile is upserted after login.
+  }
+
+  @override
+  Future<AuthUserProfile?> getByUserId(String userId) async {
+    try {
+      final token = await _getAuthToken();
+      final response = await http.get(
+        Uri.parse('$_apiBaseUrl/profile/$userId'),
+        headers: _buildHeaders(token),
+      );
+
+      if (response.statusCode == 404) {
+        safePrint('Profile not found (404) for userId: $userId');
+        return null;
+      }
+
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body);
+        if (body['success'] == true && body['data'] != null) {
+          final data = body['data'] as Map<String, dynamic>;
+          return _mapJsonToProfile(data, userId);
+        }
+      }
+      return null;
+    } catch (e) {
+      safePrint('Error fetching profile from DynamoDB: $e');
+      return null;
+    }
+  }
+
+  @override
+  Future<AuthUserProfile?> getByEmail(String email) async {
+    try {
+      final token = await _getAuthToken();
+      final encodedEmail = Uri.encodeComponent(email);
+      final response = await http.get(
+        Uri.parse('$_apiBaseUrl/profile/email/$encodedEmail'),
+        headers: _buildHeaders(token),
+      );
+
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body);
+        if (body['success'] == true && body['data'] != null) {
+          final data = body['data'] as Map<String, dynamic>;
+          return _mapJsonToProfile(data, data['userId'] ?? '');
+        }
+      }
+      return null;
+    } catch (e) {
+      safePrint('Error fetching profile by email from DynamoDB: $e');
+      return null;
+    }
+  }
+
+  @override
+  Future<AuthUserProfile> upsertAfterLogin({
+    required String userId,
+    required String username,
+    required String email,
+    required String fullName,
+    required AppRole? role,
+  }) async {
+    // 1. Check if profile already exists in DynamoDB
+    final existing = await getByUserId(userId);
+    if (existing != null) {
+      // If email or fullName are empty in the profile but available in cognito, update them
+      if ((existing.fullName.isEmpty && fullName.isNotEmpty) || (existing.email.isEmpty && email.isNotEmpty)) {
+        return updateProfileCompleted(
+          userId: userId,
+          completed: existing.profileCompleted,
+          fullName: existing.fullName.isEmpty ? fullName : existing.fullName,
+        );
+      }
+      return existing;
+    }
+
+    // 2. Create new profile in DynamoDB
+    final token = await _getAuthToken();
+    final now = DateTime.now().toIso8601String();
+    final payload = {
+      'userId': userId,
+      'email': email.trim(),
+      'fullName': fullName.trim(),
+      'role': 'candidate', // Only Candidate role is supported on the app
+      'kycCompleted': false,
+      'profileCompleted': false,
+      'createdAt': now,
+      'updatedAt': now,
+    };
+
+    final response = await http.post(
+      Uri.parse('$_apiBaseUrl/profile'),
+      headers: _buildHeaders(token),
+      body: jsonEncode(payload),
+    );
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      final body = jsonDecode(response.body);
+      if (body['success'] == true && body['data'] != null) {
+        final data = body['data'] as Map<String, dynamic>;
+        return _mapJsonToProfile(data, userId);
+      }
+    }
+
+    // Fallback if API fails
+    return AuthUserProfile(
+      userId: userId,
+      username: username,
+      role: role ?? AppRole.candidate,
+      email: email,
+      fullName: fullName,
+      kycCompleted: false,
+      profileCompleted: false,
+    );
+  }
+
+  @override
+  Future<AuthUserProfile> updateKycCompleted({
+    required String userId,
+    required bool completed,
+  }) async {
+    final token = await _getAuthToken();
+    final response = await http.put(
+      Uri.parse('$_apiBaseUrl/profile/$userId'),
+      headers: _buildHeaders(token),
+      body: jsonEncode({
+        'kycCompleted': completed,
+        'updatedAt': DateTime.now().toIso8601String(),
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      final body = jsonDecode(response.body);
+      if (body['success'] == true && body['data'] != null) {
+        final data = body['data'] as Map<String, dynamic>;
+        return _mapJsonToProfile(data, userId);
+      }
+    }
+
+    // Fallback fetch if update response doesn't contain updated profile
+    final updated = await getByUserId(userId);
+    if (updated != null) return updated;
+    throw Exception('Failed to update KYC status in DynamoDB');
+  }
+
+  @override
+  Future<AuthUserProfile> updateProfileCompleted({
+    required String userId,
+    required bool completed,
+    String? fullName,
+    String? phone,
+    String? cccd,
+    String? dateOfBirth,
+    String? location,
+    String? title,
+    String? bio,
+    List<String>? skills,
+    String? profileImage,
+  }) async {
+    final token = await _getAuthToken();
+    final response = await http.put(
+      Uri.parse('$_apiBaseUrl/profile/$userId'),
+      headers: _buildHeaders(token),
+      body: jsonEncode({
+        'profileCompleted': completed,
+        if (fullName != null) 'fullName': fullName.trim(),
+        if (phone != null) 'phone': phone.trim(),
+        if (cccd != null) 'cccd': cccd.trim(),
+        if (dateOfBirth != null) 'dateOfBirth': dateOfBirth.trim(),
+        if (location != null) 'location': location.trim(),
+        if (title != null) 'title': title.trim(),
+        if (bio != null) 'bio': bio.trim(),
+        if (skills != null) 'skills': skills,
+        if (profileImage != null) 'profileImage': profileImage,
+        'updatedAt': DateTime.now().toIso8601String(),
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      final body = jsonDecode(response.body);
+      if (body['success'] == true && body['data'] != null) {
+        final data = body['data'] as Map<String, dynamic>;
+        return _mapJsonToProfile(data, userId);
+      }
+    }
+
+    // Fallback fetch if update response doesn't contain updated profile
+    final updated = await getByUserId(userId);
+    if (updated != null) return updated;
+    throw Exception('Failed to update profile completion status in DynamoDB');
+  }
+
+  AuthUserProfile _mapJsonToProfile(Map<String, dynamic> data, String defaultUserId) {
+    final parsedRole = AppRoleParser.fromCognitoValue(data['role'] as String?);
+    
+    List<String>? skillsList;
+    if (data['skills'] != null) {
+      try {
+        skillsList = List<String>.from(data['skills'] as List);
+      } catch (_) {
+        // Fallback or skip if casting fails
+      }
+    }
+
+    return AuthUserProfile(
+      userId: data['userId'] as String? ?? defaultUserId,
+      username: data['username'] as String? ?? data['email'] as String? ?? '',
+      role: parsedRole ?? AppRole.candidate,
+      email: data['email'] as String? ?? '',
+      fullName: data['fullName'] as String? ?? '',
+      kycCompleted: data['kycCompleted'] == true,
+      profileCompleted: data['profileCompleted'] == true,
+      phone: data['phone'] as String?,
+      cccd: data['cccd'] as String?,
+      dateOfBirth: data['dateOfBirth'] as String?,
+      location: data['location'] as String?,
+      title: data['title'] as String?,
+      bio: data['bio'] as String?,
+      skills: skillsList,
+      profileImage: data['profileImage'] as String?,
+      createdAt: data['createdAt'] != null ? DateTime.tryParse(data['createdAt'] as String) : null,
+      updatedAt: data['updatedAt'] != null ? DateTime.tryParse(data['updatedAt'] as String) : null,
+    );
+  }
+}

@@ -5,6 +5,7 @@ import '../../../core/errors/auth_failure.dart';
 import '../../../shared/domain/app_role.dart';
 import '../data/auth_repository.dart';
 import '../data/auth_service.dart';
+import '../data/aws_user_profile_repository.dart';
 import '../data/user_profile_repository.dart';
 import '../domain/auth_user_profile.dart';
 import '../domain/auth_state.dart';
@@ -12,7 +13,7 @@ import '../domain/auth_state.dart';
 final authServiceProvider = Provider<AuthService>((ref) => AuthService());
 
 final userProfileRepositoryProvider = Provider<UserProfileRepository>((ref) {
-  return InMemoryUserProfileRepository();
+  return AwsUserProfileRepository();
 });
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
@@ -39,12 +40,6 @@ class AuthController extends AsyncNotifier<AuthState> {
     }
 
     if (user.role == AppRole.candidate) {
-      if (!user.kycCompleted) {
-        return '/candidate/kyc';
-      }
-      if (!user.profileCompleted) {
-        return '/candidate/update-profile';
-      }
       return '/candidate';
     }
 
@@ -163,7 +158,17 @@ class AuthController extends AsyncNotifier<AuthState> {
     state = AsyncData(AuthState.authenticated(updated));
   }
 
-  Future<void> completeProfile({String? fullName}) async {
+  Future<void> completeProfile({
+    String? fullName,
+    String? phone,
+    String? cccd,
+    String? dateOfBirth,
+    String? location,
+    String? title,
+    String? bio,
+    List<String>? skills,
+    String? profileImage,
+  }) async {
     final current = state.asData?.value.user;
     if (current == null) {
       return;
@@ -175,6 +180,14 @@ class AuthController extends AsyncNotifier<AuthState> {
           userId: current.userId,
           completed: true,
           fullName: fullName,
+          phone: phone,
+          cccd: cccd,
+          dateOfBirth: dateOfBirth,
+          location: location,
+          title: title,
+          bio: bio,
+          skills: skills,
+          profileImage: profileImage,
         );
     state = AsyncData(AuthState.authenticated(updated));
   }

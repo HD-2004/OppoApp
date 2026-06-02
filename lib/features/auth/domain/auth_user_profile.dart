@@ -44,6 +44,14 @@ class AuthUserProfile {
     required this.fullName,
     required this.kycCompleted,
     required this.profileCompleted,
+    this.phone,
+    this.cccd,
+    this.dateOfBirth,
+    this.location,
+    this.title,
+    this.bio,
+    this.skills,
+    this.profileImage,
     this.employerStatus,
     this.createdAt,
     this.updatedAt,
@@ -56,6 +64,14 @@ class AuthUserProfile {
   final String fullName;
   final bool kycCompleted;
   final bool profileCompleted;
+  final String? phone;
+  final String? cccd;
+  final String? dateOfBirth;
+  final String? location;
+  final String? title;
+  final String? bio;
+  final List<String>? skills;
+  final String? profileImage;
   final EmployerStatus? employerStatus;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -83,6 +99,14 @@ class AuthUserProfile {
     String? fullName,
     bool? kycCompleted,
     bool? profileCompleted,
+    String? phone,
+    String? cccd,
+    String? dateOfBirth,
+    String? location,
+    String? title,
+    String? bio,
+    List<String>? skills,
+    String? profileImage,
     EmployerStatus? employerStatus,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -95,6 +119,14 @@ class AuthUserProfile {
       fullName: fullName ?? this.fullName,
       kycCompleted: kycCompleted ?? this.kycCompleted,
       profileCompleted: profileCompleted ?? this.profileCompleted,
+      phone: phone ?? this.phone,
+      cccd: cccd ?? this.cccd,
+      dateOfBirth: dateOfBirth ?? this.dateOfBirth,
+      location: location ?? this.location,
+      title: title ?? this.title,
+      bio: bio ?? this.bio,
+      skills: skills ?? this.skills,
+      profileImage: profileImage ?? this.profileImage,
       employerStatus: employerStatus ?? this.employerStatus,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,

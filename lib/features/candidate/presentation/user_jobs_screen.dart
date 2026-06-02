@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/localization/app_localizations.dart';
+import '../data/mock_job_posts.dart';
 import 'user_location_screen.dart';
 import 'widgets/availability_card.dart';
+import 'widgets/job_post_card.dart';
 import 'widgets/location_card.dart';
 
 class UserJobsScreen extends StatefulWidget {
@@ -38,6 +40,7 @@ class _UserJobsScreenState extends State<UserJobsScreen> {
       l10n.nearby,
       l10n.highSalary,
     ];
+    final jobs = mockJobPosts;
 
     return SafeArea(
       child: SingleChildScrollView(
@@ -46,7 +49,7 @@ class _UserJobsScreenState extends State<UserJobsScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              l10n.jobs,
+              l10n.postsTabTitle, // Matches the tab title 'Bài đăng'
               style: textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.w800,
               ),
@@ -94,25 +97,43 @@ class _UserJobsScreenState extends State<UserJobsScreen> {
               ],
             ),
             const SizedBox(height: 20),
-            Card(
-              elevation: 0,
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      l10n.text('recommendedJobs'),
-                      style: textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(l10n.text('recommendedJobsPlaceholder')),
-                  ],
-                ),
+            // Header for jobs list
+            Text(
+              l10n.text('recommendedJobs'),
+              style: textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w800,
               ),
             ),
+            const SizedBox(height: 12),
+            // Jobs feed
+            if (jobs.isEmpty)
+              Card(
+                elevation: 0,
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    children: [
+                      const Icon(Icons.work_off_outlined, size: 40),
+                      const SizedBox(height: 12),
+                      Text(
+                        l10n.text('noJobsFound'),
+                        style: textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else
+              ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: jobs.length,
+                separatorBuilder: (context, index) => const SizedBox(height: 16),
+                itemBuilder: (context, index) {
+                  return JobPostCard(job: jobs[index]);
+                },
+              ),
           ],
         ),
       ),

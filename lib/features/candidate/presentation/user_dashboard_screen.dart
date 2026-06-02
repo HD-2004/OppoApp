@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/localization/app_localizations.dart';
-import 'user_home_feed_screen.dart';
+import 'digital_wallet_screen.dart';
 import 'user_jobs_screen.dart';
 import 'user_notifications_screen.dart';
 import 'user_profile_screen.dart';
+import 'widgets/candidate_dashboard_tab.dart';
 
 class UserDashboardScreen extends StatefulWidget {
   const UserDashboardScreen({super.key});
@@ -25,11 +26,12 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final strings = AppLocalizations.of(context);
-    const tabs = [
-      UserHomeFeedScreen(),
-      UserJobsScreen(),
-      UserNotificationsScreen(),
-      UserProfileScreen(),
+    final tabs = [
+      CandidateDashboardTab(onSelectTab: _selectTab),
+      const UserJobsScreen(),
+      const UserNotificationsScreen(),
+      const UserProfileScreen(),
+      const DigitalWalletScreen(),
     ];
 
     return Scaffold(
@@ -39,14 +41,14 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
         onDestinationSelected: _selectTab,
         destinations: [
           NavigationDestination(
-            icon: const Icon(Icons.home_outlined),
-            selectedIcon: const Icon(Icons.home),
+            icon: const Icon(Icons.dashboard_outlined),
+            selectedIcon: const Icon(Icons.dashboard),
             label: strings.home,
           ),
           NavigationDestination(
-            icon: const Icon(Icons.work_outline),
-            selectedIcon: const Icon(Icons.work),
-            label: strings.jobs,
+            icon: const Icon(Icons.article_outlined),
+            selectedIcon: const Icon(Icons.article),
+            label: strings.postsTabTitle,
           ),
           NavigationDestination(
             icon: const Icon(Icons.notifications_none),
@@ -56,7 +58,12 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
           NavigationDestination(
             icon: const Icon(Icons.person_outline),
             selectedIcon: const Icon(Icons.person),
-            label: strings.profile,
+            label: strings.myProfileTabTitle,
+          ),
+          NavigationDestination(
+            icon: const Icon(Icons.account_balance_wallet_outlined),
+            selectedIcon: const Icon(Icons.account_balance_wallet),
+            label: strings.digitalWallet,
           ),
         ],
       ),

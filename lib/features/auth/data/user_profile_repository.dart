@@ -37,6 +37,14 @@ abstract class UserProfileRepository {
     required String userId,
     required bool completed,
     String? fullName,
+    String? phone,
+    String? cccd,
+    String? dateOfBirth,
+    String? location,
+    String? title,
+    String? bio,
+    List<String>? skills,
+    String? profileImage,
   });
 }
 
@@ -126,10 +134,26 @@ class InMemoryUserProfileRepository implements UserProfileRepository {
     required String userId,
     required bool completed,
     String? fullName,
+    String? phone,
+    String? cccd,
+    String? dateOfBirth,
+    String? location,
+    String? title,
+    String? bio,
+    List<String>? skills,
+    String? profileImage,
   }) async {
     final profile = _requireProfile(userId);
     final updated = profile.copyWith(
       fullName: fullName?.trim().isNotEmpty == true ? fullName!.trim() : null,
+      phone: phone?.trim().isNotEmpty == true ? phone!.trim() : null,
+      cccd: cccd?.trim().isNotEmpty == true ? cccd!.trim() : null,
+      dateOfBirth: dateOfBirth?.trim().isNotEmpty == true ? dateOfBirth!.trim() : null,
+      location: location?.trim().isNotEmpty == true ? location!.trim() : null,
+      title: title?.trim().isNotEmpty == true ? title!.trim() : null,
+      bio: bio?.trim().isNotEmpty == true ? bio!.trim() : null,
+      skills: skills,
+      profileImage: profileImage,
       profileCompleted: completed,
       updatedAt: DateTime.now(),
     );

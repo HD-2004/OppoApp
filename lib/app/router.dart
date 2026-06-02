@@ -82,14 +82,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       }
 
       if (user.role == AppRole.candidate) {
-        if (!user.kycCompleted) {
-          return location == '/candidate/kyc' ? null : '/candidate/kyc';
-        }
-        if (!user.profileCompleted) {
-          return location == '/candidate/update-profile'
-              ? null
-              : '/candidate/update-profile';
-        }
         if (isAuthRoute ||
             location == '/' ||
             location == '/missing-role' ||
