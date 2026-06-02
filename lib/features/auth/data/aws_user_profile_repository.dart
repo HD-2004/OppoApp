@@ -193,6 +193,7 @@ class AwsUserProfileRepository implements UserProfileRepository {
     String? bio,
     List<String>? skills,
     String? profileImage,
+    List<String>? savedJobs,
   }) async {
     final token = await _getAuthToken();
     final response = await http.put(
@@ -209,6 +210,7 @@ class AwsUserProfileRepository implements UserProfileRepository {
         if (bio != null) 'bio': bio.trim(),
         if (skills != null) 'skills': skills,
         if (profileImage != null) 'profileImage': profileImage,
+        if (savedJobs != null) 'savedJobs': savedJobs,
         'updatedAt': DateTime.now().toIso8601String(),
       }),
     );
@@ -239,6 +241,15 @@ class AwsUserProfileRepository implements UserProfileRepository {
       }
     }
 
+    List<String>? savedJobsList;
+    if (data['savedJobs'] != null) {
+      try {
+        savedJobsList = List<String>.from(data['savedJobs'] as List);
+      } catch (_) {
+        // Fallback or skip if casting fails
+      }
+    }
+
     return AuthUserProfile(
       userId: data['userId'] as String? ?? defaultUserId,
       username: data['username'] as String? ?? data['email'] as String? ?? '',
@@ -255,6 +266,7 @@ class AwsUserProfileRepository implements UserProfileRepository {
       bio: data['bio'] as String?,
       skills: skillsList,
       profileImage: data['profileImage'] as String?,
+      savedJobs: savedJobsList,
       createdAt: data['createdAt'] != null ? DateTime.tryParse(data['createdAt'] as String) : null,
       updatedAt: data['updatedAt'] != null ? DateTime.tryParse(data['updatedAt'] as String) : null,
     );

@@ -45,6 +45,7 @@ abstract class UserProfileRepository {
     String? bio,
     List<String>? skills,
     String? profileImage,
+    List<String>? savedJobs,
   });
 }
 
@@ -142,6 +143,7 @@ class InMemoryUserProfileRepository implements UserProfileRepository {
     String? bio,
     List<String>? skills,
     String? profileImage,
+    List<String>? savedJobs,
   }) async {
     final profile = _requireProfile(userId);
     final updated = profile.copyWith(
@@ -154,6 +156,7 @@ class InMemoryUserProfileRepository implements UserProfileRepository {
       bio: bio?.trim().isNotEmpty == true ? bio!.trim() : null,
       skills: skills,
       profileImage: profileImage,
+      savedJobs: savedJobs,
       profileCompleted: completed,
       updatedAt: DateTime.now(),
     );

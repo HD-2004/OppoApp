@@ -53,6 +53,7 @@ class AuthUserProfile {
     this.skills,
     this.profileImage,
     this.employerStatus,
+    this.savedJobs,
     this.createdAt,
     this.updatedAt,
   });
@@ -73,6 +74,7 @@ class AuthUserProfile {
   final List<String>? skills;
   final String? profileImage;
   final EmployerStatus? employerStatus;
+  final List<String>? savedJobs;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -108,6 +110,7 @@ class AuthUserProfile {
     List<String>? skills,
     String? profileImage,
     EmployerStatus? employerStatus,
+    List<String>? savedJobs,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -128,6 +131,7 @@ class AuthUserProfile {
       skills: skills ?? this.skills,
       profileImage: profileImage ?? this.profileImage,
       employerStatus: employerStatus ?? this.employerStatus,
+      savedJobs: savedJobs ?? this.savedJobs,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

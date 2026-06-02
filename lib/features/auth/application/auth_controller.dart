@@ -191,4 +191,36 @@ class AuthController extends AsyncNotifier<AuthState> {
         );
     state = AsyncData(AuthState.authenticated(updated));
   }
+
+  Future<void> toggleSavedJob(String jobId) async {
+    final current = state.asData?.value.user;
+    if (current == null) {
+      return;
+    }
+
+    final savedList = List<String>.from(current.savedJobs ?? []);
+    if (savedList.contains(jobId)) {
+      savedList.remove(jobId);
+    } else {
+      savedList.add(jobId);
+    }
+
+    final updated = await ref
+        .read(authRepositoryProvider)
+        .updateProfileCompleted(
+          userId: current.userId,
+          completed: current.profileCompleted,
+          fullName: current.fullName,
+          phone: current.phone,
+          cccd: current.cccd,
+          dateOfBirth: current.dateOfBirth,
+          location: current.location,
+          title: current.title,
+          bio: current.bio,
+          skills: current.skills,
+          profileImage: current.profileImage,
+          savedJobs: savedList,
+        );
+    state = AsyncData(AuthState.authenticated(updated));
+  }
 }

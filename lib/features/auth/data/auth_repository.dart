@@ -161,6 +161,7 @@ class AuthRepository {
     String? bio,
     List<String>? skills,
     String? profileImage,
+    List<String>? savedJobs,
   }) {
     return _userProfileRepository.updateProfileCompleted(
       userId: userId,
@@ -174,6 +175,7 @@ class AuthRepository {
       bio: bio,
       skills: skills,
       profileImage: profileImage,
+      savedJobs: savedJobs,
     );
   }
 }
