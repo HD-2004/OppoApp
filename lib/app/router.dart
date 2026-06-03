@@ -22,11 +22,10 @@ import '../features/urgent_jobs/presentation/shift_detail_screen.dart';
 import '../shared/domain/app_role.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
-  final authState = ref.watch(authControllerProvider);
-
-  return GoRouter(
+  final router = GoRouter(
     initialLocation: '/login',
     redirect: (context, state) {
+      final authState = ref.read(authControllerProvider);
       if (authState.isLoading) {
         return null;
       }
@@ -171,4 +170,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
     ],
   );
+
+  ref.listen<AsyncValue<AuthState>>(
+    authControllerProvider,
+    (previous, next) {
+      if (previous?.isLoading != next.isLoading ||
+          previous?.value?.status != next.value?.status ||
+          previous?.value?.user?.role != next.value?.user?.role ||
+          previous?.value?.user?.employerStatus != next.value?.user?.employerStatus) {
+        router.refresh();
+      }
+    },
+  );
+
+  return router;
 });

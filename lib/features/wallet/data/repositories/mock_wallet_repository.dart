@@ -109,13 +109,12 @@ class MockWalletRepository implements WalletRepository {
   @override
   Future<WithdrawalRequest> createWithdrawalRequest({
     required double amount,
-    required String bankAccountId,
+    required String bankName,
+    required String accountNumber,
+    required String accountHolderName,
+    String? branch,
   }) async {
     await Future<void>.delayed(const Duration(milliseconds: 350));
-    final bankAccount = _linkedBankAccount;
-    if (bankAccount == null || bankAccount.bankAccountId != bankAccountId) {
-      throw StateError('bank_account_required');
-    }
     if (!_wallet.isActive) {
       throw StateError('wallet_inactive');
     }
@@ -128,9 +127,9 @@ class MockWalletRepository implements WalletRepository {
       withdrawalRequestId: requestId,
       amount: amount,
       currency: _wallet.currency,
-      bankAccountId: bankAccount.bankAccountId,
-      bankName: bankAccount.bankName,
-      accountNumberMasked: bankAccount.accountNumberMasked,
+      bankAccountId: 'mock_bank_id',
+      bankName: bankName,
+      accountNumberMasked: _maskAccountNumber(accountNumber),
       status: WalletTransactionStatus.pending,
       requestedAt: DateTime.now(),
     );
@@ -144,7 +143,7 @@ class MockWalletRepository implements WalletRepository {
         currency: _wallet.currency,
         status: WalletTransactionStatus.pending,
         description:
-            'Withdrawal to ${bankAccount.bankName} ${bankAccount.accountNumberMasked}',
+            'Withdrawal to $bankName ${_maskAccountNumber(accountNumber)}',
         createdAt: request.requestedAt,
       ),
     );

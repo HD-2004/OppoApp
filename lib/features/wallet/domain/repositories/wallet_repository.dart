@@ -25,7 +25,10 @@ abstract interface class WalletRepository {
 
   Future<WithdrawalRequest> createWithdrawalRequest({
     required double amount,
-    required String bankAccountId,
+    required String bankName,
+    required String accountNumber,
+    required String accountHolderName,
+    String? branch,
   });
 
   Future<RevenueStatistics> getRevenueStatistics();

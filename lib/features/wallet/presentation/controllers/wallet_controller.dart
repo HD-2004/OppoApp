@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../data/repositories/mock_wallet_repository.dart';
+import '../../data/repositories/api_wallet_repository.dart';
 import '../../domain/entities/linked_bank_account.dart';
 import '../../domain/entities/revenue_statistics.dart';
 import '../../domain/entities/wallet.dart';
@@ -9,7 +9,7 @@ import '../../domain/entities/withdrawal_request.dart';
 import '../../domain/repositories/wallet_repository.dart';
 
 final walletRepositoryProvider = Provider<WalletRepository>((ref) {
-  return MockWalletRepository();
+  return ApiWalletRepository();
 });
 
 final walletControllerProvider =
@@ -155,11 +155,17 @@ class WalletController extends AsyncNotifier<WalletState> {
 
   Future<WithdrawalRequest> createWithdrawalRequest({
     required double amount,
-    required String bankAccountId,
+    required String bankName,
+    required String accountNumber,
+    required String accountHolderName,
+    String? branch,
   }) async {
     final request = await _repository.createWithdrawalRequest(
       amount: amount,
-      bankAccountId: bankAccountId,
+      bankName: bankName,
+      accountNumber: accountNumber,
+      accountHolderName: accountHolderName,
+      branch: branch,
     );
     await refreshWallet();
     return request;
