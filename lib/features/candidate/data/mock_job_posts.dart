@@ -6,6 +6,8 @@ List<JobPost> get mockJobPosts {
   return [
     JobPost(
       id: 'job-highlands-evening-shift',
+      idJob: 'mock-highlands-evening-shift',
+      employerId: 'mock-employer-highlands',
       employerName: 'Highlands Coffee',
       title: 'Phục vụ quán cà phê ca tối',
       jobType: JobPostType.urgent,
@@ -19,6 +21,8 @@ List<JobPost> get mockJobPosts {
     ),
     JobPost(
       id: 'job-minimart-weekend-sales',
+      idJob: 'mock-minimart-weekend-sales',
+      employerId: 'mock-employer-minimart',
       employerName: 'Mini Mart',
       title: 'Nhân viên bán hàng cuối tuần',
       jobType: JobPostType.partTime,
@@ -32,6 +36,8 @@ List<JobPost> get mockJobPosts {
     ),
     JobPost(
       id: 'job-fastlogistics-warehouse',
+      idJob: 'mock-fastlogistics-warehouse',
+      employerId: 'mock-employer-fastlogistics',
       employerName: 'Fast Logistics',
       title: 'Phụ kho thời vụ',
       jobType: JobPostType.urgent,

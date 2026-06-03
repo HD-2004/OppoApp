@@ -5,6 +5,7 @@ import '../features/auth/application/auth_controller.dart';
 import '../features/auth/domain/auth_state.dart';
 import '../features/auth/presentation/confirm_signup_screen.dart';
 import '../features/auth/presentation/forgot_password_screen.dart';
+import '../features/auth/presentation/introduction_screen.dart';
 import '../features/auth/presentation/login_screen.dart';
 import '../features/auth/presentation/missing_role_screen.dart';
 import '../features/auth/presentation/register_screen.dart';
@@ -22,8 +23,10 @@ import '../features/urgent_jobs/presentation/shift_detail_screen.dart';
 import '../shared/domain/app_role.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
+  final authState = ref.watch(authControllerProvider);
+
   final router = GoRouter(
-    initialLocation: '/login',
+    initialLocation: '/intro',
     redirect: (context, state) {
       final authState = ref.read(authControllerProvider);
       if (authState.isLoading) {
@@ -34,6 +37,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           authState.asData?.value ?? const AuthState.unauthenticated();
       final location = state.matchedLocation;
       final isAuthRoute =
+          location == '/intro' ||
           location == '/login' ||
           location == '/register' ||
           location == '/confirm-signup' ||
@@ -41,7 +45,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           location == '/reset-password';
 
       if (value.status == AuthStatus.unauthenticated) {
-        return isAuthRoute ? null : '/login';
+        return isAuthRoute ? null : '/intro';
       }
 
       if (value.status == AuthStatus.unconfirmed) {
@@ -58,7 +62,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
       final user = value.user;
       if (user == null) {
-        return '/login';
+        return '/intro';
       }
 
       if (user.role == AppRole.employer) {
@@ -94,6 +98,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     },
     routes: [
       GoRoute(path: '/', builder: (context, state) => const HomeScreen()),
+      GoRoute(
+        path: '/intro',
+        builder: (context, state) => const IntroductionScreen(),
+      ),
       GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
       GoRoute(
         path: '/register',
@@ -171,17 +179,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     ],
   );
 
-  ref.listen<AsyncValue<AuthState>>(
-    authControllerProvider,
-    (previous, next) {
-      if (previous?.isLoading != next.isLoading ||
-          previous?.value?.status != next.value?.status ||
-          previous?.value?.user?.role != next.value?.user?.role ||
-          previous?.value?.user?.employerStatus != next.value?.user?.employerStatus) {
-        router.refresh();
-      }
-    },
-  );
+  ref.listen<AsyncValue<AuthState>>(authControllerProvider, (previous, next) {
+    if (previous?.isLoading != next.isLoading ||
+        previous?.value?.status != next.value?.status ||
+        previous?.value?.user?.role != next.value?.user?.role ||
+        previous?.value?.user?.employerStatus !=
+            next.value?.user?.employerStatus) {
+      router.refresh();
+    }
+  });
 
   return router;
 });

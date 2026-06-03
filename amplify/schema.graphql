@@ -33,6 +33,58 @@ enum PaymentStatus {
   disputed
 }
 
+enum NotificationRecipientRole {
+  CANDIDATE
+  EMPLOYER
+  ADMIN
+}
+
+enum NotificationActorRole {
+  CANDIDATE
+  EMPLOYER
+  ADMIN
+  SYSTEM
+}
+
+enum NotificationType {
+  PROFILE_VIEWED
+  CV_ACCEPTED
+  CV_REJECTED
+  NEW_MESSAGE
+  SHIFT_ACCEPTED
+  SHIFT_CONFIRMED
+  SHIFT_COMPLETED
+  PAYMENT_RELEASED
+  PAYMENT_FAILED
+  KYC_APPROVED
+  KYC_REJECTED
+  JOB_RECOMMENDED
+  SYSTEM
+}
+
+enum NotificationEntityType {
+  JOB
+  APPLICATION
+  BOOKING
+  MESSAGE_THREAD
+  WALLET_TRANSACTION
+  PROFILE
+  KYC
+  SYSTEM
+}
+
+enum NotificationStatus {
+  UNREAD
+  READ
+  ARCHIVED
+}
+
+enum NotificationPriority {
+  LOW
+  NORMAL
+  HIGH
+}
+
 type UrgentShiftJob @model @auth(rules: [{ allow: private }]) {
   id: ID!
   employerId: ID!
@@ -59,4 +111,35 @@ type ShiftBooking @model @auth(rules: [{ allow: private }]) {
   checkInAt: AWSDateTime
   checkOutAt: AWSDateTime
   employerConfirmedAt: AWSDateTime
+}
+
+type Notification
+  @model
+  @auth(
+    rules: [
+      { allow: owner, ownerField: "recipientId", operations: [read, update] }
+      { allow: groups, groups: ["Admin"], operations: [create, read, update, delete] }
+      { allow: private, provider: userPools, operations: [create] }
+    ]
+  ) {
+  id: ID!
+  recipientId: ID!
+    @index(name: "byRecipientCreatedAt", sortKeyFields: ["createdAt"])
+    @index(name: "byRecipientStatus", sortKeyFields: ["status", "createdAt"])
+  recipientRole: NotificationRecipientRole!
+  actorId: ID
+  actorName: String
+  actorRole: NotificationActorRole
+  type: NotificationType!
+  title: String!
+  body: String!
+  entityType: NotificationEntityType
+  entityId: ID
+  deepLink: String
+  status: NotificationStatus!
+  priority: NotificationPriority!
+  metadata: AWSJSON
+  createdAt: AWSDateTime!
+  readAt: AWSDateTime
+  deletedAt: AWSDateTime
 }

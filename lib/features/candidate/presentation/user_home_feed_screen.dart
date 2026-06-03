@@ -45,6 +45,9 @@ class _UserHomeFeedScreenState extends ConsumerState<UserHomeFeedScreen> {
     try {
       final repository = ref.read(applicationRepositoryProvider);
       final cvs = await repository.getCandidateCVs(user.userId);
+      if (!mounted) {
+        return;
+      }
       Navigator.of(context).pop(); // Dismiss loading
 
       if (cvs.isEmpty) {
@@ -53,6 +56,9 @@ class _UserHomeFeedScreenState extends ConsumerState<UserHomeFeedScreen> {
         _showCVSelectionDialog(job, cvs);
       }
     } catch (e) {
+      if (!mounted) {
+        return;
+      }
       Navigator.of(context).pop(); // Dismiss loading
       _showErrorDialog('Không thể tải danh sách CV. Vui lòng thử lại.');
     }
@@ -62,7 +68,10 @@ class _UserHomeFeedScreenState extends ConsumerState<UserHomeFeedScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Chưa có CV', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Chưa có CV',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         content: const Text(
           'Bạn chưa có CV. Vui lòng tải CV lên trong phần Hồ sơ của tôi trước khi ứng tuyển.',
         ),
@@ -85,30 +94,40 @@ class _UserHomeFeedScreenState extends ConsumerState<UserHomeFeedScreen> {
         return StatefulBuilder(
           builder: (context, setModalState) {
             return AlertDialog(
-              title: const Text('Chọn CV ứng tuyển', style: TextStyle(fontWeight: FontWeight.bold)),
+              title: const Text(
+                'Chọn CV ứng tuyển',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
               content: SizedBox(
                 width: double.maxFinite,
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: cvList.length,
-                  itemBuilder: (context, index) {
-                    final cv = cvList[index];
-                    final id = cv['id']?.toString();
-                    final name = cv['cvFileName']?.toString() ?? 'CV.pdf';
-                    final date = cv['cvUploadDate']?.toString() ?? '';
-
-                    return RadioListTile<String>(
-                      title: Text(name, style: const TextStyle(fontWeight: FontWeight.w600)),
-                      subtitle: date.isNotEmpty ? Text('Tải lên ngày: $date') : null,
-                      value: id!,
-                      groupValue: selectedCvId,
-                      onChanged: (val) {
-                        setModalState(() {
-                          selectedCvId = val;
-                        });
-                      },
-                    );
+                child: RadioGroup<String>(
+                  groupValue: selectedCvId,
+                  onChanged: (val) {
+                    setModalState(() {
+                      selectedCvId = val;
+                    });
                   },
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: cvList.length,
+                    itemBuilder: (context, index) {
+                      final cv = cvList[index];
+                      final id = cv['id']?.toString();
+                      final name = cv['cvFileName']?.toString() ?? 'CV.pdf';
+                      final date = cv['cvUploadDate']?.toString() ?? '';
+
+                      return RadioListTile<String>(
+                        title: Text(
+                          name,
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                        subtitle: date.isNotEmpty
+                            ? Text('Tải lên ngày: $date')
+                            : null,
+                        value: id!,
+                      );
+                    },
+                  ),
                 ),
               ),
               actions: [
@@ -123,7 +142,9 @@ class _UserHomeFeedScreenState extends ConsumerState<UserHomeFeedScreen> {
                   ),
                   onPressed: () {
                     Navigator.of(ctx).pop();
-                    final chosen = cvList.firstWhere((c) => c['id']?.toString() == selectedCvId);
+                    final chosen = cvList.firstWhere(
+                      (c) => c['id']?.toString() == selectedCvId,
+                    );
                     _submitApplication(
                       job,
                       chosen['cvUrl'] ?? chosen['cvS3Key'] ?? '',
@@ -140,7 +161,11 @@ class _UserHomeFeedScreenState extends ConsumerState<UserHomeFeedScreen> {
     );
   }
 
-  Future<void> _submitApplication(JobPost job, String cvUrl, String cvFilename) async {
+  Future<void> _submitApplication(
+    JobPost job,
+    String cvUrl,
+    String cvFilename,
+  ) async {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -154,12 +179,20 @@ class _UserHomeFeedScreenState extends ConsumerState<UserHomeFeedScreen> {
         cvUrl: cvUrl,
         cvFilename: cvFilename,
       );
+      if (!mounted) {
+        return;
+      }
       Navigator.of(context).pop(); // Dismiss loading
       _showSuccessDialog();
     } catch (e) {
+      if (!mounted) {
+        return;
+      }
       Navigator.of(context).pop(); // Dismiss loading
       final msg = e.toString();
-      if (msg.contains('ALREADY_APPLIED') || msg.contains('already applied') || msg.contains('đã ứng tuyển')) {
+      if (msg.contains('ALREADY_APPLIED') ||
+          msg.contains('already applied') ||
+          msg.contains('đã ứng tuyển')) {
         _showErrorDialog('Bạn đã ứng tuyển công việc này rồi!');
       } else {
         _showErrorDialog(msg.replaceAll('Exception: ', ''));
@@ -178,7 +211,9 @@ class _UserHomeFeedScreenState extends ConsumerState<UserHomeFeedScreen> {
             Text('Thành công', style: TextStyle(fontWeight: FontWeight.bold)),
           ],
         ),
-        content: const Text('Hồ sơ ứng tuyển của bạn đã được gửi đi thành công!'),
+        content: const Text(
+          'Hồ sơ ứng tuyển của bạn đã được gửi đi thành công!',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
@@ -235,10 +270,10 @@ class _UserHomeFeedScreenState extends ConsumerState<UserHomeFeedScreen> {
     final displayName = user?.fullName.trim().isNotEmpty == true
         ? user!.fullName.trim()
         : l10n.text('candidate').toLowerCase();
-    
+
     final jobsAsync = ref.watch(activeJobsProvider);
     final savedJobIds = user?.savedJobs ?? [];
-    
+
     final filters = [
       l10n.text('nearby'),
       l10n.text('highSalary'),
@@ -265,7 +300,9 @@ class _UserHomeFeedScreenState extends ConsumerState<UserHomeFeedScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              l10n.format('homeGreeting', {'name': displayName}),
+                              l10n.format('homeGreeting', {
+                                'name': displayName,
+                              }),
                               style: textTheme.headlineSmall?.copyWith(
                                 fontWeight: FontWeight.w800,
                               ),
@@ -316,7 +353,9 @@ class _UserHomeFeedScreenState extends ConsumerState<UserHomeFeedScreen> {
                 return JobPostCard(
                   job: job,
                   isSaved: savedJobIds.contains(job.id),
-                  onSaveToggle: () => ref.read(authControllerProvider.notifier).toggleSavedJob(job.id),
+                  onSaveToggle: () => ref
+                      .read(authControllerProvider.notifier)
+                      .toggleSavedJob(job.id),
                   onDetailsPressed: () => _openDetails(job),
                   onApplyPressed: () => _handleApply(job, user),
                 );

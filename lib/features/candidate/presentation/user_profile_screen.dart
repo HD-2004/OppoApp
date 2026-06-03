@@ -83,32 +83,34 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
   int _calculateCompletion(AuthUserProfile? user) {
     if (user == null) return 0;
     int score = 0;
-    
+
     // Basic Info: 8% each (40% total)
     if (user.fullName.trim().isNotEmpty) score += 8;
     if (user.email.trim().isNotEmpty) score += 8;
     if (user.phone != null && user.phone!.trim().isNotEmpty) score += 8;
     if (user.cccd != null && user.cccd!.trim().isNotEmpty) score += 8;
-    if (user.dateOfBirth != null && user.dateOfBirth!.trim().isNotEmpty) score += 8;
-    
+    if (user.dateOfBirth != null && user.dateOfBirth!.trim().isNotEmpty) {
+      score += 8;
+    }
+
     // Professional Info: 10% each (30% total)
     if (user.location != null && user.location!.trim().isNotEmpty) score += 10;
     if (user.title != null && user.title!.trim().isNotEmpty) score += 10;
     if (user.bio != null && user.bio!.trim().isNotEmpty) score += 10;
-    
+
     // Skills (10% if >= 3, otherwise 5% or 0%)
     if (user.skills != null && user.skills!.length >= 3) {
       score += 10;
     } else if (user.skills != null && user.skills!.isNotEmpty) {
       score += 5;
     }
-    
+
     // Profile Image: 10%
     if (user.profileImage != null && user.profileImage!.isNotEmpty) score += 10;
-    
+
     // eKYC completed: 10%
     if (user.kycCompleted) score += 10;
-    
+
     return score;
   }
 
@@ -123,24 +125,25 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
   }
 
   Widget _buildAvatar(AuthUserProfile? user, String fullName) {
-    if (user?.profileImage != null && user!.profileImage!.startsWith('data:image')) {
+    if (user?.profileImage != null &&
+        user!.profileImage!.startsWith('data:image')) {
       try {
         final base64Str = user.profileImage!.split(',').last;
         final bytes = base64.decode(base64Str);
-        return CircleAvatar(
-          radius: 38,
-          backgroundImage: MemoryImage(bytes),
-        );
+        return CircleAvatar(radius: 38, backgroundImage: MemoryImage(bytes));
       } catch (_) {}
     }
-    
+
     // Fallback to initials
     return Container(
       width: 76,
       height: 76,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        border: Border.all(color: Colors.white.withOpacity(0.3), width: 3),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.3),
+          width: 3,
+        ),
         gradient: const LinearGradient(
           colors: [Color(0xFFF093FB), Color(0xFFF5576C)],
         ),
@@ -161,12 +164,12 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, color: Colors.white.withOpacity(0.9), size: 16),
+        Icon(icon, color: Colors.white.withValues(alpha: 0.9), size: 16),
         const SizedBox(width: 6),
         Text(
           text,
           style: TextStyle(
-            color: Colors.white.withOpacity(0.9),
+            color: Colors.white.withValues(alpha: 0.9),
             fontSize: 13,
           ),
         ),
@@ -174,7 +177,8 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
     );
   }
 
-  Widget _buildDetailTile(BuildContext context, {
+  Widget _buildDetailTile(
+    BuildContext context, {
     required IconData icon,
     required String label,
     required String value,
@@ -188,10 +192,10 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceVariant.withOpacity(0.2),
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: theme.colorScheme.outlineVariant.withOpacity(0.4),
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.4),
         ),
       ),
       child: Row(
@@ -200,7 +204,7 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(icon, color: color, size: 20),
@@ -220,7 +224,9 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  value.isNotEmpty ? value : (isVi ? 'Chưa cập nhật' : 'Not updated'),
+                  value.isNotEmpty
+                      ? value
+                      : (isVi ? 'Chưa cập nhật' : 'Not updated'),
                   style: textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -292,7 +298,7 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF1E40AF).withOpacity(0.2),
+                          color: const Color(0xFF1E40AF).withValues(alpha: 0.2),
                           blurRadius: 8,
                           offset: const Offset(0, 4),
                         ),
@@ -320,10 +326,15 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    user?.title ?? (isVi ? 'Chưa cập nhật vị trí' : 'Position not set'),
+                                    user?.title ??
+                                        (isVi
+                                            ? 'Chưa cập nhật vị trí'
+                                            : 'Position not set'),
                                     style: TextStyle(
                                       fontSize: 15,
-                                      color: Colors.white.withOpacity(0.9),
+                                      color: Colors.white.withValues(
+                                        alpha: 0.9,
+                                      ),
                                       fontWeight: FontWeight.w500,
                                     ),
                                   ),
@@ -332,11 +343,17 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
                             ),
                             // Edit profile quick button
                             IconButton(
-                              icon: const Icon(Icons.edit_outlined, color: Colors.white),
-                              style: IconButton.styleFrom(
-                                backgroundColor: Colors.white.withOpacity(0.15),
+                              icon: const Icon(
+                                Icons.edit_outlined,
+                                color: Colors.white,
                               ),
-                              onPressed: () => _push(const UpdateProfileScreen()),
+                              style: IconButton.styleFrom(
+                                backgroundColor: Colors.white.withValues(
+                                  alpha: 0.15,
+                                ),
+                              ),
+                              onPressed: () =>
+                                  _push(const UpdateProfileScreen()),
                             ),
                           ],
                         ),
@@ -352,8 +369,12 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
                               _buildMetaItem(Icons.email_outlined, email),
                             if (user?.phone != null && user!.phone!.isNotEmpty)
                               _buildMetaItem(Icons.phone_outlined, user.phone!),
-                            if (user?.location != null && user!.location!.isNotEmpty)
-                              _buildMetaItem(Icons.map_outlined, user.location!),
+                            if (user?.location != null &&
+                                user!.location!.isNotEmpty)
+                              _buildMetaItem(
+                                Icons.map_outlined,
+                                user.location!,
+                              ),
                           ],
                         ),
                         const SizedBox(height: 20),
@@ -362,8 +383,8 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              isVi 
-                                  ? '🎉 Hồ sơ đã hoàn thiện $completion%!' 
+                              isVi
+                                  ? '🎉 Hồ sơ đã hoàn thiện $completion%!'
                                   : '🎉 Profile completed $completion%!',
                               style: const TextStyle(
                                 color: Colors.white,
@@ -378,8 +399,12 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
                           borderRadius: BorderRadius.circular(4),
                           child: LinearProgressIndicator(
                             value: completion / 100.0,
-                            backgroundColor: Colors.white.withOpacity(0.2),
-                            valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                            backgroundColor: Colors.white.withValues(
+                              alpha: 0.2,
+                            ),
+                            valueColor: const AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
                             minHeight: 6,
                           ),
                         ),
@@ -393,9 +418,9 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                       side: BorderSide(
-                        color: user?.kycCompleted == true 
-                            ? const Color(0xFF10B981) 
-                            : const Color(0xFFF59E0B).withOpacity(0.5),
+                        color: user?.kycCompleted == true
+                            ? const Color(0xFF10B981)
+                            : const Color(0xFFF59E0B).withValues(alpha: 0.5),
                         width: 1.5,
                       ),
                     ),
@@ -408,8 +433,8 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
                             children: [
                               Icon(
                                 Icons.shield_outlined,
-                                color: user?.kycCompleted == true 
-                                    ? const Color(0xFF10B981) 
+                                color: user?.kycCompleted == true
+                                    ? const Color(0xFF10B981)
                                     : const Color(0xFFF59E0B),
                                 size: 24,
                               ),
@@ -427,7 +452,9 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
                             Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF10B981).withOpacity(0.08),
+                                color: const Color(
+                                  0xFF10B981,
+                                ).withValues(alpha: 0.08),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Row(
@@ -440,7 +467,8 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
                                   const SizedBox(width: 12),
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           isVi ? 'Đã Xác Minh' : 'Verified',
@@ -451,12 +479,14 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
                                         ),
                                         const SizedBox(height: 2),
                                         Text(
-                                          isVi 
-                                              ? 'Tài khoản của bạn đã được xác minh thành công.' 
+                                          isVi
+                                              ? 'Tài khoản của bạn đã được xác minh thành công.'
                                               : 'Your account has been successfully verified.',
                                           style: TextStyle(
                                             fontSize: 12,
-                                            color: const Color(0xFF10B981).withOpacity(0.9),
+                                            color: const Color(
+                                              0xFF10B981,
+                                            ).withValues(alpha: 0.9),
                                           ),
                                         ),
                                       ],
@@ -472,7 +502,9 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
                                 Container(
                                   padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFFF59E0B).withOpacity(0.08),
+                                    color: const Color(
+                                      0xFFF59E0B,
+                                    ).withValues(alpha: 0.08),
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   child: Row(
@@ -485,10 +517,13 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
                                       const SizedBox(width: 12),
                                       Expanded(
                                         child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
                                           children: [
                                             Text(
-                                              isVi ? 'Chưa Xác Minh' : 'Unverified',
+                                              isVi
+                                                  ? 'Chưa Xác Minh'
+                                                  : 'Unverified',
                                               style: const TextStyle(
                                                 fontWeight: FontWeight.bold,
                                                 color: Color(0xFFF59E0B),
@@ -496,12 +531,14 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
                                             ),
                                             const SizedBox(height: 2),
                                             Text(
-                                              isVi 
-                                                  ? 'Xác minh danh tính để nâng cấp độ tin cậy của hồ sơ.' 
+                                              isVi
+                                                  ? 'Xác minh danh tính để nâng cấp độ tin cậy của hồ sơ.'
                                                   : 'Verify your identity to increase profile trust level.',
                                               style: TextStyle(
                                                 fontSize: 12,
-                                                color: const Color(0xFFF59E0B).withOpacity(0.9),
+                                                color: const Color(
+                                                  0xFFF59E0B,
+                                                ).withValues(alpha: 0.9),
                                               ),
                                             ),
                                           ],
@@ -512,19 +549,28 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
                                 ),
                                 const SizedBox(height: 12),
                                 OutlinedButton.icon(
-                                  onPressed: () => _push(const KycVerificationScreen()),
+                                  onPressed: () =>
+                                      _push(const KycVerificationScreen()),
                                   style: OutlinedButton.styleFrom(
                                     foregroundColor: const Color(0xFFF59E0B),
-                                    side: const BorderSide(color: Color(0xFFF59E0B)),
-                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                    side: const BorderSide(
+                                      color: Color(0xFFF59E0B),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 12,
+                                    ),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                   ),
                                   icon: const Icon(Icons.shield_outlined),
                                   label: Text(
-                                    isVi ? 'Bắt Đầu Xác Minh' : 'Start Verification',
-                                    style: const TextStyle(fontWeight: FontWeight.bold),
+                                    isVi
+                                        ? 'Bắt Đầu Xác Minh'
+                                        : 'Start Verification',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -541,7 +587,9 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                       side: BorderSide(
-                        color: theme.colorScheme.outlineVariant.withOpacity(0.5),
+                        color: theme.colorScheme.outlineVariant.withValues(
+                          alpha: 0.5,
+                        ),
                       ),
                     ),
                     child: Padding(
@@ -561,15 +609,17 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
                                   ),
                                   const SizedBox(width: 10),
                                   Text(
-                                    isVi ? 'Thông Tin Cá Nhân' : 'Personal Information',
-                                    style: theme.textTheme.titleMedium?.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                    ),
+                                    isVi
+                                        ? 'Thông Tin Cá Nhân'
+                                        : 'Personal Information',
+                                    style: theme.textTheme.titleMedium
+                                        ?.copyWith(fontWeight: FontWeight.bold),
                                   ),
                                 ],
                               ),
                               TextButton.icon(
-                                onPressed: () => _push(const UpdateProfileScreen()),
+                                onPressed: () =>
+                                    _push(const UpdateProfileScreen()),
                                 icon: const Icon(Icons.edit, size: 14),
                                 label: Text(isVi ? 'Sửa' : 'Edit'),
                               ),
@@ -621,7 +671,9 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
                           _buildDetailTile(
                             context,
                             icon: Icons.work_outline,
-                            label: isVi ? 'Vị trí mong muốn' : 'Desired Position',
+                            label: isVi
+                                ? 'Vị trí mong muốn'
+                                : 'Desired Position',
                             value: user?.title ?? '',
                             color: const Color(0xFF1E40AF),
                           ),
@@ -644,7 +696,9 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                       side: BorderSide(
-                        color: theme.colorScheme.outlineVariant.withOpacity(0.5),
+                        color: theme.colorScheme.outlineVariant.withValues(
+                          alpha: 0.5,
+                        ),
                       ),
                     ),
                     child: Padding(
@@ -677,16 +731,23 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
                                 return Chip(
                                   label: Text(
                                     skill,
-                                    style: const TextStyle(fontWeight: FontWeight.w500),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w500,
+                                    ),
                                   ),
                                   avatar: const Icon(
                                     Icons.check_circle,
                                     size: 16,
                                     color: Color(0xFF10B981),
                                   ),
-                                  backgroundColor: theme.colorScheme.primaryContainer.withOpacity(0.15),
+                                  backgroundColor: theme
+                                      .colorScheme
+                                      .primaryContainer
+                                      .withValues(alpha: 0.15),
                                   side: BorderSide(
-                                    color: theme.colorScheme.primary.withOpacity(0.15),
+                                    color: theme.colorScheme.primary.withValues(
+                                      alpha: 0.15,
+                                    ),
                                   ),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(8),
@@ -696,10 +757,12 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
                             )
                           else
                             Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 8.0),
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 8.0,
+                              ),
                               child: Text(
-                                isVi 
-                                    ? 'Chưa thêm kỹ năng nào. Vui lòng bấm chỉnh sửa để cập nhật.' 
+                                isVi
+                                    ? 'Chưa thêm kỹ năng nào. Vui lòng bấm chỉnh sửa để cập nhật.'
                                     : 'No skills added yet. Tap edit to update.',
                                 style: TextStyle(
                                   color: theme.colorScheme.onSurfaceVariant,
@@ -720,7 +783,9 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                       side: BorderSide(
-                        color: theme.colorScheme.outlineVariant.withOpacity(0.5),
+                        color: theme.colorScheme.outlineVariant.withValues(
+                          alpha: 0.5,
+                        ),
                       ),
                     ),
                     child: Padding(
@@ -730,7 +795,11 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
                           ListTile(
                             leading: const Icon(Icons.support_agent_outlined),
                             title: Text(l10n.support),
-                            subtitle: Text(isVi ? 'Liên hệ hỗ trợ kỹ thuật' : 'Contact tech support'),
+                            subtitle: Text(
+                              isVi
+                                  ? 'Liên hệ hỗ trợ kỹ thuật'
+                                  : 'Contact tech support',
+                            ),
                             trailing: const Icon(Icons.chevron_right),
                             onTap: () => _push(const SupportScreen()),
                           ),
@@ -738,7 +807,11 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
                           ListTile(
                             leading: const Icon(Icons.description_outlined),
                             title: Text(l10n.text('policyTerms')),
-                            subtitle: Text(isVi ? 'Quy chế và chính sách bảo mật' : 'Terms and privacy policies'),
+                            subtitle: Text(
+                              isVi
+                                  ? 'Quy chế và chính sách bảo mật'
+                                  : 'Terms and privacy policies',
+                            ),
                             trailing: const Icon(Icons.chevron_right),
                             onTap: () => _push(const PolicyTermsScreen()),
                           ),

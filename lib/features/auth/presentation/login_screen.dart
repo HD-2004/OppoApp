@@ -15,6 +15,11 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
+  static const _brandTeal = Color(0xFF08798A);
+  static const _deepText = Color(0xFF061B2B);
+  static const _mutedText = Color(0xFF40525A);
+  static const _warmBackground = Color(0xFFF8FAFF);
+
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -70,98 +75,171 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final textTheme = Theme.of(context).textTheme;
+
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.appName)),
+      backgroundColor: _warmBackground,
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 480),
-            child: ListView(
-              padding: const EdgeInsets.all(16),
-              shrinkWrap: true,
-              children: [
-                Text(
-                  l10n.signIn,
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(24, 28, 24, 28),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    l10n.appName,
+                    style: textTheme.headlineMedium?.copyWith(
+                      color: _brandTeal,
+                      fontWeight: FontWeight.w900,
+                      height: 1,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 20),
-                Form(
-                  key: _formKey,
-                  child: Column(
-                    children: [
-                      TextFormField(
-                        controller: _emailController,
-                        keyboardType: TextInputType.emailAddress,
-                        decoration: authInputDecoration(
-                          label: l10n.email,
-                          icon: Icons.mail_outline,
+                  const SizedBox(height: 10),
+                  Text(
+                    'Chào mừng trở lại với cơ hội F&B linh hoạt.',
+                    style: textTheme.bodyLarge?.copyWith(
+                      color: _mutedText,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 70),
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.92),
+                      borderRadius: BorderRadius.circular(24),
+                      boxShadow: [
+                        BoxShadow(
+                          color: _brandTeal.withValues(alpha: 0.12),
+                          blurRadius: 32,
+                          offset: const Offset(0, 16),
                         ),
-                        validator: (value) => requiredTextValidator(
-                          value,
-                          message: l10n.emailRequired,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: _passwordController,
-                        obscureText: _obscurePassword,
-                        decoration:
-                            authInputDecoration(
-                              label: l10n.password,
-                              icon: Icons.lock_outline,
-                            ).copyWith(
-                              suffixIcon: IconButton(
-                                tooltip: _obscurePassword
-                                    ? l10n.text('showPassword')
-                                    : l10n.text('hidePassword'),
-                                icon: Icon(
-                                  _obscurePassword
-                                      ? Icons.visibility_outlined
-                                      : Icons.visibility_off_outlined,
-                                ),
-                                onPressed: () => setState(
-                                  () => _obscurePassword = !_obscurePassword,
-                                ),
+                      ],
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(22),
+                      child: Form(
+                        key: _formKey,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Text(
+                              l10n.signIn,
+                              style: textTheme.headlineSmall?.copyWith(
+                                color: _deepText,
+                                fontWeight: FontWeight.w900,
                               ),
                             ),
-                        validator: (value) => requiredTextValidator(
-                          value,
-                          message: l10n.passwordRequired,
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      SizedBox(
-                        width: double.infinity,
-                        child: FilledButton.icon(
-                          onPressed: _isSubmitting ? null : _submit,
-                          icon: _isSubmitting
-                              ? const SizedBox.square(
-                                  dimension: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
+                            const SizedBox(height: 8),
+                            Text(
+                              'Nhập thông tin để tiếp tục ứng tuyển và quản lý ca làm.',
+                              style: textTheme.bodyMedium?.copyWith(
+                                color: _mutedText,
+                                height: 1.35,
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            TextFormField(
+                              controller: _emailController,
+                              style: authInputTextStyle,
+                              keyboardType: TextInputType.emailAddress,
+                              decoration: authInputDecoration(
+                                label: l10n.email,
+                                icon: Icons.mail_outline_rounded,
+                              ),
+                              validator: (value) => requiredTextValidator(
+                                value,
+                                message: l10n.emailRequired,
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                            TextFormField(
+                              controller: _passwordController,
+                              style: authInputTextStyle,
+                              obscureText: _obscurePassword,
+                              decoration:
+                                  authInputDecoration(
+                                    label: l10n.password,
+                                    icon: Icons.lock_outline_rounded,
+                                  ).copyWith(
+                                    suffixIcon: IconButton(
+                                      tooltip: _obscurePassword
+                                          ? l10n.text('showPassword')
+                                          : l10n.text('hidePassword'),
+                                      icon: Icon(
+                                        _obscurePassword
+                                            ? Icons.visibility_outlined
+                                            : Icons.visibility_off_outlined,
+                                      ),
+                                      onPressed: () => setState(
+                                        () => _obscurePassword =
+                                            !_obscurePassword,
+                                      ),
+                                    ),
                                   ),
-                                )
-                              : const Icon(Icons.login),
-                          label: Text(l10n.signIn),
+                              validator: (value) => requiredTextValidator(
+                                value,
+                                message: l10n.passwordRequired,
+                              ),
+                            ),
+                            const SizedBox(height: 22),
+                            SizedBox(
+                              height: 56,
+                              child: FilledButton.icon(
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: _brandTeal,
+                                  foregroundColor: Colors.white,
+                                  textStyle: textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                ),
+                                onPressed: _isSubmitting ? null : _submit,
+                                icon: _isSubmitting
+                                    ? const SizedBox.square(
+                                        dimension: 18,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white,
+                                        ),
+                                      )
+                                    : const Icon(Icons.login_rounded),
+                                label: Text(l10n.signIn),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ],
+                    ),
                   ),
-                ),
-                const SizedBox(height: 12),
-                TextButton(
-                  onPressed: () => context.go(
-                    '/forgot-password?email=${Uri.encodeComponent(_emailController.text)}',
+                  const SizedBox(height: 18),
+                  TextButton(
+                    onPressed: () => context.go(
+                      '/forgot-password?email=${Uri.encodeComponent(_emailController.text)}',
+                    ),
+                    child: Text(
+                      l10n.forgotPassword,
+                      style: const TextStyle(
+                        color: _brandTeal,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
                   ),
-                  child: Text(l10n.forgotPassword),
-                ),
-                TextButton(
-                  onPressed: () => context.go('/register'),
-                  child: Text(l10n.text('noAccountSignUp')),
-                ),
-              ],
+                  TextButton(
+                    onPressed: () => context.go('/register'),
+                    child: Text(
+                      l10n.text('noAccountSignUp'),
+                      style: const TextStyle(
+                        color: _brandTeal,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

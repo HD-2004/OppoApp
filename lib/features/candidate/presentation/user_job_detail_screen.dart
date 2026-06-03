@@ -60,16 +60,18 @@ class UserJobDetailScreen extends StatelessWidget {
                     // Quick Info Card (matches the web apply-info-card)
                     Container(
                       decoration: BoxDecoration(
-                        color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+                        color: theme.colorScheme.surfaceContainerHighest
+                            .withValues(alpha: 0.3),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: theme.colorScheme.outlineVariant.withOpacity(0.5)),
+                        border: Border.all(
+                          color: theme.colorScheme.outlineVariant.withValues(
+                            alpha: 0.5,
+                          ),
+                        ),
                       ),
                       child: Column(
                         children: [
-                          _DetailRow(
-                            label: 'Địa điểm',
-                            value: job.location,
-                          ),
+                          _DetailRow(label: 'Địa điểm', value: job.location),
                           _DetailRow(
                             label: 'Mức lương',
                             value: job.salary,
@@ -80,18 +82,17 @@ class UserJobDetailScreen extends StatelessWidget {
                             value: job.jobType == JobPostType.urgent
                                 ? 'Ca gấp'
                                 : job.jobType == JobPostType.partTime
-                                    ? 'Bán thời gian'
-                                    : 'Toàn thời gian',
+                                ? 'Bán thời gian'
+                                : 'Toàn thời gian',
                           ),
                           _DetailRow(
                             label: 'Ngày đăng',
                             value: _formatDateString(job.postedAt),
                           ),
-                          if (job.isQuickJob && job.workDate != null && job.workDate!.isNotEmpty)
-                            _DetailRow(
-                              label: 'Ngày làm',
-                              value: job.workDate!,
-                            ),
+                          if (job.isQuickJob &&
+                              job.workDate != null &&
+                              job.workDate!.isNotEmpty)
+                            _DetailRow(label: 'Ngày làm', value: job.workDate!),
                           if (job.shiftTime.isNotEmpty)
                             _DetailRow(
                               label: 'Thời gian',
@@ -114,7 +115,8 @@ class UserJobDetailScreen extends StatelessWidget {
                     ],
 
                     // Responsibilities
-                    if (job.responsibilities != null && job.responsibilities!.isNotEmpty) ...[
+                    if (job.responsibilities != null &&
+                        job.responsibilities!.isNotEmpty) ...[
                       _SectionHeader(title: 'TRÁCH NHIỆM'),
                       const SizedBox(height: 8),
                       Text(
@@ -125,7 +127,8 @@ class UserJobDetailScreen extends StatelessWidget {
                     ],
 
                     // Requirements
-                    if (job.requirements != null && job.requirements!.isNotEmpty) ...[
+                    if (job.requirements != null &&
+                        job.requirements!.isNotEmpty) ...[
                       _SectionHeader(title: 'YÊU CẦU'),
                       const SizedBox(height: 8),
                       Text(
@@ -157,7 +160,7 @@ class UserJobDetailScreen extends StatelessWidget {
                 color: theme.colorScheme.surface,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Colors.black.withValues(alpha: 0.05),
                     blurRadius: 10,
                     offset: const Offset(0, -4),
                   ),
@@ -179,7 +182,10 @@ class UserJobDetailScreen extends StatelessWidget {
                       ),
                       child: const Text(
                         'Ứng tuyển ngay',
-                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 16,
+                        ),
                       ),
                     ),
                   ),
@@ -212,7 +218,7 @@ class _DetailRow extends StatelessWidget {
       decoration: BoxDecoration(
         border: Border(
           bottom: BorderSide(
-            color: theme.colorScheme.outlineVariant.withOpacity(0.3),
+            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.3),
           ),
         ),
       ),
@@ -232,7 +238,9 @@ class _DetailRow extends StatelessWidget {
               textAlign: TextAlign.end,
               style: theme.textTheme.bodyMedium?.copyWith(
                 fontWeight: FontWeight.w700,
-                color: isSalary ? const Color(0xFF2E7D32) : theme.colorScheme.onSurface,
+                color: isSalary
+                    ? const Color(0xFF2E7D32)
+                    : theme.colorScheme.onSurface,
               ),
             ),
           ),

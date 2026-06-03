@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/localization/app_localizations.dart';
 import '../../auth/application/auth_controller.dart';
 import '../../auth/domain/auth_user_profile.dart';
 import '../application/jobs_providers.dart';
@@ -59,7 +58,11 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
   }
 
   // Filter logic
-  List<JobPost> _getFilteredJobs(List<JobPost> allStandard, List<JobPost> allQuick, List<String> savedJobIds) {
+  List<JobPost> _getFilteredJobs(
+    List<JobPost> allStandard,
+    List<JobPost> allQuick,
+    List<String> savedJobIds,
+  ) {
     List<JobPost> baseList;
     if (_activeTab == 0) {
       baseList = allStandard;
@@ -67,7 +70,10 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
       baseList = allQuick;
     } else {
       // Saved Jobs Tab - merges standard and quick jobs that match saved IDs
-      baseList = [...allStandard, ...allQuick].where((job) => savedJobIds.contains(job.id)).toList();
+      baseList = [
+        ...allStandard,
+        ...allQuick,
+      ].where((job) => savedJobIds.contains(job.id)).toList();
     }
 
     // Apply Search Keyword
@@ -84,14 +90,20 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
     // Apply Location
     if (_searchLocation.trim().isNotEmpty) {
       final loc = _searchLocation.toLowerCase().trim();
-      baseList = baseList.where((j) => j.location.toLowerCase().contains(loc)).toList();
+      baseList = baseList
+          .where((j) => j.location.toLowerCase().contains(loc))
+          .toList();
     }
 
     // Apply Job Type filters
     if (_filterFullTime || _filterPartTime) {
       baseList = baseList.where((j) {
         if (_filterFullTime && j.jobType == JobPostType.fullTime) return true;
-        if (_filterPartTime && (j.jobType == JobPostType.partTime || j.jobType == JobPostType.urgent)) return true;
+        if (_filterPartTime &&
+            (j.jobType == JobPostType.partTime ||
+                j.jobType == JobPostType.urgent)) {
+          return true;
+        }
         return false;
       }).toList();
     }
@@ -99,7 +111,9 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
     // Apply Salary filters
     if (_filterSalaryUnder25 || _filterSalary25to40 || _filterSalaryOver40) {
       baseList = baseList.where((j) {
-        final rate = j.isQuickJob ? (j.hourlyRate ?? 0) : _getSalaryValue(j.salary);
+        final rate = j.isQuickJob
+            ? (j.hourlyRate ?? 0)
+            : _getSalaryValue(j.salary);
         if (rate == 0) return true; // Keep "negotiable" jobs
 
         if (_filterSalaryUnder25 && rate < 25000) return true;
@@ -114,8 +128,12 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
       baseList.sort((a, b) => b.postedAt.compareTo(a.postedAt));
     } else if (_sortBy == 'salary_desc') {
       baseList.sort((a, b) {
-        final valA = a.isQuickJob ? (a.hourlyRate ?? 0) : _getSalaryValue(a.salary);
-        final valB = b.isQuickJob ? (b.hourlyRate ?? 0) : _getSalaryValue(b.salary);
+        final valA = a.isQuickJob
+            ? (a.hourlyRate ?? 0)
+            : _getSalaryValue(a.salary);
+        final valB = b.isQuickJob
+            ? (b.hourlyRate ?? 0)
+            : _getSalaryValue(b.salary);
         return valB.compareTo(valA);
       });
     }
@@ -155,6 +173,9 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
     try {
       final repository = ref.read(applicationRepositoryProvider);
       final cvs = await repository.getCandidateCVs(user.userId);
+      if (!mounted) {
+        return;
+      }
       Navigator.of(context).pop(); // Dismiss loading
 
       if (cvs.isEmpty) {
@@ -163,6 +184,9 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
         _showCVSelectionDialog(job, cvs);
       }
     } catch (e) {
+      if (!mounted) {
+        return;
+      }
       Navigator.of(context).pop(); // Dismiss loading
       _showErrorDialog('Không thể tải danh sách CV. Vui lòng thử lại.');
     }
@@ -172,7 +196,10 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Chưa có CV', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Chưa có CV',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         content: const Text(
           'Bạn chưa có CV. Vui lòng tải CV lên trong phần Hồ sơ của tôi trước khi ứng tuyển.',
         ),
@@ -195,30 +222,40 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
         return StatefulBuilder(
           builder: (context, setModalState) {
             return AlertDialog(
-              title: const Text('Chọn CV ứng tuyển', style: TextStyle(fontWeight: FontWeight.bold)),
+              title: const Text(
+                'Chọn CV ứng tuyển',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
               content: SizedBox(
                 width: double.maxFinite,
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: cvList.length,
-                  itemBuilder: (context, index) {
-                    final cv = cvList[index];
-                    final id = cv['id']?.toString();
-                    final name = cv['cvFileName']?.toString() ?? 'CV.pdf';
-                    final date = cv['cvUploadDate']?.toString() ?? '';
-
-                    return RadioListTile<String>(
-                      title: Text(name, style: const TextStyle(fontWeight: FontWeight.w600)),
-                      subtitle: date.isNotEmpty ? Text('Tải lên ngày: $date') : null,
-                      value: id!,
-                      groupValue: selectedCvId,
-                      onChanged: (val) {
-                        setModalState(() {
-                          selectedCvId = val;
-                        });
-                      },
-                    );
+                child: RadioGroup<String>(
+                  groupValue: selectedCvId,
+                  onChanged: (val) {
+                    setModalState(() {
+                      selectedCvId = val;
+                    });
                   },
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: cvList.length,
+                    itemBuilder: (context, index) {
+                      final cv = cvList[index];
+                      final id = cv['id']?.toString();
+                      final name = cv['cvFileName']?.toString() ?? 'CV.pdf';
+                      final date = cv['cvUploadDate']?.toString() ?? '';
+
+                      return RadioListTile<String>(
+                        title: Text(
+                          name,
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                        subtitle: date.isNotEmpty
+                            ? Text('Tải lên ngày: $date')
+                            : null,
+                        value: id!,
+                      );
+                    },
+                  ),
                 ),
               ),
               actions: [
@@ -233,7 +270,9 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
                   ),
                   onPressed: () {
                     Navigator.of(ctx).pop();
-                    final chosen = cvList.firstWhere((c) => c['id']?.toString() == selectedCvId);
+                    final chosen = cvList.firstWhere(
+                      (c) => c['id']?.toString() == selectedCvId,
+                    );
                     _submitApplication(
                       job,
                       chosen['cvUrl'] ?? chosen['cvS3Key'] ?? '',
@@ -250,7 +289,11 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
     );
   }
 
-  Future<void> _submitApplication(JobPost job, String cvUrl, String cvFilename) async {
+  Future<void> _submitApplication(
+    JobPost job,
+    String cvUrl,
+    String cvFilename,
+  ) async {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -264,12 +307,20 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
         cvUrl: cvUrl,
         cvFilename: cvFilename,
       );
+      if (!mounted) {
+        return;
+      }
       Navigator.of(context).pop(); // Dismiss loading
       _showSuccessDialog();
     } catch (e) {
+      if (!mounted) {
+        return;
+      }
       Navigator.of(context).pop(); // Dismiss loading
       final msg = e.toString();
-      if (msg.contains('ALREADY_APPLIED') || msg.contains('already applied') || msg.contains('đã ứng tuyển')) {
+      if (msg.contains('ALREADY_APPLIED') ||
+          msg.contains('already applied') ||
+          msg.contains('đã ứng tuyển')) {
         _showErrorDialog('Bạn đã ứng tuyển công việc này rồi!');
       } else {
         _showErrorDialog(msg.replaceAll('Exception: ', ''));
@@ -288,7 +339,9 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
             Text('Thành công', style: TextStyle(fontWeight: FontWeight.bold)),
           ],
         ),
-        content: const Text('Hồ sơ ứng tuyển của bạn đã được gửi đi thành công!'),
+        content: const Text(
+          'Hồ sơ ứng tuyển của bạn đã được gửi đi thành công!',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
@@ -355,7 +408,11 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
           data: (standardJobs) {
             return quickJobsAsync.when(
               data: (quickJobs) {
-                final filteredJobs = _getFilteredJobs(standardJobs, quickJobs, savedJobIds);
+                final filteredJobs = _getFilteredJobs(
+                  standardJobs,
+                  quickJobs,
+                  savedJobIds,
+                );
 
                 return SingleChildScrollView(
                   child: Column(
@@ -363,7 +420,10 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
                     children: [
                       // Blue Gradient Banner Header (matching Web HeroSection)
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 32,
+                        ),
                         decoration: const BoxDecoration(
                           gradient: LinearGradient(
                             colors: [Color(0xFF1E40AF), Color(0xFF3B82F6)],
@@ -385,7 +445,7 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
                             Text(
                               'Hơn ${standardJobs.length} công việc tiêu chuẩn đang chờ bạn khám phá',
                               style: textTheme.bodyMedium?.copyWith(
-                                color: Colors.white.withOpacity(0.9),
+                                color: Colors.white.withValues(alpha: 0.9),
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -399,7 +459,7 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
                                 borderRadius: BorderRadius.circular(16),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withOpacity(0.1),
+                                    color: Colors.black.withValues(alpha: 0.1),
                                     blurRadius: 20,
                                     offset: const Offset(0, 8),
                                   ),
@@ -410,7 +470,8 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
                                   TextField(
                                     controller: _keywordController,
                                     decoration: const InputDecoration(
-                                      hintText: 'Tìm theo vị trí, công ty, kỹ năng...',
+                                      hintText:
+                                          'Tìm theo vị trí, công ty, kỹ năng...',
                                       prefixIcon: Icon(Icons.search),
                                       border: InputBorder.none,
                                     ),
@@ -420,7 +481,9 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
                                     controller: _locationController,
                                     decoration: const InputDecoration(
                                       hintText: 'Địa điểm...',
-                                      prefixIcon: Icon(Icons.location_on_outlined),
+                                      prefixIcon: Icon(
+                                        Icons.location_on_outlined,
+                                      ),
                                       border: InputBorder.none,
                                     ),
                                   ),
@@ -429,25 +492,39 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
                                     width: double.infinity,
                                     child: ElevatedButton(
                                       style: ElevatedButton.styleFrom(
-                                        backgroundColor: const Color(0xFF1E40AF),
+                                        backgroundColor: const Color(
+                                          0xFF1E40AF,
+                                        ),
                                         foregroundColor: Colors.white,
-                                        padding: const EdgeInsets.symmetric(vertical: 14),
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 14,
+                                        ),
                                         shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(12),
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
                                         ),
                                       ),
                                       onPressed: () {
                                         setState(() {
-                                          _searchKeyword = _keywordController.text;
-                                          _searchLocation = _locationController.text;
+                                          _searchKeyword =
+                                              _keywordController.text;
+                                          _searchLocation =
+                                              _locationController.text;
                                         });
                                       },
                                       child: const Row(
-                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
                                         children: [
                                           Icon(Icons.search),
                                           SizedBox(width: 8),
-                                          Text('Tìm kiếm', style: TextStyle(fontWeight: FontWeight.w700)),
+                                          Text(
+                                            'Tìm kiếm',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
                                         ],
                                       ),
                                     ),
@@ -461,7 +538,10 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
 
                       // Tabs selector matching web categories tabs
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 16,
+                        ),
                         child: SingleChildScrollView(
                           scrollDirection: Axis.horizontal,
                           child: Row(
@@ -499,10 +579,16 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: ExpansionTile(
                           leading: const Icon(Icons.tune),
-                          title: const Text('Bộ lọc việc làm', style: TextStyle(fontWeight: FontWeight.bold)),
+                          title: const Text(
+                            'Bộ lọc việc làm',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
                           trailing: TextButton(
                             onPressed: _clearFilters,
-                            child: const Text('Xóa bộ lọc', style: TextStyle(color: Colors.red)),
+                            child: const Text(
+                              'Xóa bộ lọc',
+                              style: TextStyle(color: Colors.red),
+                            ),
                           ),
                           children: [
                             Padding(
@@ -510,42 +596,69 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text('Loại hình công việc', style: TextStyle(fontWeight: FontWeight.w800)),
+                                  const Text(
+                                    'Loại hình công việc',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
                                   CheckboxListTile(
                                     title: const Text('Toàn thời gian'),
                                     value: _filterFullTime,
-                                    onChanged: (val) => setState(() => _filterFullTime = val ?? false),
-                                    controlAffinity: ListTileControlAffinity.leading,
+                                    onChanged: (val) => setState(
+                                      () => _filterFullTime = val ?? false,
+                                    ),
+                                    controlAffinity:
+                                        ListTileControlAffinity.leading,
                                     dense: true,
                                   ),
                                   CheckboxListTile(
                                     title: const Text('Bán thời gian'),
                                     value: _filterPartTime,
-                                    onChanged: (val) => setState(() => _filterPartTime = val ?? false),
-                                    controlAffinity: ListTileControlAffinity.leading,
+                                    onChanged: (val) => setState(
+                                      () => _filterPartTime = val ?? false,
+                                    ),
+                                    controlAffinity:
+                                        ListTileControlAffinity.leading,
                                     dense: true,
                                   ),
                                   const SizedBox(height: 12),
-                                  const Text('Thu nhập/giờ', style: TextStyle(fontWeight: FontWeight.w800)),
+                                  const Text(
+                                    'Thu nhập/giờ',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
                                   CheckboxListTile(
                                     title: const Text('Dưới 25.000đ/giờ'),
                                     value: _filterSalaryUnder25,
-                                    onChanged: (val) => setState(() => _filterSalaryUnder25 = val ?? false),
-                                    controlAffinity: ListTileControlAffinity.leading,
+                                    onChanged: (val) => setState(
+                                      () => _filterSalaryUnder25 = val ?? false,
+                                    ),
+                                    controlAffinity:
+                                        ListTileControlAffinity.leading,
                                     dense: true,
                                   ),
                                   CheckboxListTile(
-                                    title: const Text('Từ 25.000đ - 40.000đ/giờ'),
+                                    title: const Text(
+                                      'Từ 25.000đ - 40.000đ/giờ',
+                                    ),
                                     value: _filterSalary25to40,
-                                    onChanged: (val) => setState(() => _filterSalary25to40 = val ?? false),
-                                    controlAffinity: ListTileControlAffinity.leading,
+                                    onChanged: (val) => setState(
+                                      () => _filterSalary25to40 = val ?? false,
+                                    ),
+                                    controlAffinity:
+                                        ListTileControlAffinity.leading,
                                     dense: true,
                                   ),
                                   CheckboxListTile(
                                     title: const Text('Trên 40.000đ/giờ'),
                                     value: _filterSalaryOver40,
-                                    onChanged: (val) => setState(() => _filterSalaryOver40 = val ?? false),
-                                    controlAffinity: ListTileControlAffinity.leading,
+                                    onChanged: (val) => setState(
+                                      () => _filterSalaryOver40 = val ?? false,
+                                    ),
+                                    controlAffinity:
+                                        ListTileControlAffinity.leading,
                                     dense: true,
                                   ),
                                 ],
@@ -557,7 +670,10 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
 
                       // Layout View Mode and Sorting Controls
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
                         child: Row(
                           children: [
                             Text(
@@ -572,8 +688,14 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
                               value: _sortBy,
                               underline: const SizedBox(),
                               items: const [
-                                DropdownMenuItem(value: 'newest', child: Text('Mới nhất')),
-                                DropdownMenuItem(value: 'salary_desc', child: Text('Lương cao nhất')),
+                                DropdownMenuItem(
+                                  value: 'newest',
+                                  child: Text('Mới nhất'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'salary_desc',
+                                  child: Text('Lương cao nhất'),
+                                ),
                               ],
                               onChanged: (val) {
                                 if (val != null) {
@@ -582,12 +704,24 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
                               },
                             ),
                             IconButton(
-                              icon: Icon(Icons.view_list, color: _viewMode == 'list' ? theme.colorScheme.primary : null),
-                              onPressed: () => setState(() => _viewMode = 'list'),
+                              icon: Icon(
+                                Icons.view_list,
+                                color: _viewMode == 'list'
+                                    ? theme.colorScheme.primary
+                                    : null,
+                              ),
+                              onPressed: () =>
+                                  setState(() => _viewMode = 'list'),
                             ),
                             IconButton(
-                              icon: Icon(Icons.grid_view, color: _viewMode == 'grid' ? theme.colorScheme.primary : null),
-                              onPressed: () => setState(() => _viewMode = 'grid'),
+                              icon: Icon(
+                                Icons.grid_view,
+                                color: _viewMode == 'grid'
+                                    ? theme.colorScheme.primary
+                                    : null,
+                              ),
+                              onPressed: () =>
+                                  setState(() => _viewMode = 'grid'),
                             ),
                           ],
                         ),
@@ -602,66 +736,102 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
                                 alignment: Alignment.center,
                                 child: Column(
                                   children: [
-                                    const Icon(Icons.work_off_outlined, size: 48, color: Colors.grey),
+                                    const Icon(
+                                      Icons.work_off_outlined,
+                                      size: 48,
+                                      color: Colors.grey,
+                                    ),
                                     const SizedBox(height: 12),
                                     Text(
                                       'Không tìm thấy công việc nào phù hợp.',
-                                      style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                                      style: textTheme.titleMedium?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                      ),
                                     ),
                                     const SizedBox(height: 6),
-                                    const Text('Hãy thử thay đổi từ khóa hoặc bộ lọc của bạn.'),
+                                    const Text(
+                                      'Hãy thử thay đổi từ khóa hoặc bộ lọc của bạn.',
+                                    ),
                                   ],
                                 ),
                               )
                             : _viewMode == 'list'
-                                ? ListView.separated(
-                                    shrinkWrap: true,
-                                    physics: const NeverScrollableScrollPhysics(),
-                                    itemCount: filteredJobs.length,
-                                    separatorBuilder: (_, __) => const SizedBox(height: 16),
-                                    itemBuilder: (context, index) {
-                                      final job = filteredJobs[index];
-                                      return JobPostCard(
-                                        job: job,
-                                        isSaved: savedJobIds.contains(job.id),
-                                        onSaveToggle: () => ref.read(authControllerProvider.notifier).toggleSavedJob(job.id),
-                                        onDetailsPressed: () => _openDetails(job),
-                                        onApplyPressed: () => _handleApply(job, user),
-                                      );
-                                    },
-                                  )
-                                : GridView.builder(
-                                    shrinkWrap: true,
-                                    physics: const NeverScrollableScrollPhysics(),
-                                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                            ? ListView.separated(
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                itemCount: filteredJobs.length,
+                                separatorBuilder: (_, _) =>
+                                    const SizedBox(height: 16),
+                                itemBuilder: (context, index) {
+                                  final job = filteredJobs[index];
+                                  return JobPostCard(
+                                    job: job,
+                                    isSaved: savedJobIds.contains(job.id),
+                                    onSaveToggle: () => ref
+                                        .read(authControllerProvider.notifier)
+                                        .toggleSavedJob(job.id),
+                                    onDetailsPressed: () => _openDetails(job),
+                                    onApplyPressed: () =>
+                                        _handleApply(job, user),
+                                  );
+                                },
+                              )
+                            : GridView.builder(
+                                shrinkWrap: true,
+                                physics: const NeverScrollableScrollPhysics(),
+                                gridDelegate:
+                                    const SliverGridDelegateWithFixedCrossAxisCount(
                                       crossAxisCount: 2,
                                       crossAxisSpacing: 12,
                                       mainAxisSpacing: 12,
                                       childAspectRatio: 0.72,
                                     ),
-                                    itemCount: filteredJobs.length,
-                                    itemBuilder: (context, index) {
-                                      final job = filteredJobs[index];
-                                      return JobPostCard(
-                                        job: job,
-                                        isSaved: savedJobIds.contains(job.id),
-                                        onSaveToggle: () => ref.read(authControllerProvider.notifier).toggleSavedJob(job.id),
-                                        onDetailsPressed: () => _openDetails(job),
-                                        onApplyPressed: () => _handleApply(job, user),
-                                      );
-                                    },
-                                  ),
+                                itemCount: filteredJobs.length,
+                                itemBuilder: (context, index) {
+                                  final job = filteredJobs[index];
+                                  return JobPostCard(
+                                    job: job,
+                                    isSaved: savedJobIds.contains(job.id),
+                                    onSaveToggle: () => ref
+                                        .read(authControllerProvider.notifier)
+                                        .toggleSavedJob(job.id),
+                                    onDetailsPressed: () => _openDetails(job),
+                                    onApplyPressed: () =>
+                                        _handleApply(job, user),
+                                  );
+                                },
+                              ),
                       ),
                     ],
                   ),
                 );
               },
-              loading: () => const Center(child: Padding(padding: EdgeInsets.all(32.0), child: CircularProgressIndicator())),
-              error: (err, _) => Center(child: Padding(padding: const EdgeInsets.all(32.0), child: Text('Không thể tải công việc gấp: $err'))),
+              loading: () => const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(32.0),
+                  child: CircularProgressIndicator(),
+                ),
+              ),
+              error: (err, _) => Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(32.0),
+                  child: Text('Không thể tải công việc gấp: $err'),
+                ),
+              ),
             );
           },
-          loading: () => const Center(child: Padding(padding: EdgeInsets.all(32.0), child: CircularProgressIndicator())),
-          error: (err, _) => Center(child: Padding(padding: const EdgeInsets.all(32.0), child: Text('Lỗi tải công việc: $err'))),
+          loading: () => const Center(
+            child: Padding(
+              padding: EdgeInsets.all(32.0),
+              child: CircularProgressIndicator(),
+            ),
+          ),
+          error: (err, _) => Center(
+            child: Padding(
+              padding: const EdgeInsets.all(32.0),
+              child: Text('Lỗi tải công việc: $err'),
+            ),
+          ),
         ),
       ),
     );
@@ -696,12 +866,14 @@ class _TabItem extends StatelessWidget {
           color: isActive ? const Color(0xFF1E40AF) : theme.colorScheme.surface,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isActive ? Colors.transparent : theme.colorScheme.outlineVariant,
+            color: isActive
+                ? Colors.transparent
+                : theme.colorScheme.outlineVariant,
           ),
           boxShadow: [
             if (isActive)
               BoxShadow(
-                color: const Color(0xFF1E40AF).withOpacity(0.2),
+                color: const Color(0xFF1E40AF).withValues(alpha: 0.2),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),
@@ -712,7 +884,9 @@ class _TabItem extends StatelessWidget {
           children: [
             Icon(
               icon,
-              color: isActive ? Colors.white : theme.colorScheme.onSurfaceVariant,
+              color: isActive
+                  ? Colors.white
+                  : theme.colorScheme.onSurfaceVariant,
               size: 20,
             ),
             const SizedBox(width: 8),
@@ -727,13 +901,17 @@ class _TabItem extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
-                color: isActive ? Colors.white.withOpacity(0.2) : theme.colorScheme.surfaceVariant,
+                color: isActive
+                    ? Colors.white.withValues(alpha: 0.2)
+                    : theme.colorScheme.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
                 '$count',
                 style: textTheme.bodySmall?.copyWith(
-                  color: isActive ? Colors.white : theme.colorScheme.onSurfaceVariant,
+                  color: isActive
+                      ? Colors.white
+                      : theme.colorScheme.onSurfaceVariant,
                   fontWeight: FontWeight.w800,
                 ),
               ),

@@ -1,13 +1,33 @@
 import 'package:flutter/material.dart';
 
+const authInputTextStyle = TextStyle(color: Colors.black);
+
 InputDecoration authInputDecoration({
   required String label,
   required IconData icon,
 }) {
   return InputDecoration(
     labelText: label,
-    prefixIcon: Icon(icon),
-    border: const OutlineInputBorder(),
+    prefixIcon: Icon(icon, size: 24),
+    filled: true,
+    fillColor: Colors.white,
+    contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: const BorderSide(color: Color(0xFFD8E5E6)),
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: const BorderSide(color: Color(0xFFD8E5E6)),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: const BorderSide(color: Color(0xFF08798A), width: 1.6),
+    ),
+    errorBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: const BorderSide(color: Color(0xFFB3261E)),
+    ),
   );
 }
 

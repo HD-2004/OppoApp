@@ -15,7 +15,7 @@ class CandidateDashboardTab extends ConsumerWidget {
     final textTheme = theme.textTheme;
     final l10n = AppLocalizations.of(context);
     final user = ref.watch(authControllerProvider).asData?.value.user;
-    
+
     // Get candidate full name
     final displayName = user?.fullName.trim().isNotEmpty == true
         ? user!.fullName.trim()
@@ -25,13 +25,19 @@ class CandidateDashboardTab extends ConsumerWidget {
     final hour = DateTime.now().hour;
     String greetingKey;
     if (hour >= 5 && hour < 12) {
-      greetingKey = l10n.isVietnamese ? 'Chào buổi sáng, {name}!' : 'Good morning, {name}!';
+      greetingKey = l10n.isVietnamese
+          ? 'Chào buổi sáng, {name}!'
+          : 'Good morning, {name}!';
     } else if (hour >= 12 && hour < 18) {
-      greetingKey = l10n.isVietnamese ? 'Chào buổi chiều, {name}!' : 'Good afternoon, {name}!';
+      greetingKey = l10n.isVietnamese
+          ? 'Chào buổi chiều, {name}!'
+          : 'Good afternoon, {name}!';
     } else {
-      greetingKey = l10n.isVietnamese ? 'Chào buổi tối, {name}!' : 'Good evening, {name}!';
+      greetingKey = l10n.isVietnamese
+          ? 'Chào buổi tối, {name}!'
+          : 'Good evening, {name}!';
     }
-    
+
     final greeting = greetingKey.replaceAll('{name}', displayName);
 
     return SafeArea(
@@ -51,7 +57,7 @@ class CandidateDashboardTab extends ConsumerWidget {
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF1E40AF).withOpacity(0.3),
+                    color: const Color(0xFF1E40AF).withValues(alpha: 0.3),
                     blurRadius: 12,
                     offset: const Offset(0, 6),
                   ),
@@ -88,17 +94,14 @@ class CandidateDashboardTab extends ConsumerWidget {
                                 ),
                               ),
                             ),
-                            const Text(
-                              '👋',
-                              style: TextStyle(fontSize: 24),
-                            ),
+                            const Text('👋', style: TextStyle(fontSize: 24)),
                           ],
                         ),
                         const SizedBox(height: 8),
                         Text(
                           l10n.homeWelcomeSubtitle,
                           style: textTheme.bodyMedium?.copyWith(
-                            color: Colors.white.withOpacity(0.9),
+                            color: Colors.white.withValues(alpha: 0.9),
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -120,17 +123,24 @@ class CandidateDashboardTab extends ConsumerWidget {
                                 ),
                                 elevation: 0,
                               ),
-                              onPressed: () => onSelectTab(1), // Switch to Jobs tab (Bài đăng)
+                              onPressed: () => onSelectTab(
+                                1,
+                              ), // Switch to Jobs tab (Bài đăng)
                               icon: const Icon(Icons.search, size: 18),
                               label: Text(
                                 l10n.findJobsButton,
-                                style: const TextStyle(fontWeight: FontWeight.w700),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
                             ),
                             OutlinedButton.icon(
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: Colors.white,
-                                side: const BorderSide(color: Colors.white, width: 1.5),
+                                side: const BorderSide(
+                                  color: Colors.white,
+                                  width: 1.5,
+                                ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(8),
                                 ),
@@ -139,11 +149,15 @@ class CandidateDashboardTab extends ConsumerWidget {
                                   vertical: 12,
                                 ),
                               ),
-                              onPressed: () => onSelectTab(3), // Switch to Profile tab (Hồ sơ của tôi)
+                              onPressed: () => onSelectTab(
+                                3,
+                              ), // Switch to Profile tab (Hồ sơ của tôi)
                               icon: const Icon(Icons.edit, size: 18),
                               label: Text(
                                 l10n.updateCvButton,
-                                style: const TextStyle(fontWeight: FontWeight.w700),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
                             ),
                           ],
@@ -238,13 +252,18 @@ class CandidateDashboardTab extends ConsumerWidget {
                 side: BorderSide(color: theme.colorScheme.outlineVariant),
               ),
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 16),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 40,
+                  horizontal: 16,
+                ),
                 child: Column(
                   children: [
                     Icon(
                       Icons.work_off_outlined,
                       size: 40,
-                      color: theme.colorScheme.onSurfaceVariant.withOpacity(0.5),
+                      color: theme.colorScheme.onSurfaceVariant.withValues(
+                        alpha: 0.5,
+                      ),
                     ),
                     const SizedBox(height: 12),
                     Text(
@@ -284,7 +303,7 @@ class CandidateDashboardTab extends ConsumerWidget {
         color: cardColor,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: iconBgColor.withOpacity(0.15),
+          color: iconBgColor.withValues(alpha: 0.15),
           width: 1,
         ),
       ),
@@ -300,11 +319,7 @@ class CandidateDashboardTab extends ConsumerWidget {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 padding: const EdgeInsets.all(6),
-                child: Icon(
-                  icon,
-                  color: Colors.white,
-                  size: 16,
-                ),
+                child: Icon(icon, color: Colors.white, size: 16),
               ),
               const SizedBox(width: 8),
               Expanded(
@@ -312,7 +327,7 @@ class CandidateDashboardTab extends ConsumerWidget {
                   title,
                   style: textTheme.labelSmall?.copyWith(
                     fontWeight: FontWeight.w800,
-                    color: textColor.withOpacity(0.8),
+                    color: textColor.withValues(alpha: 0.8),
                     fontSize: 9,
                     letterSpacing: 0.2,
                   ),
@@ -337,7 +352,10 @@ class CandidateDashboardTab extends ConsumerWidget {
               const SizedBox(width: 6),
               Expanded(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: badgeColor,
                     borderRadius: BorderRadius.circular(4),

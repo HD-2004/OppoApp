@@ -1,20 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/localization/app_localizations.dart';
 import 'digital_wallet_screen.dart';
 import 'user_jobs_screen.dart';
-import 'user_notifications_screen.dart';
+import '../notifications/application/notification_controller.dart';
+import '../notifications/presentation/candidate_notifications_screen.dart';
 import 'user_profile_screen.dart';
 import 'widgets/candidate_dashboard_tab.dart';
 
-class UserDashboardScreen extends StatefulWidget {
+class UserDashboardScreen extends ConsumerStatefulWidget {
   const UserDashboardScreen({super.key});
 
   @override
-  State<UserDashboardScreen> createState() => _UserDashboardScreenState();
+  ConsumerState<UserDashboardScreen> createState() => _UserDashboardScreenState();
 }
 
-class _UserDashboardScreenState extends State<UserDashboardScreen> {
+class _UserDashboardScreenState extends ConsumerState<UserDashboardScreen> {
   int _selectedIndex = 0;
 
   void _selectTab(int index) {
@@ -26,10 +28,17 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final strings = AppLocalizations.of(context);
+    final unreadCount = ref
+            .watch(candidateNotificationControllerProvider)
+            .asData
+            ?.value
+            .summary
+            .unread ??
+        0;
     final tabs = [
       CandidateDashboardTab(onSelectTab: _selectTab),
       const UserJobsScreen(),
-      const UserNotificationsScreen(),
+      const CandidateNotificationsScreen(),
       const UserProfileScreen(),
       const DigitalWalletScreen(),
     ];
@@ -51,8 +60,14 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
             label: strings.postsTabTitle,
           ),
           NavigationDestination(
-            icon: const Icon(Icons.notifications_none),
-            selectedIcon: const Icon(Icons.notifications),
+            icon: _NotificationDestinationIcon(
+              selected: false,
+              unreadCount: unreadCount,
+            ),
+            selectedIcon: _NotificationDestinationIcon(
+              selected: true,
+              unreadCount: unreadCount,
+            ),
             label: strings.notifications,
           ),
           NavigationDestination(
@@ -67,6 +82,28 @@ class _UserDashboardScreenState extends State<UserDashboardScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _NotificationDestinationIcon extends StatelessWidget {
+  const _NotificationDestinationIcon({
+    required this.selected,
+    required this.unreadCount,
+  });
+
+  final bool selected;
+  final int unreadCount;
+
+  @override
+  Widget build(BuildContext context) {
+    final icon = Icon(
+      selected ? Icons.notifications : Icons.notifications_none,
+    );
+    if (unreadCount <= 0) return icon;
+    return Badge(
+      label: Text(unreadCount > 99 ? '99+' : '$unreadCount'),
+      child: icon,
     );
   }
 }

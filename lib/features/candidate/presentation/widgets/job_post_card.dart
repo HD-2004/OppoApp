@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../../../core/localization/app_localizations.dart';
 import '../../domain/job_post.dart';
 
 class JobPostCard extends StatelessWidget {
@@ -33,23 +32,24 @@ class JobPostCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final textTheme = theme.textTheme;
-    final l10n = AppLocalizations.of(context);
 
     final showHotDeal = job.isQuickJob || job.jobType == JobPostType.urgent;
 
     return Container(
       decoration: BoxDecoration(
-        color: showHotDeal ? const Color(0xFFFDF8F5) : theme.colorScheme.surface,
+        color: showHotDeal
+            ? const Color(0xFFFDF8F5)
+            : theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: showHotDeal
               ? const Color(0xFFFFE3D5)
-              : theme.colorScheme.outlineVariant.withOpacity(0.5),
+              : theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
           width: showHotDeal ? 1.5 : 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -73,13 +73,19 @@ class JobPostCard extends StatelessWidget {
                         width: 46,
                         height: 46,
                         decoration: BoxDecoration(
-                          color: theme.colorScheme.primaryContainer.withOpacity(0.3),
+                          color: theme.colorScheme.primaryContainer.withValues(
+                            alpha: 0.3,
+                          ),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: theme.colorScheme.outlineVariant),
+                          border: Border.all(
+                            color: theme.colorScheme.outlineVariant,
+                          ),
                         ),
                         child: Center(
                           child: Text(
-                            job.employerName.isNotEmpty ? job.employerName.substring(0, 1).toUpperCase() : 'C',
+                            job.employerName.isNotEmpty
+                                ? job.employerName.substring(0, 1).toUpperCase()
+                                : 'C',
                             style: TextStyle(
                               color: theme.colorScheme.primary,
                               fontWeight: FontWeight.w800,
@@ -106,7 +112,8 @@ class JobPostCard extends StatelessWidget {
                             Text(
                               _postedTimeLabel(job.postedAt),
                               style: textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant.withOpacity(0.8),
+                                color: theme.colorScheme.onSurfaceVariant
+                                    .withValues(alpha: 0.8),
                               ),
                             ),
                           ],
@@ -114,16 +121,27 @@ class JobPostCard extends StatelessWidget {
                       ),
                       if (showHotDeal)
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
                             color: const Color(0xFFFFECE5),
                             borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: const Color(0xFFFFC5B0).withOpacity(0.5)),
+                            border: Border.all(
+                              color: const Color(
+                                0xFFFFC5B0,
+                              ).withValues(alpha: 0.5),
+                            ),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(Icons.local_fire_department, color: Color(0xFFFF5722), size: 14),
+                              const Icon(
+                                Icons.local_fire_department,
+                                color: Color(0xFFFF5722),
+                                size: 14,
+                              ),
                               const SizedBox(width: 4),
                               Text(
                                 'Hot deal',
@@ -137,13 +155,18 @@ class JobPostCard extends StatelessWidget {
                         )
                       else
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
-                            color: theme.colorScheme.surfaceVariant,
+                            color: theme.colorScheme.surfaceContainerHighest,
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
-                            job.jobType == JobPostType.partTime ? 'Bán thời gian' : 'Toàn thời gian',
+                            job.jobType == JobPostType.partTime
+                                ? 'Bán thời gian'
+                                : 'Toàn thời gian',
                             style: textTheme.bodySmall?.copyWith(
                               fontWeight: FontWeight.w700,
                               color: theme.colorScheme.onSurfaceVariant,
@@ -177,15 +200,24 @@ class JobPostCard extends StatelessWidget {
                   // Salary container (matches the web green layout)
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFE8F5E9),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFFC8E6C9).withOpacity(0.5)),
+                      border: Border.all(
+                        color: const Color(0xFFC8E6C9).withValues(alpha: 0.5),
+                      ),
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.payments_outlined, color: Color(0xFF2E7D32), size: 18),
+                        const Icon(
+                          Icons.payments_outlined,
+                          color: Color(0xFF2E7D32),
+                          size: 18,
+                        ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
@@ -209,11 +241,18 @@ class JobPostCard extends StatelessWidget {
                       children: [
                         for (final tag in job.tags)
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
-                              color: theme.colorScheme.surfaceVariant.withOpacity(0.4),
+                              color: theme.colorScheme.surfaceContainerHighest
+                                  .withValues(alpha: 0.4),
                               borderRadius: BorderRadius.circular(6),
-                              border: Border.all(color: theme.colorScheme.outlineVariant.withOpacity(0.3)),
+                              border: Border.all(
+                                color: theme.colorScheme.outlineVariant
+                                    .withValues(alpha: 0.3),
+                              ),
                             ),
                             child: Text(
                               tag,
@@ -241,20 +280,31 @@ class JobPostCard extends StatelessWidget {
                           onTap: onSaveToggle,
                           borderRadius: BorderRadius.circular(8),
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
                             child: Row(
                               children: [
                                 Icon(
-                                  isSaved ? Icons.bookmark : Icons.bookmark_border,
-                                  color: isSaved ? const Color(0xFFFFB300) : theme.colorScheme.onSurfaceVariant,
+                                  isSaved
+                                      ? Icons.bookmark
+                                      : Icons.bookmark_border,
+                                  color: isSaved
+                                      ? const Color(0xFFFFB300)
+                                      : theme.colorScheme.onSurfaceVariant,
                                   size: 20,
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
                                   isSaved ? 'Đã lưu' : 'Lưu',
                                   style: textTheme.bodyMedium?.copyWith(
-                                    color: isSaved ? const Color(0xFFFFB300) : theme.colorScheme.onSurfaceVariant,
-                                    fontWeight: isSaved ? FontWeight.w800 : FontWeight.w600,
+                                    color: isSaved
+                                        ? const Color(0xFFFFB300)
+                                        : theme.colorScheme.onSurfaceVariant,
+                                    fontWeight: isSaved
+                                        ? FontWeight.w800
+                                        : FontWeight.w600,
                                   ),
                                 ),
                               ],
@@ -267,8 +317,13 @@ class JobPostCard extends StatelessWidget {
                       OutlinedButton(
                         onPressed: onDetailsPressed,
                         style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 8,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                           side: BorderSide(color: theme.colorScheme.outline),
                         ),
                         child: Text(
@@ -286,8 +341,13 @@ class JobPostCard extends StatelessWidget {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF1E40AF),
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 8,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                           elevation: 0,
                         ),
                         child: const Text(
@@ -319,7 +379,11 @@ class _InfoRow extends StatelessWidget {
 
     return Row(
       children: [
-        Icon(icon, size: 16, color: theme.colorScheme.onSurfaceVariant.withOpacity(0.7)),
+        Icon(
+          icon,
+          size: 16,
+          color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+        ),
         const SizedBox(width: 6),
         Expanded(
           child: Text(

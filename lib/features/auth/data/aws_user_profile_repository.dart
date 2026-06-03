@@ -8,7 +8,8 @@ import '../domain/auth_user_profile.dart';
 import 'user_profile_repository.dart';
 
 class AwsUserProfileRepository implements UserProfileRepository {
-  static const _apiBaseUrl = 'https://sd7ds72m8g.execute-api.ap-southeast-1.amazonaws.com/prod';
+  static const _apiBaseUrl =
+      'https://sd7ds72m8g.execute-api.ap-southeast-1.amazonaws.com/prod';
 
   Future<String?> _getAuthToken() async {
     try {
@@ -32,8 +33,10 @@ class AwsUserProfileRepository implements UserProfileRepository {
   }
 
   @override
-  Future<void> savePendingRegistration(PendingRegistrationProfile profile) async {
-    // No-op for direct DynamoDB flow since registrations are saved on Cognito signup 
+  Future<void> savePendingRegistration(
+    PendingRegistrationProfile profile,
+  ) async {
+    // No-op for direct DynamoDB flow since registrations are saved on Cognito signup
     // and profile is upserted after login.
   }
 
@@ -101,7 +104,8 @@ class AwsUserProfileRepository implements UserProfileRepository {
     final existing = await getByUserId(userId);
     if (existing != null) {
       // If email or fullName are empty in the profile but available in cognito, update them
-      if ((existing.fullName.isEmpty && fullName.isNotEmpty) || (existing.email.isEmpty && email.isNotEmpty)) {
+      if ((existing.fullName.isEmpty && fullName.isNotEmpty) ||
+          (existing.email.isEmpty && email.isNotEmpty)) {
         return updateProfileCompleted(
           userId: userId,
           completed: existing.profileCompleted,
@@ -208,9 +212,9 @@ class AwsUserProfileRepository implements UserProfileRepository {
         if (location != null) 'location': location.trim(),
         if (title != null) 'title': title.trim(),
         if (bio != null) 'bio': bio.trim(),
-        if (skills != null) 'skills': skills,
-        if (profileImage != null) 'profileImage': profileImage,
-        if (savedJobs != null) 'savedJobs': savedJobs,
+        'skills': ?skills,
+        'profileImage': ?profileImage,
+        'savedJobs': ?savedJobs,
         'updatedAt': DateTime.now().toIso8601String(),
       }),
     );
@@ -229,9 +233,12 @@ class AwsUserProfileRepository implements UserProfileRepository {
     throw Exception('Failed to update profile completion status in DynamoDB');
   }
 
-  AuthUserProfile _mapJsonToProfile(Map<String, dynamic> data, String defaultUserId) {
+  AuthUserProfile _mapJsonToProfile(
+    Map<String, dynamic> data,
+    String defaultUserId,
+  ) {
     final parsedRole = AppRoleParser.fromCognitoValue(data['role'] as String?);
-    
+
     List<String>? skillsList;
     if (data['skills'] != null) {
       try {
@@ -267,8 +274,12 @@ class AwsUserProfileRepository implements UserProfileRepository {
       skills: skillsList,
       profileImage: data['profileImage'] as String?,
       savedJobs: savedJobsList,
-      createdAt: data['createdAt'] != null ? DateTime.tryParse(data['createdAt'] as String) : null,
-      updatedAt: data['updatedAt'] != null ? DateTime.tryParse(data['updatedAt'] as String) : null,
+      createdAt: data['createdAt'] != null
+          ? DateTime.tryParse(data['createdAt'] as String)
+          : null,
+      updatedAt: data['updatedAt'] != null
+          ? DateTime.tryParse(data['updatedAt'] as String)
+          : null,
     );
   }
 }
