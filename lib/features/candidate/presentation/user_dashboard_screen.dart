@@ -13,7 +13,8 @@ class UserDashboardScreen extends ConsumerStatefulWidget {
   const UserDashboardScreen({super.key});
 
   @override
-  ConsumerState<UserDashboardScreen> createState() => _UserDashboardScreenState();
+  ConsumerState<UserDashboardScreen> createState() =>
+      _UserDashboardScreenState();
 }
 
 class _UserDashboardScreenState extends ConsumerState<UserDashboardScreen> {
@@ -28,7 +29,8 @@ class _UserDashboardScreenState extends ConsumerState<UserDashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final strings = AppLocalizations.of(context);
-    final unreadCount = ref
+    final unreadCount =
+        ref
             .watch(candidateNotificationControllerProvider)
             .asData
             ?.value
