@@ -15,7 +15,7 @@ class TempJobsApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(appRouterProvider);
     final themeMode =
-        ref.watch(appThemeControllerProvider).asData?.value ?? ThemeMode.system;
+        ref.watch(appThemeControllerProvider).asData?.value ?? ThemeMode.light;
     final locale =
         ref.watch(appLanguageControllerProvider).asData?.value ??
         const Locale('vi');
