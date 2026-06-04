@@ -5,6 +5,7 @@ import '../../../../features/auth/application/auth_controller.dart';
 import '../../../../features/candidate/application/jobs_providers.dart';
 import '../../../../features/candidate/data/aws_application_repository.dart';
 import '../../../../features/candidate/domain/job_post.dart';
+import '../../../../features/candidate/notifications/application/notification_controller.dart';
 import '../../../../features/candidate/presentation/user_job_detail_screen.dart';
 import '../widgets/employer_spotlight_row.dart';
 import '../widgets/search_filter_pills.dart';
@@ -364,17 +365,28 @@ class _SearchPageState extends ConsumerState<SearchPage> {
 
 // ── AppBar ────────────────────────────────────────────────────────────────────
 
-class _SearchAppBar extends StatelessWidget implements PreferredSizeWidget {
-  const _SearchAppBar({required this.user});
+class _SearchAppBar extends ConsumerWidget implements PreferredSizeWidget {
+  const _SearchAppBar({required this.user, required this.onNotificationTap});
 
   final dynamic user;
+  final VoidCallback onNotificationTap;
 
   @override
   Size get preferredSize => const Size.fromHeight(56);
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final avatarUrl = user?.profileImage as String?;
+    // Badge từ cùng provider — đồng nhất với HomeHeader
+    final unreadCount =
+        ref
+            .watch(candidateNotificationControllerProvider)
+            .asData
+            ?.value
+            .summary
+            .unread ??
+        0;
+
     return AppBar(
       backgroundColor: Colors.white,
       elevation: 0,
@@ -393,13 +405,43 @@ class _SearchAppBar extends StatelessWidget implements PreferredSizeWidget {
         ),
       ),
       actions: [
-        IconButton(
-          onPressed: () {},
-          icon: const Icon(
-            Icons.notifications_none_rounded,
-            color: Color(0xFF1E293B),
-            size: 24,
-          ),
+        // Bell với badge — dùng chung onNotificationTap từ UserDashboardScreen
+        Stack(
+          children: [
+            IconButton(
+              onPressed: onNotificationTap,
+              icon: const Icon(
+                Icons.notifications_none_rounded,
+                color: Color(0xFF1E293B),
+                size: 24,
+              ),
+            ),
+            if (unreadCount > 0)
+              Positioned(
+                right: 6,
+                top: 6,
+                child: Container(
+                  padding: const EdgeInsets.all(3),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFEF4444),
+                    shape: BoxShape.circle,
+                  ),
+                  constraints: const BoxConstraints(
+                    minWidth: 16,
+                    minHeight: 16,
+                  ),
+                  child: Text(
+                    unreadCount > 99 ? '99+' : '$unreadCount',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+          ],
         ),
         Padding(
           padding: const EdgeInsets.only(right: 12),

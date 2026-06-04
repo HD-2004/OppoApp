@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
-import '../../../core/localization/app_localizations.dart';
 import '../../auth/application/auth_controller.dart';
 
 class UpdateProfileScreen extends ConsumerStatefulWidget {
@@ -23,7 +22,7 @@ class _UpdateProfileScreenState extends ConsumerState<UpdateProfileScreen> {
   final _titleController = TextEditingController();
   final _bioController = TextEditingController();
   final _skillsController = TextEditingController();
-  
+
   bool _isSubmitting = false;
 
   @override
@@ -56,48 +55,36 @@ class _UpdateProfileScreenState extends ConsumerState<UpdateProfileScreen> {
   }
 
   Future<void> _selectDate() async {
-    DateTime initialDate = DateTime.now().subtract(const Duration(days: 365 * 18));
+    DateTime initial = DateTime.now().subtract(const Duration(days: 365 * 18));
     if (_dobController.text.isNotEmpty) {
       try {
-        initialDate = DateTime.parse(_dobController.text);
+        initial = DateTime.parse(_dobController.text);
       } catch (_) {}
     }
-
-    final DateTime? picked = await showDatePicker(
+    final picked = await showDatePicker(
       context: context,
-      initialDate: initialDate,
+      initialDate: initial,
       firstDate: DateTime(1950),
       lastDate: DateTime.now(),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.light(
-              primary: Theme.of(context).colorScheme.primary,
-              onPrimary: Theme.of(context).colorScheme.onPrimary,
-              onSurface: Theme.of(context).colorScheme.onSurface,
-            ),
-          ),
-          child: child!,
-        );
-      },
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(
+          colorScheme: const ColorScheme.light(primary: Color(0xFF1E3A8A)),
+        ),
+        child: child!,
+      ),
     );
-
-    if (picked != null) {
-      setState(() {
-        _dobController.text = DateFormat('yyyy-MM-dd').format(picked);
-      });
+    if (picked != null && mounted) {
+      setState(
+        () => _dobController.text = DateFormat('yyyy-MM-dd').format(picked),
+      );
     }
   }
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
-
+    if (!_formKey.currentState!.validate()) return;
     setState(() => _isSubmitting = true);
-    
-    // Parse skills list
-    final List<String> skillsList = _skillsController.text
+
+    final skills = _skillsController.text
         .split(',')
         .map((s) => s.trim())
         .where((s) => s.isNotEmpty)
@@ -107,245 +94,352 @@ class _UpdateProfileScreenState extends ConsumerState<UpdateProfileScreen> {
       await ref
           .read(authControllerProvider.notifier)
           .completeProfile(
-            fullName: _fullNameController.text,
-            phone: _phoneController.text,
-            cccd: _cccdController.text,
-            dateOfBirth: _dobController.text,
-            location: _locationController.text,
-            title: _titleController.text,
-            bio: _bioController.text,
-            skills: skillsList,
+            fullName: _fullNameController.text.trim(),
+            phone: _phoneController.text.trim(),
+            cccd: _cccdController.text.trim(),
+            dateOfBirth: _dobController.text.trim(),
+            location: _locationController.text.trim(),
+            title: _titleController.text.trim(),
+            bio: _bioController.text.trim(),
+            skills: skills,
           );
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              AppLocalizations.of(context).isVietnamese
-                  ? 'Cập nhật hồ sơ thành công!'
-                  : 'Profile updated successfully!',
-            ),
-            backgroundColor: Colors.green,
-          ),
-        );
-        Navigator.of(context).pop();
-      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cập nhật hồ sơ thành công!'),
+          backgroundColor: Color(0xFF1E3A8A),
+        ),
+      );
+      Navigator.of(context).pop();
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              AppLocalizations.of(context).isVietnamese
-                  ? 'Lỗi cập nhật hồ sơ: $e'
-                  : 'Error updating profile: $e',
-            ),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Lỗi: $e'), backgroundColor: Colors.red),
+      );
     } finally {
-      if (mounted) {
-        setState(() => _isSubmitting = false);
-      }
+      if (mounted) setState(() => _isSubmitting = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    final isVi = l10n.isVietnamese;
-
     return Scaffold(
+      backgroundColor: const Color(0xFFF7F8FC),
       appBar: AppBar(
-        title: Text(l10n.text('updateProfile')),
+        backgroundColor: Colors.white,
         elevation: 0,
+        scrolledUnderElevation: 1,
+        leading: const BackButton(color: Color(0xFF1E293B)),
+        title: const Text(
+          'Cập nhật hồ sơ',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF111827),
+          ),
+        ),
       ),
-      body: SafeArea(
-        child: Align(
-          alignment: Alignment.topCenter,
-          child: SingleChildScrollView(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 600),
-              child: Form(
-                key: _formKey,
-                child: Card(
-                  margin: const EdgeInsets.all(16),
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+      body: Form(
+        key: _formKey,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // ── Thông tin cá nhân ──────────────────────────────
+              _SectionCard(
+                title: 'Thông tin cá nhân',
+                children: [
+                  _Field(
+                    controller: _fullNameController,
+                    label: 'Họ và tên',
+                    icon: Icons.person_outline_rounded,
+                    validator: (v) =>
+                        (v == null || v.trim().isEmpty) ? 'Bắt buộc' : null,
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Text(
-                          isVi ? 'Thông tin cá nhân' : 'Personal Details',
-                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: Theme.of(context).colorScheme.primary,
-                              ),
-                        ),
-                        const SizedBox(height: 20),
-                        
-                        // Full Name
-                        TextFormField(
-                          controller: _fullNameController,
-                          decoration: InputDecoration(
-                            labelText: l10n.fullName,
-                            prefixIcon: const Icon(Icons.person_outline),
-                            border: const OutlineInputBorder(
-                              borderRadius: BorderRadius.all(Radius.circular(12)),
-                            ),
+                  _Field(
+                    controller: _phoneController,
+                    label: 'Số điện thoại',
+                    icon: Icons.phone_outlined,
+                    keyboardType: TextInputType.phone,
+                  ),
+                  _Field(
+                    controller: _cccdController,
+                    label: 'Số CCCD',
+                    icon: Icons.credit_card_outlined,
+                    keyboardType: TextInputType.number,
+                  ),
+                  _DateField(
+                    controller: _dobController,
+                    label: 'Ngày sinh',
+                    onTap: _selectDate,
+                  ),
+                  _Field(
+                    controller: _locationController,
+                    label: 'Địa chỉ',
+                    icon: Icons.map_outlined,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // ── Thông tin công việc & kỹ năng ──────────────────
+              _SectionCard(
+                title: 'Thông tin công việc & kỹ năng',
+                children: [
+                  _Field(
+                    controller: _titleController,
+                    label: 'Chức danh mong muốn',
+                    icon: Icons.work_outline_rounded,
+                  ),
+                  _Field(
+                    controller: _skillsController,
+                    label: 'Kỹ năng (cách nhau bằng dấu phẩy)',
+                    icon: Icons.star_outline_rounded,
+                    helperText: 'Ví dụ: Pha chế, Phục vụ, Tiếng Anh',
+                  ),
+                  _BioField(controller: _bioController),
+                ],
+              ),
+              const SizedBox(height: 24),
+
+              // ── Submit ─────────────────────────────────────────
+              SizedBox(
+                height: 52,
+                child: ElevatedButton.icon(
+                  onPressed: _isSubmitting ? null : _submit,
+                  icon: _isSubmitting
+                      ? const SizedBox.square(
+                          dimension: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
                           ),
-                          validator: (value) {
-                            if (value == null || value.trim().isEmpty) {
-                              return l10n.text('requiredField');
-                            }
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 16),
-                        
-                        // Phone Number
-                        TextFormField(
-                          controller: _phoneController,
-                          keyboardType: TextInputType.phone,
-                          decoration: InputDecoration(
-                            labelText: isVi ? 'Số điện thoại' : 'Phone number',
-                            prefixIcon: const Icon(Icons.phone_outlined),
-                            border: const OutlineInputBorder(
-                              borderRadius: BorderRadius.all(Radius.circular(12)),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        
-                        // Citizen ID (CCCD)
-                        TextFormField(
-                          controller: _cccdController,
-                          keyboardType: TextInputType.number,
-                          decoration: InputDecoration(
-                            labelText: isVi ? 'Số CCCD' : 'Citizen ID',
-                            prefixIcon: const Icon(Icons.credit_card_outlined),
-                            border: const OutlineInputBorder(
-                              borderRadius: BorderRadius.all(Radius.circular(12)),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        
-                        // Date of Birth
-                        TextFormField(
-                          controller: _dobController,
-                          readOnly: true,
-                          onTap: _selectDate,
-                          decoration: InputDecoration(
-                            labelText: isVi ? 'Ngày sinh' : 'Date of birth',
-                            prefixIcon: const Icon(Icons.calendar_today_outlined),
-                            border: const OutlineInputBorder(
-                              borderRadius: BorderRadius.all(Radius.circular(12)),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        
-                        // Location
-                        TextFormField(
-                          controller: _locationController,
-                          decoration: InputDecoration(
-                            labelText: isVi ? 'Địa chỉ' : 'Location',
-                            prefixIcon: const Icon(Icons.map_outlined),
-                            border: const OutlineInputBorder(
-                              borderRadius: BorderRadius.all(Radius.circular(12)),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                        
-                        Text(
-                          isVi ? 'Thông tin công việc & kỹ năng' : 'Job & Skills Info',
-                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: Theme.of(context).colorScheme.primary,
-                              ),
-                        ),
-                        const SizedBox(height: 20),
-                        
-                        // Job Title
-                        TextFormField(
-                          controller: _titleController,
-                          decoration: InputDecoration(
-                            labelText: isVi ? 'Chức danh mong muốn' : 'Desired Position',
-                            prefixIcon: const Icon(Icons.work_outline),
-                            border: const OutlineInputBorder(
-                              borderRadius: BorderRadius.all(Radius.circular(12)),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        
-                        // Skills
-                        TextFormField(
-                          controller: _skillsController,
-                          decoration: InputDecoration(
-                            labelText: isVi ? 'Kỹ năng (cách nhau bằng dấu phẩy)' : 'Skills (separated by commas)',
-                            helperText: isVi ? 'Ví dụ: Pha chế, Phục vụ, Tiếng Anh' : 'Example: Mixology, Waiting, English',
-                            prefixIcon: const Icon(Icons.star_outline),
-                            border: const OutlineInputBorder(
-                              borderRadius: BorderRadius.all(Radius.circular(12)),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        
-                        // Bio
-                        TextFormField(
-                          controller: _bioController,
-                          maxLines: 4,
-                          decoration: InputDecoration(
-                            labelText: isVi ? 'Giới thiệu bản thân' : 'About yourself',
-                            prefixIcon: const Icon(Icons.description_outlined),
-                            alignLabelWithHint: true,
-                            border: const OutlineInputBorder(
-                              borderRadius: BorderRadius.all(Radius.circular(12)),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 28),
-                        
-                        FilledButton.icon(
-                          onPressed: _isSubmitting ? null : _submit,
-                          style: FilledButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          icon: _isSubmitting
-                              ? const SizedBox.square(
-                                  dimension: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : const Icon(Icons.save_outlined),
-                          label: Text(
-                            isVi ? 'Lưu Thay Đổi' : 'Save Changes',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
+                        )
+                      : const Icon(Icons.save_outlined, size: 18),
+                  label: const Text(
+                    'Lưu Thay Đổi',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1E3A8A),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
                   ),
                 ),
               ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Section card ──────────────────────────────────────────────────────────────
+
+class _SectionCard extends StatelessWidget {
+  const _SectionCard({required this.title, required this.children});
+
+  final String title;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF0D9488),
             ),
           ),
+          const SizedBox(height: 16),
+          ...children.map(
+            (child) => Padding(
+              padding: const EdgeInsets.only(bottom: 14),
+              child: child,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Text field ────────────────────────────────────────────────────────────────
+
+class _Field extends StatelessWidget {
+  const _Field({
+    required this.controller,
+    required this.label,
+    required this.icon,
+    this.keyboardType,
+    this.validator,
+    this.helperText,
+  });
+
+  final TextEditingController controller;
+  final String label;
+  final IconData icon;
+  final TextInputType? keyboardType;
+  final FormFieldValidator<String>? validator;
+  final String? helperText;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextFormField(
+      controller: controller,
+      keyboardType: keyboardType,
+      validator: validator,
+      style: const TextStyle(fontSize: 14, color: Color(0xFF111827)),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+        prefixIcon: Icon(icon, size: 20, color: const Color(0xFF9CA3AF)),
+        helperText: helperText,
+        helperStyle: const TextStyle(fontSize: 11, color: Color(0xFF9CA3AF)),
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFF1E3A8A), width: 1.5),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFFEF4444)),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Date field ────────────────────────────────────────────────────────────────
+
+class _DateField extends StatelessWidget {
+  const _DateField({
+    required this.controller,
+    required this.label,
+    required this.onTap,
+  });
+
+  final TextEditingController controller;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextFormField(
+      controller: controller,
+      readOnly: true,
+      onTap: onTap,
+      style: const TextStyle(fontSize: 14, color: Color(0xFF111827)),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+        prefixIcon: const Icon(
+          Icons.calendar_today_outlined,
+          size: 20,
+          color: Color(0xFF9CA3AF),
+        ),
+        suffixIcon: const Icon(
+          Icons.arrow_drop_down_rounded,
+          color: Color(0xFF9CA3AF),
+        ),
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFF1E3A8A), width: 1.5),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Bio field ─────────────────────────────────────────────────────────────────
+
+class _BioField extends StatelessWidget {
+  const _BioField({required this.controller});
+
+  final TextEditingController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return TextFormField(
+      controller: controller,
+      maxLines: 5,
+      minLines: 3,
+      style: const TextStyle(fontSize: 14, color: Color(0xFF111827)),
+      decoration: InputDecoration(
+        labelText: 'Giới thiệu bản thân',
+        labelStyle: const TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+        alignLabelWithHint: true,
+        prefixIcon: const Padding(
+          padding: EdgeInsets.only(left: 12, bottom: 60),
+          child: Icon(
+            Icons.description_outlined,
+            size: 20,
+            color: Color(0xFF9CA3AF),
+          ),
+        ),
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFF1E3A8A), width: 1.5),
         ),
       ),
     );
