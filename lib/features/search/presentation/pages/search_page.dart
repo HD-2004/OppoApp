@@ -7,6 +7,7 @@ import '../../../../features/candidate/data/aws_application_repository.dart';
 import '../../../../features/candidate/domain/job_post.dart';
 import '../../../../features/candidate/notifications/application/notification_controller.dart';
 import '../../../../features/candidate/presentation/user_job_detail_screen.dart';
+import '../../../../features/home/presentation/widgets/candidate_menu_drawer.dart';
 import '../widgets/employer_spotlight_row.dart';
 import '../widgets/search_filter_pills.dart';
 import '../widgets/search_job_card.dart';
@@ -25,9 +26,24 @@ final _allJobsProvider = FutureProvider<List<JobPost>>((ref) async {
 enum SearchSortFilter { distance, partTime, fullTime }
 
 class SearchPage extends ConsumerStatefulWidget {
-  const SearchPage({super.key, required this.onNotificationTap});
+  const SearchPage({
+    super.key,
+    required this.onNotificationTap,
+    required this.onJobsTap,
+    required this.onWalletTap,
+    required this.onProfileTap,
+    required this.onSettingsTap,
+    required this.onSupportTap,
+    required this.onSignOutTap,
+  });
 
   final VoidCallback onNotificationTap;
+  final VoidCallback onJobsTap;
+  final VoidCallback onWalletTap;
+  final VoidCallback onProfileTap;
+  final VoidCallback onSettingsTap;
+  final VoidCallback onSupportTap;
+  final VoidCallback onSignOutTap;
 
   @override
   ConsumerState<SearchPage> createState() => _SearchPageState();
@@ -46,6 +62,11 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _closeDrawerAndRun(VoidCallback action) {
+    Navigator.of(context).pop();
+    action();
   }
 
   // ── Filter logic ────────────────────────────────────────────────────────────
@@ -87,7 +108,15 @@ class _SearchPageState extends ConsumerState<SearchPage> {
             .where((j) => j.jobType == JobPostType.fullTime)
             .toList();
       case SearchSortFilter.distance:
-        // TODO: sort by gps distance when user location is available
+        result = result.toList()
+          ..sort((a, b) {
+            final aHasCoordinates = a.latitude != null && a.longitude != null;
+            final bHasCoordinates = b.latitude != null && b.longitude != null;
+            if (aHasCoordinates != bHasCoordinates) {
+              return aHasCoordinates ? -1 : 1;
+            }
+            return b.postedAt.compareTo(a.postedAt);
+          });
         break;
     }
 
@@ -159,18 +188,20 @@ class _SearchPageState extends ConsumerState<SearchPage> {
           ),
           content: SizedBox(
             width: double.maxFinite,
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: cvs.length,
-              itemBuilder: (_, i) {
-                final id = cvs[i]['id']?.toString();
-                return RadioListTile<String>(
-                  value: id!,
-                  groupValue: selectedId,
-                  onChanged: (v) => setModal(() => selectedId = v),
-                  title: Text(cvs[i]['cvFileName']?.toString() ?? 'CV.pdf'),
-                );
-              },
+            child: RadioGroup<String>(
+              groupValue: selectedId,
+              onChanged: (v) => setModal(() => selectedId = v),
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: cvs.length,
+                itemBuilder: (_, i) {
+                  final id = cvs[i]['id']?.toString();
+                  return RadioListTile<String>(
+                    value: id!,
+                    title: Text(cvs[i]['cvFileName']?.toString() ?? 'CV.pdf'),
+                  );
+                },
+              ),
             ),
           ),
           actions: [
@@ -250,9 +281,26 @@ class _SearchPageState extends ConsumerState<SearchPage> {
   Widget build(BuildContext context) {
     final allAsync = ref.watch(_allJobsProvider);
     final user = ref.watch(authControllerProvider).asData?.value.user;
+    final displayName = user?.fullName.trim().isNotEmpty == true
+        ? user!.fullName.trim()
+        : 'Bạn';
+    final email = user?.email.trim().isNotEmpty == true
+        ? user!.email.trim()
+        : 'Chưa có email';
 
     return Scaffold(
       backgroundColor: Colors.white,
+      drawer: CandidateMenuDrawer(
+        displayName: displayName,
+        email: email,
+        onProfileTap: () => _closeDrawerAndRun(widget.onProfileTap),
+        onJobsTap: () => _closeDrawerAndRun(widget.onJobsTap),
+        onWalletTap: () => _closeDrawerAndRun(widget.onWalletTap),
+        onNotificationsTap: () => _closeDrawerAndRun(widget.onNotificationTap),
+        onSettingsTap: () => _closeDrawerAndRun(widget.onSettingsTap),
+        onSupportTap: () => _closeDrawerAndRun(widget.onSupportTap),
+        onSignOutTap: () => _closeDrawerAndRun(widget.onSignOutTap),
+      ),
       appBar: _SearchAppBar(
         user: user,
         onNotificationTap: widget.onNotificationTap,
@@ -279,7 +327,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
           Expanded(
             child: allAsync.when(
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (_, __) => _ErrorBody(
+              error: (_, _) => _ErrorBody(
                 onRetry: () {
                   ref.invalidate(activeJobsProvider);
                   ref.invalidate(activeQuickJobsProvider);
@@ -391,10 +439,7 @@ class _SearchAppBar extends ConsumerWidget implements PreferredSizeWidget {
       backgroundColor: Colors.white,
       elevation: 0,
       scrolledUnderElevation: 0,
-      leading: const Padding(
-        padding: EdgeInsets.only(left: 16),
-        child: Icon(Icons.menu_rounded, color: Color(0xFF1E293B), size: 24),
-      ),
+      leading: const CandidateMenuButton(),
       title: const Text(
         'Ốp Pờ',
         style: TextStyle(

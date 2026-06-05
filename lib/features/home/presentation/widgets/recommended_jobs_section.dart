@@ -41,7 +41,7 @@ class RecommendedJobsSection extends ConsumerWidget {
               physics: const NeverScrollableScrollPhysics(),
               padding: const EdgeInsets.symmetric(horizontal: 16),
               itemCount: jobs.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 10),
+              separatorBuilder: (_, _) => const SizedBox(height: 10),
               itemBuilder: (context, index) => _RecommendedJobCard(
                 job: jobs[index],
                 onTap: () => onJobTap(jobs[index]),
@@ -101,7 +101,7 @@ class _RecommendedJobCard extends StatelessWidget {
                       child: Image.network(
                         job.employerAvatarUrl!,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) =>
+                        errorBuilder: (_, _, _) =>
                             const _CompanyLogoPlaceholder(),
                       ),
                     )

@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../core/localization/app_localizations.dart';
+import '../../auth/application/auth_controller.dart';
 import '../../home/presentation/pages/candidate_home_page.dart';
 import '../../search/presentation/pages/search_page.dart';
 import '../notifications/application/notification_controller.dart';
 import '../notifications/presentation/candidate_notifications_screen.dart';
 import 'digital_wallet_screen.dart';
+import 'support_screen.dart';
 import 'user_profile_screen.dart';
+import 'user_jobs_screen.dart';
+import 'user_settings_screen.dart';
 
 class UserDashboardScreen extends ConsumerStatefulWidget {
   const UserDashboardScreen({super.key});
@@ -21,8 +27,66 @@ class _UserDashboardScreenState extends ConsumerState<UserDashboardScreen> {
 
   static const _tabSearch = 1;
   static const _tabWallet = 2;
+  static const _tabProfile = 3;
 
   void _selectTab(int index) => setState(() => _selectedIndex = index);
+
+  void _push(Widget screen) {
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
+  }
+
+  void _openJobs() {
+    _push(const UserJobsScreen());
+  }
+
+  void _openSettings() {
+    _push(const UserSettingsScreen());
+  }
+
+  void _openSupport() {
+    _push(const SupportScreen());
+  }
+
+  Future<void> _confirmSignOut() async {
+    final l10n = AppLocalizations.of(context);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.text('confirmSignOutTitle')),
+        content: Text(l10n.text('confirmSignOutMessage')),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l10n.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l10n.signOut),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) {
+      return;
+    }
+
+    try {
+      await ref.read(authControllerProvider.notifier).signOut();
+      if (!mounted) {
+        return;
+      }
+      context.go('/login');
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalizations.of(context).text('signOutFailed')),
+        ),
+      );
+    }
+  }
 
   /// Mở màn hình thông báo — dùng chung cho toàn bộ app.
   /// Sau khi đóng, refresh badge để cập nhật số unread.
@@ -62,13 +126,33 @@ class _UserDashboardScreenState extends ConsumerState<UserDashboardScreen> {
         onSeeAllJobsTap: () => _selectTab(_tabSearch),
         onWalletTap: () => _selectTab(_tabWallet),
         onSearchTap: () => _selectTab(_tabSearch),
+        onJobsTap: _openJobs,
+        onProfileTap: () => _selectTab(_tabProfile),
+        onSettingsTap: _openSettings,
+        onSupportTap: _openSupport,
+        onSignOutTap: _confirmSignOut,
       ),
       // 1 – Tìm kiếm
-      SearchPage(onNotificationTap: _openNotifications),
+      SearchPage(
+        onNotificationTap: _openNotifications,
+        onJobsTap: _openJobs,
+        onWalletTap: () => _selectTab(_tabWallet),
+        onProfileTap: () => _selectTab(_tabProfile),
+        onSettingsTap: _openSettings,
+        onSupportTap: _openSupport,
+        onSignOutTap: _confirmSignOut,
+      ),
       // 2 – Ví
       const DigitalWalletScreen(),
       // 3 – Cá nhân
-      const UserProfileScreen(),
+      UserProfileScreen(
+        onJobsTap: _openJobs,
+        onWalletTap: () => _selectTab(_tabWallet),
+        onNotificationsTap: _openNotifications,
+        onSettingsTap: _openSettings,
+        onSupportTap: _openSupport,
+        onSignOutTap: _confirmSignOut,
+      ),
     ];
 
     return Scaffold(

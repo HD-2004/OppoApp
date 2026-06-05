@@ -8,6 +8,7 @@ import '../../../../features/candidate/domain/job_post.dart';
 import '../../../../features/candidate/presentation/user_job_detail_screen.dart';
 import '../../../../features/messaging/presentation/pages/messages_screen.dart';
 import '../../../../features/wallet/presentation/controllers/wallet_controller.dart';
+import '../widgets/candidate_menu_drawer.dart';
 import '../widgets/home_hot_jobs_section.dart';
 import '../widgets/home_latest_jobs_section.dart';
 
@@ -18,12 +19,22 @@ class CandidateHomePage extends ConsumerStatefulWidget {
     required this.onSeeAllJobsTap,
     required this.onWalletTap,
     required this.onSearchTap,
+    required this.onJobsTap,
+    required this.onProfileTap,
+    required this.onSettingsTap,
+    required this.onSupportTap,
+    required this.onSignOutTap,
   });
 
   final VoidCallback onNotificationTap;
   final VoidCallback onSeeAllJobsTap;
   final VoidCallback onWalletTap;
   final VoidCallback onSearchTap;
+  final VoidCallback onJobsTap;
+  final VoidCallback onProfileTap;
+  final VoidCallback onSettingsTap;
+  final VoidCallback onSupportTap;
+  final VoidCallback onSignOutTap;
 
   @override
   ConsumerState<CandidateHomePage> createState() => _CandidateHomePageState();
@@ -35,6 +46,11 @@ class _CandidateHomePageState extends ConsumerState<CandidateHomePage> {
     ref.invalidate(activeJobsProvider);
     ref.invalidate(walletControllerProvider);
     await Future<void>.delayed(const Duration(milliseconds: 600));
+  }
+
+  void _closeDrawerAndRun(VoidCallback action) {
+    Navigator.of(context).pop();
+    action();
   }
 
   void _openJobDetail(JobPost job) {
@@ -101,19 +117,21 @@ class _CandidateHomePageState extends ConsumerState<CandidateHomePage> {
           ),
           content: SizedBox(
             width: double.maxFinite,
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: cvs.length,
-              itemBuilder: (_, i) {
-                final cv = cvs[i];
-                final id = cv['id']?.toString();
-                return RadioListTile<String>(
-                  value: id!,
-                  groupValue: selectedId,
-                  onChanged: (v) => setModal(() => selectedId = v),
-                  title: Text(cv['cvFileName']?.toString() ?? 'CV.pdf'),
-                );
-              },
+            child: RadioGroup<String>(
+              groupValue: selectedId,
+              onChanged: (v) => setModal(() => selectedId = v),
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: cvs.length,
+                itemBuilder: (_, i) {
+                  final cv = cvs[i];
+                  final id = cv['id']?.toString();
+                  return RadioListTile<String>(
+                    value: id!,
+                    title: Text(cv['cvFileName']?.toString() ?? 'CV.pdf'),
+                  );
+                },
+              ),
             ),
           ),
           actions: [
@@ -189,8 +207,27 @@ class _CandidateHomePageState extends ConsumerState<CandidateHomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final user = ref.watch(authControllerProvider).asData?.value.user;
+    final displayName = user?.fullName.trim().isNotEmpty == true
+        ? user!.fullName.trim()
+        : 'Bạn';
+    final email = user?.email.trim().isNotEmpty == true
+        ? user!.email.trim()
+        : 'Chưa có email';
+
     return Scaffold(
       backgroundColor: Colors.white,
+      drawer: CandidateMenuDrawer(
+        displayName: displayName,
+        email: email,
+        onProfileTap: () => _closeDrawerAndRun(widget.onProfileTap),
+        onJobsTap: () => _closeDrawerAndRun(widget.onJobsTap),
+        onWalletTap: () => _closeDrawerAndRun(widget.onWalletTap),
+        onNotificationsTap: () => _closeDrawerAndRun(widget.onNotificationTap),
+        onSettingsTap: () => _closeDrawerAndRun(widget.onSettingsTap),
+        onSupportTap: () => _closeDrawerAndRun(widget.onSupportTap),
+        onSignOutTap: () => _closeDrawerAndRun(widget.onSignOutTap),
+      ),
       appBar: _HomeAppBar(onNotificationTap: widget.onNotificationTap),
       body: RefreshIndicator(
         onRefresh: _onRefresh,
@@ -255,14 +292,7 @@ class _HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
       backgroundColor: Colors.white,
       elevation: 0,
       scrolledUnderElevation: 0,
-      leading: Padding(
-        padding: const EdgeInsets.only(left: 16),
-        child: Icon(
-          Icons.menu_rounded,
-          color: const Color(0xFF1E293B),
-          size: 24,
-        ),
-      ),
+      leading: const CandidateMenuButton(),
       title: const Text(
         'Ốp Pờ',
         style: TextStyle(
@@ -365,4 +395,3 @@ class _ChatFAB extends StatelessWidget {
     );
   }
 }
-

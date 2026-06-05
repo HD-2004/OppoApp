@@ -5,10 +5,8 @@ import '../data/urgent_shift_repository.dart';
 import '../domain/shift_booking.dart';
 import '../domain/urgent_shift_job.dart';
 
-// TODO: Thay MockUrgentShiftRepository bằng AwsUrgentShiftRepository khi
-// backend API /urgent-shifts được triển khai. Trang chủ candidate đã dùng
-// activeQuickJobsProvider (AwsJobRepository) thay thế cho phần "Việc làm gấp".
-// MockUrgentShiftRepository chỉ còn phục vụ WorkerMarketplaceScreen / EmployerDashboardScreen.
+// App-only urgent shift workflow for screens that still need a local stream.
+// Candidate home uses activeQuickJobsProvider for backend-backed quick jobs.
 final urgentShiftRepositoryProvider = Provider<UrgentShiftRepository>((ref) {
   return MockUrgentShiftRepository();
 });

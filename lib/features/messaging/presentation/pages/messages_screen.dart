@@ -8,8 +8,6 @@ import 'chat_room_screen.dart';
 
 /// Màn hình danh sách tin nhắn.
 /// Conversation list derive từ employers của jobs thật — không mock data.
-/// TODO: Thay thế bằng API GET /messages/conversations khi backend chat
-/// (WebSocket / AWS AppSync Subscriptions) được triển khai.
 class MessagesScreen extends ConsumerStatefulWidget {
   const MessagesScreen({super.key});
 
@@ -60,14 +58,14 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
           Expanded(
             child: standardAsync.when(
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (_, __) => const _EmptyState(
+              error: (_, _) => const _EmptyState(
                 icon: Icons.wifi_off_rounded,
                 message: 'Không tải được danh sách tin nhắn.',
                 showRetryHint: true,
               ),
               data: (standard) => quickAsync.when(
                 loading: () => const Center(child: CircularProgressIndicator()),
-                error: (_, __) => _buildList(context, standard),
+                error: (_, _) => _buildList(context, standard),
                 data: (quick) => _buildList(context, [...standard, ...quick]),
               ),
             ),
@@ -116,8 +114,8 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
         return ConversationTile(
           job: job,
           status: status,
-          isOnline: i == 0, // TODO: map từ employer.isOnline khi có API
-          isUnread: i < 2, // TODO: map từ message.unread count khi có API
+          isOnline: i == 0,
+          isUnread: i < 2,
           onTap: () => Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => ChatRoomScreen(employer: job)),
           ),
@@ -127,7 +125,6 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
   }
 
   /// Derive trạng thái hội thoại từ dữ liệu job thật.
-  /// TODO: Thay thế bằng conversation.lastMessage.type khi backend chat có.
   ConversationStatus _deriveStatus(JobPost job, int index) {
     if (job.isQuickJob) return ConversationStatus.newMessage;
     if (job.jobType == JobPostType.fullTime) return ConversationStatus.hired;

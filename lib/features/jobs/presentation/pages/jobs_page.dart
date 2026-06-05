@@ -103,19 +103,21 @@ class _JobsPageState extends ConsumerState<JobsPage> {
           ),
           content: SizedBox(
             width: double.maxFinite,
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: cvs.length,
-              itemBuilder: (_, i) {
-                final cv = cvs[i];
-                final id = cv['id']?.toString();
-                return RadioListTile<String>(
-                  value: id!,
-                  groupValue: selectedId,
-                  onChanged: (v) => setModal(() => selectedId = v),
-                  title: Text(cv['cvFileName']?.toString() ?? 'CV.pdf'),
-                );
-              },
+            child: RadioGroup<String>(
+              groupValue: selectedId,
+              onChanged: (v) => setModal(() => selectedId = v),
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: cvs.length,
+                itemBuilder: (_, i) {
+                  final cv = cvs[i];
+                  final id = cv['id']?.toString();
+                  return RadioListTile<String>(
+                    value: id!,
+                    title: Text(cv['cvFileName']?.toString() ?? 'CV.pdf'),
+                  );
+                },
+              ),
             ),
           ),
           actions: [
@@ -297,7 +299,7 @@ class _JobsPageState extends ConsumerState<JobsPage> {
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           itemCount: jobs.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 12),
+          separatorBuilder: (_, _) => const SizedBox(height: 12),
           itemBuilder: (_, i) =>
               JobCard(job: jobs[i], onTap: () => _openDetail(jobs[i])),
         ),

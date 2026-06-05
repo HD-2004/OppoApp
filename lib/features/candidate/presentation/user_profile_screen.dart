@@ -7,14 +7,31 @@ import 'package:go_router/go_router.dart';
 import '../../../core/localization/app_localizations.dart';
 import '../../auth/application/auth_controller.dart';
 import '../../auth/domain/auth_user_profile.dart';
+import '../../home/presentation/widgets/candidate_menu_drawer.dart';
 import 'kyc_verification_screen.dart';
 import 'policy_terms_screen.dart';
 import 'support_screen.dart';
 import 'update_profile_screen.dart';
+import 'user_jobs_screen.dart';
 import 'user_settings_screen.dart';
 
 class UserProfileScreen extends ConsumerStatefulWidget {
-  const UserProfileScreen({super.key});
+  const UserProfileScreen({
+    super.key,
+    this.onJobsTap,
+    this.onWalletTap,
+    this.onNotificationsTap,
+    this.onSettingsTap,
+    this.onSupportTap,
+    this.onSignOutTap,
+  });
+
+  final VoidCallback? onJobsTap;
+  final VoidCallback? onWalletTap;
+  final VoidCallback? onNotificationsTap;
+  final VoidCallback? onSettingsTap;
+  final VoidCallback? onSupportTap;
+  final VoidCallback? onSignOutTap;
 
   @override
   ConsumerState<UserProfileScreen> createState() => _UserProfileScreenState();
@@ -25,6 +42,11 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
 
   void _push(Widget screen) =>
       Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
+
+  void _closeDrawerAndRun(VoidCallback action) {
+    Navigator.of(context).pop();
+    action();
+  }
 
   Future<void> _confirmSignOut() async {
     final l10n = AppLocalizations.of(context);
@@ -66,9 +88,34 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(authControllerProvider).asData?.value.user;
+    final displayName = user?.fullName.trim().isNotEmpty == true
+        ? user!.fullName.trim()
+        : 'Bạn';
+    final email = user?.email.trim().isNotEmpty == true
+        ? user!.email.trim()
+        : 'Chưa có email';
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FC),
+      drawer: CandidateMenuDrawer(
+        displayName: displayName,
+        email: email,
+        onProfileTap: () => Navigator.of(context).pop(),
+        onJobsTap: () => _closeDrawerAndRun(
+          widget.onJobsTap ?? () => _push(const UserJobsScreen()),
+        ),
+        onWalletTap: () => _closeDrawerAndRun(widget.onWalletTap ?? () {}),
+        onNotificationsTap: () =>
+            _closeDrawerAndRun(widget.onNotificationsTap ?? () {}),
+        onSettingsTap: () => _closeDrawerAndRun(
+          widget.onSettingsTap ?? () => _push(const UserSettingsScreen()),
+        ),
+        onSupportTap: () => _closeDrawerAndRun(
+          widget.onSupportTap ?? () => _push(const SupportScreen()),
+        ),
+        onSignOutTap: () =>
+            _closeDrawerAndRun(widget.onSignOutTap ?? _confirmSignOut),
+      ),
       appBar: _ProfileAppBar(
         onSettings: () => _push(const UserSettingsScreen()),
         onSignOut: _isSigningOut ? null : _confirmSignOut,
@@ -91,8 +138,6 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
               const SizedBox(height: 12),
 
             // ── Experience ──────────────────────────────────────────
-            // TODO: Thêm field experience vào AuthUserProfile + backend
-            // khi DynamoDB schema được bổ sung.
             _ProfileSection(
               child: _ExperienceSection(
                 onAdd: () => _push(const UpdateProfileScreen()),
@@ -111,7 +156,6 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
             const SizedBox(height: 12),
 
             // ── Education ───────────────────────────────────────────
-            // TODO: Thêm field education vào AuthUserProfile + backend.
             _ProfileSection(
               child: _EducationSection(
                 onAdd: () => _push(const UpdateProfileScreen()),
@@ -158,10 +202,7 @@ class _ProfileAppBar extends StatelessWidget implements PreferredSizeWidget {
       backgroundColor: Colors.white,
       elevation: 0,
       scrolledUnderElevation: 0,
-      leading: const Padding(
-        padding: EdgeInsets.only(left: 16),
-        child: Icon(Icons.menu_rounded, color: Color(0xFF1E293B), size: 24),
-      ),
+      leading: const CandidateMenuButton(),
       title: const Text(
         'Ốp Pờ',
         style: TextStyle(
@@ -362,7 +403,7 @@ class _Avatar extends StatelessWidget {
       content = Image.network(
         profileImage,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => _InitialsAvatar(name: name),
+        errorBuilder: (_, _, _) => _InitialsAvatar(name: name),
       );
     } else {
       content = _InitialsAvatar(name: name);
@@ -512,8 +553,6 @@ class _ExperienceSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // TODO: Kết nối GET /profile/{id}/experience khi backend bổ sung field.
-    // Hiện tại AuthUserProfile chưa có experience field.
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -540,7 +579,7 @@ class _ExperienceSection extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 12),
-        // Empty state — will populate from backend when schema ready
+        // App-local empty state until profile editing captures experience.
         _EmptyEntryState(
           message: 'Thêm kinh nghiệm làm việc của bạn',
           onAdd: onAdd,
@@ -656,7 +695,6 @@ class _EducationSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // TODO: Kết nối GET /profile/{id}/education khi backend bổ sung field.
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

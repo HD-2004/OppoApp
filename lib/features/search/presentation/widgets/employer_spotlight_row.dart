@@ -5,11 +5,8 @@ import '../../../../features/candidate/domain/job_post.dart';
 /// "Nhà tuyển dụng nổi bật" — dạng Instagram Stories.
 ///
 /// Derive từ danh sách job thật: group theo employerId,
-/// lấy employerName + employerAvatarUrl (S3).
+/// lấy employerName + employerAvatarUrl.
 /// Khi nhà tuyển dụng đăng job mới → tự động xuất hiện ở đây.
-///
-/// TODO: Khi backend có API riêng cho employer spotlight
-/// (ví dụ GET /employers/featured) thì thay thế [jobs] bằng API đó.
 class EmployerSpotlightRow extends StatelessWidget {
   const EmployerSpotlightRow({
     super.key,
@@ -69,7 +66,7 @@ class EmployerSpotlightRow extends StatelessWidget {
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
             itemCount: spots.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 16),
+            separatorBuilder: (_, _) => const SizedBox(width: 16),
             itemBuilder: (_, i) => _SpotItem(
               spot: spots[i],
               isSelected: spots[i].employerId == selectedEmployerId,
@@ -280,7 +277,7 @@ class _AvatarContent extends StatelessWidget {
             initials: _initials(name),
           );
         },
-        errorBuilder: (_, __, ___) => _PlaceholderCircle(
+        errorBuilder: (_, _, _) => _PlaceholderCircle(
           bg: _placeholderBg,
           fg: _placeholderFg,
           initials: _initials(name),

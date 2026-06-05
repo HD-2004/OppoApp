@@ -60,7 +60,6 @@ class _NotificationPreferencesScreenState
     try {
       final preferences = await SharedPreferences.getInstance();
       await preferences.setBool(key, value);
-      // TODO: Sync notification preferences to DynamoDB/UserPreferences later.
     } catch (_) {
       if (!mounted) {
         return;

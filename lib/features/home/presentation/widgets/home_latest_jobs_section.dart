@@ -63,7 +63,7 @@ class HomeLatestJobsSection extends ConsumerWidget {
         // List
         jobsAsync.when(
           loading: () => const _LatestJobsShimmer(),
-          error: (_, __) => _LatestJobsError(
+          error: (_, _) => _LatestJobsError(
             onRetry: () => ref.invalidate(activeJobsProvider),
           ),
           data: (jobs) {
@@ -73,7 +73,7 @@ class HomeLatestJobsSection extends ConsumerWidget {
               physics: const NeverScrollableScrollPhysics(),
               padding: EdgeInsets.zero,
               itemCount: jobs.length,
-              separatorBuilder: (_, __) => const Divider(
+              separatorBuilder: (_, _) => const Divider(
                 height: 1,
                 indent: 16,
                 endIndent: 16,
@@ -305,7 +305,7 @@ class _JobThumbnail extends StatelessWidget {
               child: Image.network(
                 logoUrl!,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => const _ThumbnailFallback(),
+                errorBuilder: (_, _, _) => const _ThumbnailFallback(),
               ),
             )
           : const _ThumbnailFallback(),

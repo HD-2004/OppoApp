@@ -8,10 +8,7 @@ import '../controllers/wallet_controller.dart';
 import '../widgets/wallet_formatters.dart';
 
 class WithdrawFundsScreen extends ConsumerStatefulWidget {
-  const WithdrawFundsScreen({
-    super.key,
-    required this.wallet,
-  });
+  const WithdrawFundsScreen({super.key, required this.wallet});
 
   final WalletOverview wallet;
 
@@ -161,6 +158,9 @@ class _WithdrawFundsScreenState extends ConsumerState<WithdrawFundsScreen> {
       );
       Navigator.of(context).pop();
     } catch (_) {
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(l10n.unknownError),
@@ -367,8 +367,9 @@ class _WithdrawFundsScreenState extends ConsumerState<WithdrawFundsScreen> {
                           height: 18,
                           child: CircularProgressIndicator(
                             strokeWidth: 2.5,
-                            valueColor:
-                                AlwaysStoppedAnimation<Color>(Colors.white),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
                           ),
                         )
                       : Text(

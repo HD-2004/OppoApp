@@ -64,7 +64,7 @@ class UrgentJobsSection extends ConsumerWidget {
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 itemCount: jobs.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 12),
+                separatorBuilder: (_, _) => const SizedBox(width: 12),
                 itemBuilder: (context, index) =>
                     _UrgentJobCard(job: jobs[index]),
               );
@@ -248,8 +248,8 @@ class _UrgentJobsShimmer extends StatelessWidget {
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.symmetric(horizontal: 16),
       itemCount: 3,
-      separatorBuilder: (_, __) => const SizedBox(width: 12),
-      itemBuilder: (_, __) => Container(
+      separatorBuilder: (_, _) => const SizedBox(width: 12),
+      itemBuilder: (_, _) => Container(
         width: 200,
         decoration: BoxDecoration(
           color: Colors.grey.shade200,

@@ -125,7 +125,7 @@ class _HeroBanner extends StatelessWidget {
             ? Image.network(
                 job.employerAvatarUrl!,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => const _DefaultHeroBg(),
+                errorBuilder: (_, _, _) => const _DefaultHeroBg(),
               )
             : const _DefaultHeroBg(),
 
@@ -772,7 +772,7 @@ class _EmployerInfoCard extends StatelessWidget {
                           child: Image.network(
                             avatarUrl,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) =>
+                            errorBuilder: (_, _, _) =>
                                 const _CompanyIconFallback(),
                           ),
                         )
@@ -894,8 +894,8 @@ class _SimilarPositions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Không có similar jobs API — hiển thị section header + empty state
-    // TODO: kết nối GET /jobs?tags=X&limit=3 khi backend hỗ trợ filter by tag
+    // App-only similar jobs area: keep a clear empty state until this screen
+    // receives a list of related jobs from its caller.
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
       child: Column(

@@ -59,7 +59,7 @@ class HomeHotJobsSection extends ConsumerWidget {
           height: 230,
           child: quickJobsAsync.when(
             loading: () => const _HotJobsShimmer(),
-            error: (_, __) => _HotJobsError(
+            error: (_, _) => _HotJobsError(
               onRetry: () => ref.invalidate(activeQuickJobsProvider),
             ),
             data: (jobs) {
@@ -68,7 +68,7 @@ class HomeHotJobsSection extends ConsumerWidget {
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 itemCount: jobs.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 12),
+                separatorBuilder: (_, _) => const SizedBox(width: 12),
                 itemBuilder: (_, i) =>
                     _HotJobCard(job: jobs[i], onTap: () => onJobTap(jobs[i])),
               );
@@ -265,7 +265,7 @@ class _CompanyLogo extends StatelessWidget {
               child: Image.network(
                 logoUrl!,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => const _LogoFallback(),
+                errorBuilder: (_, _, _) => const _LogoFallback(),
               ),
             )
           : const _LogoFallback(),
@@ -297,8 +297,8 @@ class _HotJobsShimmer extends StatelessWidget {
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.symmetric(horizontal: 16),
       itemCount: 3,
-      separatorBuilder: (_, __) => const SizedBox(width: 12),
-      itemBuilder: (_, __) => Container(
+      separatorBuilder: (_, _) => const SizedBox(width: 12),
+      itemBuilder: (_, _) => Container(
         width: 220,
         decoration: BoxDecoration(
           color: const Color(0xFFF3F4F6),

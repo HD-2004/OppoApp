@@ -1,4 +1,4 @@
-package com.example.oppo_temp_jobs
+package com.oppo.tempjobs
 
 import io.flutter.embedding.android.FlutterActivity
 

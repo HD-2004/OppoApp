@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/localization/app_localizations.dart';
+import '../../../core/preferences/app_preferences.dart';
 
 class DeleteAccountRequestScreen extends StatefulWidget {
   const DeleteAccountRequestScreen({super.key});
@@ -21,7 +23,7 @@ class _DeleteAccountRequestScreenState
     super.dispose();
   }
 
-  void _submitRequest() {
+  Future<void> _submitRequest() async {
     final strings = AppLocalizations.of(context);
     final reason = _reasonController.text.trim();
     if (reason.isEmpty) {
@@ -46,7 +48,18 @@ class _DeleteAccountRequestScreenState
       return;
     }
 
-    // TODO: Save delete account request to DynamoDB/Admin review system later.
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setString(
+      AppPreferenceKeys.deleteAccountRequestReason,
+      reason,
+    );
+    await preferences.setString(
+      AppPreferenceKeys.deleteAccountRequestSubmittedAt,
+      DateTime.now().toIso8601String(),
+    );
+    if (!mounted) {
+      return;
+    }
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(strings.text('deleteAccountRequestSubmitted'))),
     );
@@ -97,7 +110,7 @@ class _DeleteAccountRequestScreenState
             ),
             const SizedBox(height: 16),
             FilledButton(
-              onPressed: _submitRequest,
+              onPressed: () => _submitRequest(),
               child: Text(strings.submitRequest),
             ),
           ],

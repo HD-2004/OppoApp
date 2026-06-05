@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../candidate/domain/job_post.dart';
 
-/// Trạng thái hội thoại — derive từ job data hoặc message metadata.
-/// TODO: map từ conversation.status khi backend chat sẵn sàng.
+/// Trạng thái hội thoại derive từ job data trong app-only messaging shell.
 enum ConversationStatus {
   none,
   interview, // Phỏng vấn lúc...
@@ -33,10 +32,10 @@ class ConversationTile extends StatelessWidget {
   final bool isOnline;
   final bool isUnread;
 
-  /// TODO: map từ conversation.lastMessage.text khi backend có
+  /// Optional preview supplied by the caller; falls back to job-derived text.
   final String? lastMessage;
 
-  /// TODO: map từ conversation.lastMessage.createdAt
+  /// Optional message timestamp supplied by the caller; falls back to job date.
   final DateTime? lastMessageTime;
 
   @override
@@ -334,7 +333,7 @@ class _CompanyAvatar extends StatelessWidget {
               child: Image.network(
                 logoUrl!,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => _Initials(name: name),
+                errorBuilder: (_, _, _) => _Initials(name: name),
               ),
             )
           : _Initials(name: name),

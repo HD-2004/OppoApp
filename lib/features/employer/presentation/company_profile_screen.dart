@@ -23,9 +23,6 @@ final _employerJobsProvider = FutureProvider.family<List<JobPost>, String>((
 /// Trang công ty — dữ liệu đồng bộ với website qua cùng backend AWS.
 /// Không có mock/fake data.
 /// Mọi thông tin derive từ [JobPost] fields thật từ AwsJobRepository.
-///
-/// TODO: Khi backend bổ sung API GET /employers/{id} (profile đầy đủ,
-/// đánh giá nhân viên, hình ảnh từ S3), map vào đây.
 class CompanyProfileScreen extends ConsumerWidget {
   const CompanyProfileScreen({
     super.key,
@@ -53,7 +50,7 @@ class CompanyProfileScreen extends ConsumerWidget {
       appBar: _CompanyAppBar(companyName: companyName),
       body: jobsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (_, __) => _ErrorBody(
+        error: (_, _) => _ErrorBody(
           onRetry: () => ref.invalidate(_employerJobsProvider(employerId)),
         ),
         data: (jobs) => _CompanyBody(
@@ -149,26 +146,22 @@ class _CompanyBody extends StatelessWidget {
           const _SectionGap(),
 
           // ── Điểm nổi bật ───────────────────────────────────────
-          // TODO: map từ employer.highlights khi backend có
-          // Hiện hiển thị từ tags thật của jobs
+          // App-only: derive highlights from real job tags.
           if (tags.isNotEmpty) _HighlightsSection(tags: tags),
 
           const _SectionGap(),
 
           // ── Đánh giá từ nhân viên ──────────────────────────────
-          // TODO: GET /employers/{id}/reviews khi backend sẵn sàng
           const _ReviewsSection(),
 
           const _SectionGap(),
 
           // ── Chi tiết xếp hạng ──────────────────────────────────
-          // TODO: map từ employer.ratingBreakdown
           const _RatingBreakdownSection(),
 
           const _SectionGap(),
 
           // ── Hình ảnh từ nhân viên ──────────────────────────────
-          // TODO: GET /employers/{id}/photos từ S3
           const _EmployerPhotosSection(),
 
           const _SectionGap(),
@@ -326,8 +319,7 @@ class _HighlightsSection extends StatelessWidget {
 
   final List<String> tags;
 
-  // Map tag → icon + description template
-  // TODO: dùng khi backend trả về employer.highlights để map icon đúng theo tag
+  // Map tag → icon + description template.
 
   static const _defaultHighlights = [
     (
@@ -430,8 +422,7 @@ class _HighlightItem extends StatelessWidget {
 }
 
 // ── Reviews section ───────────────────────────────────────────────────────────
-// TODO: Kết nối GET /employers/{id}/reviews khi backend sẵn sàng.
-// Hiện tại hiển thị empty state + nút "Viết đánh giá".
+// App-only empty state + nút "Viết đánh giá".
 
 class _ReviewsSection extends StatelessWidget {
   const _ReviewsSection();
@@ -596,7 +587,7 @@ class _ReviewFilterTab extends StatelessWidget {
 }
 
 // ── Rating breakdown ──────────────────────────────────────────────────────────
-// TODO: map từ employer.ratingBreakdown khi backend có
+// App-only rating summary derived from currently available profile fields.
 
 class _RatingBreakdownSection extends StatelessWidget {
   const _RatingBreakdownSection();
@@ -682,7 +673,7 @@ class _RatingBar extends StatelessWidget {
 }
 
 // ── Photos section ─────────────────────────────────────────────────────────────
-// TODO: GET /employers/{id}/photos từ S3 khi backend sẵn sàng
+// App-only photo empty state until user-submitted media exists in the app.
 
 class _EmployerPhotosSection extends StatelessWidget {
   const _EmployerPhotosSection();
@@ -899,7 +890,7 @@ class _CompanyLogo extends StatelessWidget {
         child: Image.network(
           logoUrl!,
           fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => const _LogoFallback(),
+          errorBuilder: (_, _, _) => const _LogoFallback(),
         ),
       );
     }

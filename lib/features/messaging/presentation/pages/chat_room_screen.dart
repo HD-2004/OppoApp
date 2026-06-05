@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../candidate/domain/job_post.dart';
 
-/// Chat room screen — UI shell.
-/// TODO: Implement real-time messaging với AWS AppSync WebSocket subscriptions.
+/// Chat room screen — app-only messaging shell.
 class ChatRoomScreen extends StatefulWidget {
   const ChatRoomScreen({super.key, required this.employer});
 
@@ -33,11 +32,7 @@ class _ChatRoomScreenState extends State<ChatRoomScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FC),
-      appBar: _ChatAppBar(
-        name: _name,
-        avatarUrl: _avatarUrl,
-        isOnline: true, // TODO: map từ employer.isOnline
-      ),
+      appBar: _ChatAppBar(name: _name, avatarUrl: _avatarUrl, isOnline: true),
       body: Column(
         children: [
           // ── Messages area ─────────────────────────────────────
@@ -102,7 +97,7 @@ class _ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                         child: Image.network(
                           avatarUrl,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) =>
+                          errorBuilder: (_, _, _) =>
                               _AvatarFallback(name: name),
                         ),
                       )
@@ -233,7 +228,7 @@ class _MessagesArea extends StatelessWidget {
               ),
               const SizedBox(height: 20),
 
-              // TODO badge
+              // In-development badge
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12,

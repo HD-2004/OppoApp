@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
 /// "Danh mục phổ biến" — dạng Instagram Stories:
-/// Hàng ngang scroll, mỗi item là circle có viền gradient + ảnh (từ S3 khi có)
+/// Hàng ngang scroll, mỗi item là circle có viền gradient + ảnh khi có
 /// + label + count bên dưới.
 ///
-/// TODO: Khi backend bổ sung field `category.imageUrl` (S3 URL) thì truyền vào
-/// [imageUrl] của mỗi category. Hiện tại fallback về placeholder emoji + màu.
+/// App-only behavior: category items accept [imageUrl] when callers have one,
+/// otherwise they render a stable placeholder emoji + color.
 class SearchCategoryGrid extends StatelessWidget {
   const SearchCategoryGrid({
     super.key,
@@ -43,7 +43,7 @@ class SearchCategoryGrid extends StatelessWidget {
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
             itemCount: categories.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 16),
+            separatorBuilder: (_, _) => const SizedBox(width: 16),
             itemBuilder: (_, i) {
               final cat = categories[i];
               return _StoryItem(
@@ -209,8 +209,7 @@ class _CircleContent extends StatelessWidget {
         fit: BoxFit.cover,
         width: double.infinity,
         height: double.infinity,
-        errorBuilder: (_, __, ___) =>
-            _Placeholder(emoji: emoji, bgColor: bgColor),
+        errorBuilder: (_, _, _) => _Placeholder(emoji: emoji, bgColor: bgColor),
       );
     }
     return _Placeholder(emoji: emoji, bgColor: bgColor);

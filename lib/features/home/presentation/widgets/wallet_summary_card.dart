@@ -17,7 +17,7 @@ class WalletSummaryCard extends ConsumerWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: walletAsync.when(
         loading: () => const _WalletCardSkeleton(),
-        error: (_, __) => _WalletCardContent(
+        error: (_, _) => _WalletCardContent(
           balance: null,
           canWithdraw: false,
           onWithdrawTap: onWithdrawTap,

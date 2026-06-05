@@ -13,17 +13,21 @@ import '../../domain/repositories/wallet_repository.dart';
 class ApiWalletRepository implements WalletRepository {
   ApiWalletRepository();
 
-  static const _profileBaseUrl = 'https://sd7ds72m8g.execute-api.ap-southeast-1.amazonaws.com/prod';
-  static const _applicationsBaseUrl = 'https://l1636ie205.execute-api.ap-southeast-1.amazonaws.com';
-  static const _quickJobsBaseUrl = 'https://6zw89pkuxb.execute-api.ap-southeast-1.amazonaws.com/prod';
-  static const _notificationsBaseUrl = 'https://iuo7ofruu6.execute-api.ap-southeast-1.amazonaws.com';
+  static const _profileBaseUrl =
+      'https://sd7ds72m8g.execute-api.ap-southeast-1.amazonaws.com/prod';
+  static const _applicationsBaseUrl =
+      'https://l1636ie205.execute-api.ap-southeast-1.amazonaws.com';
+  static const _quickJobsBaseUrl =
+      'https://6zw89pkuxb.execute-api.ap-southeast-1.amazonaws.com/prod';
+  static const _notificationsBaseUrl =
+      'https://iuo7ofruu6.execute-api.ap-southeast-1.amazonaws.com';
 
   // In-memory cache to prevent duplicate HTTP requests in parallel _load calls
   Map<String, dynamic>? _cachedProfile;
   List<dynamic>? _cachedApps;
   List<dynamic>? _cachedJobs;
   DateTime? _lastCacheTime;
-  
+
   static const _cacheDuration = Duration(seconds: 5);
 
   Future<String?> _getAuthToken() async {
@@ -61,7 +65,10 @@ class ApiWalletRepository implements WalletRepository {
     };
   }
 
-  Future<Map<String, dynamic>?> _fetchProfile(String userId, String? token) async {
+  Future<Map<String, dynamic>?> _fetchProfile(
+    String userId,
+    String? token,
+  ) async {
     try {
       final response = await http.get(
         Uri.parse('$_profileBaseUrl/profile/$userId'),
@@ -131,14 +138,20 @@ class ApiWalletRepository implements WalletRepository {
     return [];
   }
 
-  Future<void> _updateProfileFields(String userId, String? token, Map<String, dynamic> updates) async {
+  Future<void> _updateProfileFields(
+    String userId,
+    String? token,
+    Map<String, dynamic> updates,
+  ) async {
     final response = await http.put(
       Uri.parse('$_profileBaseUrl/profile/$userId'),
       headers: _buildHeaders(token),
       body: jsonEncode(updates),
     );
     if (response.statusCode != 200) {
-      throw Exception('Failed to update profile fields: ${response.statusCode} ${response.body}');
+      throw Exception(
+        'Failed to update profile fields: ${response.statusCode} ${response.body}',
+      );
     }
   }
 
@@ -229,7 +242,10 @@ class ApiWalletRepository implements WalletRepository {
         final jobId = app['jobId']?.toString();
         // Find matching job
         final job = quickJobs.firstWhere(
-          (j) => j['idJob']?.toString() == jobId || j['id']?.toString() == jobId || j['jobID']?.toString() == jobId,
+          (j) =>
+              j['idJob']?.toString() == jobId ||
+              j['id']?.toString() == jobId ||
+              j['jobID']?.toString() == jobId,
           orElse: () => null,
         );
 
@@ -238,20 +254,31 @@ class ApiWalletRepository implements WalletRepository {
         String jobTitle = 'Công việc tuyển gấp';
 
         if (job != null) {
-          totalSalary = double.tryParse(job['totalSalary']?.toString() ?? '') ?? 0;
+          totalSalary =
+              double.tryParse(job['totalSalary']?.toString() ?? '') ?? 0;
           if (totalSalary == 0) {
-            final hourlyRate = double.tryParse(job['hourlyRate']?.toString() ?? '') ?? 0;
-            final totalHours = double.tryParse(job['totalHours']?.toString() ?? '') ?? 0;
+            final hourlyRate =
+                double.tryParse(job['hourlyRate']?.toString() ?? '') ?? 0;
+            final totalHours =
+                double.tryParse(job['totalHours']?.toString() ?? '') ?? 0;
             totalSalary = hourlyRate * totalHours;
           }
-          companyName = job['companyName']?.toString() ?? job['employerName']?.toString() ?? 'Nhà tuyển dụng';
+          companyName =
+              job['companyName']?.toString() ??
+              job['employerName']?.toString() ??
+              'Nhà tuyển dụng';
           jobTitle = job['title']?.toString() ?? 'Công việc tuyển gấp';
         }
 
         final candidateAmount = (totalSalary * 0.85).roundToDouble();
         if (candidateAmount > 0) {
-          final confirmedAtStr = app['candidateConfirmedAt']?.toString() ?? app['updatedAt']?.toString() ?? app['createdAt']?.toString();
-          final date = confirmedAtStr != null ? DateTime.tryParse(confirmedAtStr) ?? DateTime.now() : DateTime.now();
+          final confirmedAtStr =
+              app['candidateConfirmedAt']?.toString() ??
+              app['updatedAt']?.toString() ??
+              app['createdAt']?.toString();
+          final date = confirmedAtStr != null
+              ? DateTime.tryParse(confirmedAtStr) ?? DateTime.now()
+              : DateTime.now();
 
           incomeTransactions.add(
             WalletTransaction(
@@ -270,7 +297,8 @@ class ApiWalletRepository implements WalletRepository {
 
     // 2. Get withdrawal transactions from database candidate profile
     final List<WalletTransaction> withdrawalTransactions = [];
-    final List<dynamic> savedWithdrawals = profile?['withdrawals'] as List<dynamic>? ?? [];
+    final List<dynamic> savedWithdrawals =
+        profile?['withdrawals'] as List<dynamic>? ?? [];
 
     for (final w in savedWithdrawals) {
       final map = w as Map<String, dynamic>;
@@ -278,9 +306,10 @@ class ApiWalletRepository implements WalletRepository {
       final double amount = (map['amount'] as num?)?.toDouble() ?? 0;
       final String bankName = map['bankName']?.toString() ?? '';
       final String accountNumber = map['accountNumber']?.toString() ?? '';
-      final String dateStr = map['date']?.toString() ?? DateTime.now().toIso8601String();
+      final String dateStr =
+          map['date']?.toString() ?? DateTime.now().toIso8601String();
       final DateTime date = DateTime.tryParse(dateStr) ?? DateTime.now();
-      
+
       final String statusStr = map['status']?.toString() ?? 'pending';
       final WalletTransactionStatus status = _parseStatus(statusStr);
 
@@ -313,7 +342,10 @@ class ApiWalletRepository implements WalletRepository {
     }
 
     // Combine and sort
-    final List<WalletTransaction> mergedTx = [...incomeTransactions, ...withdrawalTransactions];
+    final List<WalletTransaction> mergedTx = [
+      ...incomeTransactions,
+      ...withdrawalTransactions,
+    ];
     mergedTx.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
     // Calculate balances
@@ -391,7 +423,8 @@ class ApiWalletRepository implements WalletRepository {
       final linkedBank = profile['linkedBankAccount'] as Map<String, dynamic>;
       final bankName = linkedBank['bankName']?.toString() ?? '';
       final accountNumber = linkedBank['accountNumber']?.toString() ?? '';
-      final accountHolderName = linkedBank['accountHolderName']?.toString() ?? '';
+      final accountHolderName =
+          linkedBank['accountHolderName']?.toString() ?? '';
       final branch = linkedBank['branch']?.toString();
 
       return LinkedBankAccount(
@@ -423,12 +456,10 @@ class ApiWalletRepository implements WalletRepository {
       'bankName': bankName,
       'accountHolderName': accountHolderName.toUpperCase(),
       'accountNumber': accountNumber,
-      if (branch != null) 'branch': branch,
+      'branch': ?branch,
     };
 
-    await _updateProfileFields(userId, token, {
-      'linkedBankAccount': bankInfo,
-    });
+    await _updateProfileFields(userId, token, {'linkedBankAccount': bankInfo});
 
     _invalidateCache();
 
@@ -450,9 +481,7 @@ class ApiWalletRepository implements WalletRepository {
       throw Exception('User not authenticated');
     }
 
-    await _updateProfileFields(userId, token, {
-      'linkedBankAccount': null,
-    });
+    await _updateProfileFields(userId, token, {'linkedBankAccount': null});
 
     _invalidateCache();
   }
@@ -505,8 +534,10 @@ class ApiWalletRepository implements WalletRepository {
       'type': 'candidate_withdrawal_request',
       'title': 'Yêu cầu rút tiền từ ứng viên',
       'titleEn': 'New Candidate Withdrawal Request',
-      'message': '${profile['fullName'] ?? 'Ứng viên'} yêu cầu rút số tiền ${amount.round()} VND về ngân hàng $bankName.',
-      'messageEn': '${profile['fullName'] ?? 'Ứng viên'} requested to withdraw ${amount.round()} VND to bank $bankName.',
+      'message':
+          '${profile['fullName'] ?? 'Ứng viên'} yêu cầu rút số tiền ${amount.round()} VND về ngân hàng $bankName.',
+      'messageEn':
+          '${profile['fullName'] ?? 'Ứng viên'} requested to withdraw ${amount.round()} VND to bank $bankName.',
       'recipientId': 'admin',
       'recipientRole': 'admin',
       'senderId': userId,
@@ -545,7 +576,8 @@ class ApiWalletRepository implements WalletRepository {
   @override
   Future<RevenueStatistics> getRevenueStatistics() async {
     final data = await _getCalculatedData();
-    final incomeTransactions = data['incomeTransactions'] as List<WalletTransaction>;
+    final incomeTransactions =
+        data['incomeTransactions'] as List<WalletTransaction>;
     final wallet = data['wallet'] as WalletOverview;
 
     final now = DateTime.now();
@@ -565,7 +597,9 @@ class ApiWalletRepository implements WalletRepository {
     }
 
     final completedShifts = incomeTransactions.length;
-    final averageIncome = completedShifts > 0 ? wallet.totalEarnings / completedShifts : 0.0;
+    final averageIncome = completedShifts > 0
+        ? wallet.totalEarnings / completedShifts
+        : 0.0;
 
     return RevenueStatistics(
       thisWeekIncome: thisWeekIncome,
@@ -575,4 +609,3 @@ class ApiWalletRepository implements WalletRepository {
     );
   }
 }
-

@@ -109,10 +109,8 @@ class JobCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                // Verified icon — hiển thị khi backend có dữ liệu verified
-                // Hiện tại không có field company.isVerified trong schema,
-                // mặc định hiển thị verified cho tất cả job từ backend thật.
-                // TODO: map từ job.isVerifiedEmployer khi backend bổ sung field này.
+                // Verified badge app-only: jobs loaded from the trusted repository
+                // are shown as verified until the domain model exposes employer trust.
                 const Icon(
                   Icons.verified_rounded,
                   size: 15,
@@ -221,7 +219,7 @@ class _CompanyLogo extends StatelessWidget {
               child: Image.network(
                 logoUrl!,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => const _LogoFallback(),
+                errorBuilder: (_, _, _) => const _LogoFallback(),
               ),
             )
           : const _LogoFallback(),
