@@ -23,8 +23,6 @@ import '../features/urgent_jobs/presentation/shift_detail_screen.dart';
 import '../shared/domain/app_role.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
-  ref.watch(authControllerProvider);
-
   final router = GoRouter(
     initialLocation: '/intro',
     redirect: (context, state) {
