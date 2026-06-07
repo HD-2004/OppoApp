@@ -178,4 +178,24 @@ class AuthRepository {
       savedJobs: savedJobs,
     );
   }
+
+  Future<AuthUserProfile> submitVerificationRequest({
+    required String userId,
+  }) {
+    return _userProfileRepository.submitVerificationRequest(userId: userId);
+  }
+
+  Future<AuthUserProfile> updateAvailability({
+    required String userId,
+    required bool isActive,
+    double? latitude,
+    double? longitude,
+  }) {
+    return _userProfileRepository.updateAvailability(
+      userId: userId,
+      isActive: isActive,
+      latitude: latitude,
+      longitude: longitude,
+    );
+  }
 }

@@ -47,6 +47,17 @@ abstract class UserProfileRepository {
     String? profileImage,
     List<String>? savedJobs,
   });
+
+  Future<AuthUserProfile> submitVerificationRequest({
+    required String userId,
+  });
+
+  Future<AuthUserProfile> updateAvailability({
+    required String userId,
+    required bool isActive,
+    double? latitude,
+    double? longitude,
+  });
 }
 
 class InMemoryUserProfileRepository implements UserProfileRepository {
@@ -109,6 +120,8 @@ class InMemoryUserProfileRepository implements UserProfileRepository {
       employerStatus: resolvedRole == AppRole.employer
           ? EmployerStatus.pendingReview
           : null,
+      verificationStatus: 'PENDING',
+      isActive: false,
       createdAt: now,
       updatedAt: now,
     );
@@ -158,6 +171,37 @@ class InMemoryUserProfileRepository implements UserProfileRepository {
       profileImage: profileImage,
       savedJobs: savedJobs,
       profileCompleted: completed,
+      updatedAt: DateTime.now(),
+    );
+    _profilesByUserId[userId] = updated;
+    return updated;
+  }
+
+  @override
+  Future<AuthUserProfile> submitVerificationRequest({
+    required String userId,
+  }) async {
+    final profile = _requireProfile(userId);
+    final updated = profile.copyWith(
+      verificationStatus: 'SUBMITTED',
+      updatedAt: DateTime.now(),
+    );
+    _profilesByUserId[userId] = updated;
+    return updated;
+  }
+
+  @override
+  Future<AuthUserProfile> updateAvailability({
+    required String userId,
+    required bool isActive,
+    double? latitude,
+    double? longitude,
+  }) async {
+    final profile = _requireProfile(userId);
+    final updated = profile.copyWith(
+      isActive: isActive,
+      latitude: latitude,
+      longitude: longitude,
       updatedAt: DateTime.now(),
     );
     _profilesByUserId[userId] = updated;

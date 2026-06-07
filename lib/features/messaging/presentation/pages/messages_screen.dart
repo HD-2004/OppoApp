@@ -3,11 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../candidate/application/jobs_providers.dart';
 import '../../../candidate/domain/job_post.dart';
+import '../../application/messaging_providers.dart';
+import '../../domain/candidate_application.dart';
 import '../widgets/conversation_tile.dart';
 import 'chat_room_screen.dart';
 
-/// Màn hình danh sách tin nhắn.
-/// Conversation list derive từ employers của jobs thật — không mock data.
+/// Màn hình danh sách tin nhắn của Candidate.
+/// Dữ liệu được đồng bộ trực tiếp từ DynamoDB thông qua API & Lambda dùng chung với web.
 class MessagesScreen extends ConsumerStatefulWidget {
   const MessagesScreen({super.key});
 
@@ -18,6 +20,7 @@ class MessagesScreen extends ConsumerStatefulWidget {
 class _MessagesScreenState extends ConsumerState<MessagesScreen> {
   final _searchController = TextEditingController();
   String _keyword = '';
+  int _selectedTabIndex = 0;
 
   @override
   void dispose() {
@@ -27,6 +30,7 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final chatsAsync = ref.watch(candidateChatsProvider);
     final standardAsync = ref.watch(activeJobsProvider);
     final quickAsync = ref.watch(activeQuickJobsProvider);
 
@@ -52,21 +56,25 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
           ),
 
           // ── Filter tabs ────────────────────────────────────────────
-          const _FilterTabs(),
+          _FilterTabs(
+            selectedIndex: _selectedTabIndex,
+            onTabSelected: (idx) => setState(() => _selectedTabIndex = idx),
+          ),
 
           // ── List ───────────────────────────────────────────────────
           Expanded(
-            child: standardAsync.when(
+            child: chatsAsync.when(
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (_, _) => const _EmptyState(
+              error: (err, _) => const _EmptyState(
                 icon: Icons.wifi_off_rounded,
                 message: 'Không tải được danh sách tin nhắn.',
                 showRetryHint: true,
               ),
-              data: (standard) => quickAsync.when(
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (_, _) => _buildList(context, standard),
-                data: (quick) => _buildList(context, [...standard, ...quick]),
+              data: (chats) => _buildList(
+                context,
+                chats,
+                standardAsync.value ?? [],
+                quickAsync.value ?? [],
               ),
             ),
           ),
@@ -75,61 +83,113 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
     );
   }
 
-  Widget _buildList(BuildContext context, List<JobPost> all) {
-    // Group by employerId — 1 employer = 1 conversation
-    final seen = <String>{};
-    var employers = <JobPost>[];
-    for (final job in all) {
-      if (job.employerId.isNotEmpty && seen.add(job.employerId)) {
-        employers.add(job);
-      }
-    }
+  Widget _buildList(
+    BuildContext context,
+    List<CandidateApplication> chats,
+    List<JobPost> standardJobs,
+    List<JobPost> quickJobs,
+  ) {
+    // 1. Filter out conversations without clear Employer name
+    var filteredChats = chats.where((c) {
+      final name = c.employerName.trim();
+      return name.isNotEmpty &&
+          name != '?' &&
+          name.toLowerCase() != 'null' &&
+          name.toLowerCase() != 'unknown' &&
+          name.toLowerCase() != 'anonymous';
+    }).toList();
 
-    // Keyword filter
+    // 2. Keyword filter
     if (_keyword.trim().isNotEmpty) {
       final kw = _keyword.toLowerCase();
-      employers = employers
-          .where(
-            (j) =>
-                (j.companyName ?? j.employerName).toLowerCase().contains(kw) ||
-                j.title.toLowerCase().contains(kw),
-          )
+      filteredChats = filteredChats
+          .where((c) =>
+              c.employerName.toLowerCase().contains(kw) ||
+              c.jobTitle.toLowerCase().contains(kw))
           .toList();
     }
 
-    if (employers.isEmpty) {
+    // 3. Tab filter
+    if (_selectedTabIndex == 1) {
+      // Unread
+      filteredChats = filteredChats
+          .where((c) => ref.read(candidateChatsProvider.notifier).isUnread(c))
+          .toList();
+    } else if (_selectedTabIndex == 2) {
+      // Đã nhận việc / Completed
+      filteredChats = filteredChats.where((c) => c.status == 'completed').toList();
+    }
+
+    if (filteredChats.isEmpty) {
       return const _EmptyState(
         icon: Icons.chat_bubble_outline_rounded,
-        message: 'Bạn chưa có cuộc trò chuyện nào.\nỨng tuyển để bắt đầu!',
+        message: 'Bạn chưa có cuộc trò chuyện nào trong mục này.',
       );
     }
 
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      itemCount: employers.length,
+      itemCount: filteredChats.length,
       itemBuilder: (_, i) {
-        final job = employers[i];
-        // Derive conversation status từ jobType / tags thật
-        final status = _deriveStatus(job, i);
+        final chat = filteredChats[i];
+
+        // Tìm JobPost tương thích để lấy các metadata (như logo)
+        JobPost? resolvedJob;
+        for (final job in [...standardJobs, ...quickJobs]) {
+          if (job.idJob == chat.jobId || job.id == chat.jobId) {
+            resolvedJob = job;
+            break;
+          }
+        }
+
+        // Tạo fallback JobPost nếu không tìm thấy trong list active jobs
+        final job = resolvedJob ??
+            JobPost(
+              id: chat.jobId,
+              idJob: chat.jobId,
+              employerId: chat.employerId,
+              employerName: chat.employerName,
+              title: chat.jobTitle,
+              jobType: chat.jobType == 'quick' ? JobPostType.urgent : JobPostType.partTime,
+              location: '',
+              salary: '',
+              shiftTime: '',
+              description: '',
+              tags: const [],
+              postedAt: chat.appliedAt,
+              isQuickJob: chat.jobType == 'quick',
+            );
+
+        final isUnread = ref.read(candidateChatsProvider.notifier).isUnread(chat);
+        final lastMsg = chat.chatMessages.isNotEmpty ? chat.chatMessages.last : null;
+        final previewText = lastMsg != null
+            ? (lastMsg.sender == 'them' ? 'Bạn: ${lastMsg.text}' : lastMsg.text)
+            : 'Bắt đầu cuộc trò chuyện...';
+
+        final status = chat.status == 'completed'
+            ? ConversationStatus.hired
+            : ConversationStatus.none;
+
         return ConversationTile(
           job: job,
           status: status,
           isOnline: i == 0,
-          isUnread: i < 2,
+          isUnread: isUnread,
+          lastMessage: previewText,
+          lastMessageTime: lastMsg != null
+              ? DateTime.fromMillisecondsSinceEpoch(lastMsg.id)
+              : chat.updatedAt,
           onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => ChatRoomScreen(employer: job)),
+            MaterialPageRoute(
+              builder: (_) => ChatRoomScreen(
+                applicationId: chat.applicationId,
+                employer: job,
+              ),
+            ),
           ),
         );
       },
     );
-  }
-
-  /// Derive trạng thái hội thoại từ dữ liệu job thật.
-  ConversationStatus _deriveStatus(JobPost job, int index) {
-    if (job.isQuickJob) return ConversationStatus.newMessage;
-    if (job.jobType == JobPostType.fullTime) return ConversationStatus.hired;
-    if (job.jobType == JobPostType.partTime) return ConversationStatus.pending;
-    return ConversationStatus.none;
   }
 }
 
@@ -238,7 +298,13 @@ class _SearchBar extends StatelessWidget {
 // ── Filter tabs ───────────────────────────────────────────────────────────────
 
 class _FilterTabs extends StatelessWidget {
-  const _FilterTabs();
+  const _FilterTabs({
+    required this.selectedIndex,
+    required this.onTabSelected,
+  });
+
+  final int selectedIndex;
+  final ValueChanged<int> onTabSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -247,13 +313,23 @@ class _FilterTabs extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
       child: Row(
         children: [
-          _Tab(label: 'Tất cả', isActive: true),
+          _Tab(
+            label: 'Tất cả',
+            isActive: selectedIndex == 0,
+            onTap: () => onTabSelected(0),
+          ),
           const SizedBox(width: 8),
-          _Tab(label: 'Chưa đọc'),
+          _Tab(
+            label: 'Chưa đọc',
+            isActive: selectedIndex == 1,
+            onTap: () => onTabSelected(1),
+          ),
           const SizedBox(width: 8),
-          _Tab(label: 'Phỏng vấn'),
-          const SizedBox(width: 8),
-          _Tab(label: 'Đã nhận việc'),
+          _Tab(
+            label: 'Đã nhận việc',
+            isActive: selectedIndex == 2,
+            onTap: () => onTabSelected(2),
+          ),
         ],
       ),
     );
@@ -261,28 +337,36 @@ class _FilterTabs extends StatelessWidget {
 }
 
 class _Tab extends StatelessWidget {
-  const _Tab({required this.label, this.isActive = false});
+  const _Tab({
+    required this.label,
+    required this.onTap,
+    this.isActive = false,
+  });
 
   final String label;
+  final VoidCallback onTap;
   final bool isActive;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-      decoration: BoxDecoration(
-        color: isActive ? const Color(0xFF1E3A8A) : Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isActive ? const Color(0xFF1E3A8A) : const Color(0xFFE5E7EB),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+        decoration: BoxDecoration(
+          color: isActive ? const Color(0xFF1E3A8A) : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isActive ? const Color(0xFF1E3A8A) : const Color(0xFFE5E7EB),
+          ),
         ),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          color: isActive ? Colors.white : const Color(0xFF374151),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: isActive ? Colors.white : const Color(0xFF374151),
+          ),
         ),
       ),
     );

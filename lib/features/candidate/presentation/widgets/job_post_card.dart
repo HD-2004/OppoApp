@@ -9,6 +9,7 @@ class JobPostCard extends StatelessWidget {
     required this.onSaveToggle,
     required this.onDetailsPressed,
     required this.onApplyPressed,
+    this.distance,
   });
 
   final JobPost job;
@@ -16,6 +17,7 @@ class JobPostCard extends StatelessWidget {
   final VoidCallback onSaveToggle;
   final VoidCallback onDetailsPressed;
   final VoidCallback onApplyPressed;
+  final double? distance;
 
   String _postedTimeLabel(DateTime postedAt) {
     final diff = DateTime.now().difference(postedAt);
@@ -193,7 +195,9 @@ class JobPostCard extends StatelessWidget {
                   // Location
                   _InfoRow(
                     icon: Icons.location_on_outlined,
-                    text: job.location,
+                    text: distance != null
+                        ? '${job.location} • cách ${distance!.toStringAsFixed(1)} km'
+                        : job.location,
                   ),
                   const SizedBox(height: 8),
 

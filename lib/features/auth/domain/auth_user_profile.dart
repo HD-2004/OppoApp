@@ -56,6 +56,10 @@ class AuthUserProfile {
     this.savedJobs,
     this.createdAt,
     this.updatedAt,
+    this.verificationStatus,
+    this.isActive = false,
+    this.latitude,
+    this.longitude,
   });
 
   final String userId;
@@ -77,6 +81,10 @@ class AuthUserProfile {
   final List<String>? savedJobs;
   final DateTime? createdAt;
   final DateTime? updatedAt;
+  final String? verificationStatus;
+  final bool isActive;
+  final double? latitude;
+  final double? longitude;
 
   bool get isEmployerApproved {
     return role == AppRole.employer &&
@@ -113,6 +121,10 @@ class AuthUserProfile {
     List<String>? savedJobs,
     DateTime? createdAt,
     DateTime? updatedAt,
+    String? verificationStatus,
+    bool? isActive,
+    double? latitude,
+    double? longitude,
   }) {
     return AuthUserProfile(
       userId: userId ?? this.userId,
@@ -134,6 +146,10 @@ class AuthUserProfile {
       savedJobs: savedJobs ?? this.savedJobs,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      verificationStatus: verificationStatus ?? this.verificationStatus,
+      isActive: isActive ?? this.isActive,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
     );
   }
 }

@@ -1,12 +1,16 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/services/location_service.dart';
 import '../../auth/application/auth_controller.dart';
 import '../../auth/domain/auth_user_profile.dart';
 import '../application/jobs_providers.dart';
 import '../data/aws_application_repository.dart';
 import '../domain/job_post.dart';
+import 'quick_job_intro_page.dart';
 import 'user_job_detail_screen.dart';
+import 'widgets/availability_card.dart';
 import 'widgets/job_post_card.dart';
 
 class UserJobsScreen extends ConsumerStatefulWidget {
@@ -20,6 +24,8 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
   // Search & Filter state
   final TextEditingController _keywordController = TextEditingController();
   final TextEditingController _locationController = TextEditingController();
+
+  final Map<String, double> _jobDistances = {};
 
   String _searchKeyword = '';
   String _searchLocation = '';
@@ -57,17 +63,214 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
     return 0;
   }
 
+  double _calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+    const r = 6371; // Earth's radius in km
+    final dLat = (lat2 - lat1) * math.pi / 180;
+    final dLon = (lon2 - lon1) * math.pi / 180;
+    final a = math.sin(dLat / 2) * math.sin(dLat / 2) +
+        math.cos(lat1 * math.pi / 180) *
+            math.cos(lat2 * math.pi / 180) *
+            math.sin(dLon / 2) *
+            math.sin(dLon / 2);
+    final c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
+    return r * c;
+  }
+
+  Future<void> _enableAvailability() async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final coords = await LocationService.getCurrentLocation();
+      if (!mounted) return;
+      Navigator.of(context).pop(); // Dismiss loading
+
+      if (coords != null) {
+        await ref
+            .read(authControllerProvider.notifier)
+            .updateAvailability(true, latitude: coords.$1, longitude: coords.$2);
+      } else {
+        _showErrorDialog('Không thể lấy vị trí hiện tại. Vui lòng bật GPS và cấp quyền truy cập.');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.of(context).pop(); // Dismiss loading
+      _showErrorDialog(e.toString().replaceAll('Exception: ', ''));
+    }
+  }
+
+  Widget _buildEmptyPlaceholder(AuthUserProfile? user) {
+    final theme = Theme.of(context);
+    final textTheme = theme.textTheme;
+
+    if (_activeTab == 1) {
+      final status = user?.verificationStatus ?? 'PENDING';
+      final isApproved = status == 'APPROVED';
+      final isActive = user?.isActive == true;
+
+      if (!isApproved) {
+        if (status == 'SUBMITTED') {
+          return Column(
+            children: [
+              const Icon(Icons.access_time_filled_rounded, size: 48, color: Colors.amber),
+              const SizedBox(height: 12),
+              Text(
+                'Yêu cầu đang chờ duyệt',
+                textAlign: TextAlign.center,
+                style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Hệ thống đang kiểm duyệt hồ sơ của bạn. Thường mất 1–2 ngày làm việc.',
+                textAlign: TextAlign.center,
+              ),
+            ],
+          );
+        } else {
+          return Column(
+            children: [
+              const Icon(Icons.lock_outline, size: 48, color: Colors.grey),
+              const SizedBox(height: 12),
+              Text(
+                'Chưa kích hoạt Tuyển gấp',
+                textAlign: TextAlign.center,
+                style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Vui lòng gửi yêu cầu kích hoạt Công việc tuyển gấp và chờ admin duyệt.',
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const QuickJobIntroPage(),
+                    ),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF1E40AF),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: const Text('Tìm hiểu & Kích hoạt ngay'),
+              ),
+            ],
+          );
+        }
+      }
+
+      if (!isActive) {
+        return Column(
+          children: [
+            const Icon(Icons.lock_outline, size: 48, color: Colors.grey),
+            const SizedBox(height: 12),
+            Text(
+              'Bật trạng thái làm việc và vị trí để tìm công việc',
+              textAlign: TextAlign.center,
+              style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Vui lòng bật trạng thái làm việc ở phía trên để tìm các công việc tuyển gấp trong bán kính 3km.',
+              textAlign: TextAlign.center,
+            ),
+          ],
+        );
+      }
+
+      return Column(
+        children: [
+          const Icon(Icons.search, size: 48, color: Colors.grey),
+          const SizedBox(height: 12),
+          Text(
+            'Không tìm thấy công việc gần bạn',
+            textAlign: TextAlign.center,
+            style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Không có công việc tuyển gấp trong bán kính 3km. Thử lại sau hoặc di chuyển đến khu vực khác.',
+            textAlign: TextAlign.center,
+          ),
+        ],
+      );
+    }
+
+    // Default for standard / saved empty tab
+    return Column(
+      children: [
+        const Icon(
+          Icons.work_off_outlined,
+          size: 48,
+          color: Colors.grey,
+        ),
+        const SizedBox(height: 12),
+        Text(
+          'Không tìm thấy công việc nào phù hợp.',
+          style: textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 6),
+        const Text(
+          'Hãy thử thay đổi từ khóa hoặc bộ lọc của bạn.',
+        ),
+      ],
+    );
+  }
+
   // Filter logic
   List<JobPost> _getFilteredJobs(
     List<JobPost> allStandard,
     List<JobPost> allQuick,
     List<String> savedJobIds,
+    AuthUserProfile? user,
   ) {
     List<JobPost> baseList;
     if (_activeTab == 0) {
       baseList = allStandard;
     } else if (_activeTab == 1) {
-      baseList = allQuick;
+      final status = user?.verificationStatus ?? 'PENDING';
+      final isApproved = status == 'APPROVED';
+      final isActive = user?.isActive == true;
+
+      if (!isApproved || !isActive) {
+        return [];
+      }
+
+      final double? userLat = user?.latitude;
+      final double? userLng = user?.longitude;
+
+      if (userLat != null && userLng != null) {
+        baseList = [];
+        for (final job in allQuick) {
+          final double? jobLat = job.latitude;
+          final double? jobLng = job.longitude;
+          if (jobLat != null && jobLng != null) {
+            final distance = _calculateDistance(userLat, userLng, jobLat, jobLng);
+            if (distance <= 3.0) {
+              _jobDistances[job.id] = distance;
+              baseList.add(job);
+            }
+          }
+        }
+        // Sort closest first
+        baseList.sort((a, b) {
+          final distA = _jobDistances[a.id] ?? 9999.0;
+          final distB = _jobDistances[b.id] ?? 9999.0;
+          return distA.compareTo(distB);
+        });
+      } else {
+        baseList = [];
+      }
     } else {
       // Saved Jobs Tab - merges standard and quick jobs that match saved IDs
       baseList = [
@@ -412,6 +615,7 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
                   standardJobs,
                   quickJobs,
                   savedJobIds,
+                  user,
                 );
 
                 return SingleChildScrollView(
@@ -434,6 +638,26 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
+                            Row(
+                              children: [
+                                InkWell(
+                                  onTap: () => Navigator.of(context).pop(),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withValues(alpha: 0.15),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(
+                                      Icons.arrow_back,
+                                      color: Colors.white,
+                                      size: 20,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
                             Text(
                               'Tìm công việc mơ ước của bạn',
                               style: textTheme.headlineSmall?.copyWith(
@@ -556,7 +780,7 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
                               const SizedBox(width: 10),
                               _TabItem(
                                 label: 'Công việc Tuyển gấp',
-                                count: quickJobs.length,
+                                count: (user?.verificationStatus == 'APPROVED' && user?.isActive == true) ? filteredJobs.length : 0,
                                 isActive: _activeTab == 1,
                                 icon: Icons.flash_on_outlined,
                                 onTap: () => setState(() => _activeTab = 1),
@@ -573,6 +797,97 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
                           ),
                         ),
                       ),
+
+                      if (_activeTab == 1) ...[
+                        if (user?.verificationStatus != 'APPROVED')
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            child: Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF1E40AF),
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 36,
+                                    height: 36,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withValues(alpha: 0.2),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(Icons.security, color: Colors.white, size: 18),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          user?.verificationStatus == 'SUBMITTED'
+                                              ? 'Yêu cầu đang chờ admin duyệt...'
+                                              : 'Để sử dụng công việc tuyển gấp',
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          user?.verificationStatus == 'SUBMITTED'
+                                              ? 'Thường mất 1–2 ngày làm việc.'
+                                              : 'Nhấn vào đây để biết thêm chi tiết',
+                                          style: TextStyle(
+                                            color: Colors.white.withValues(alpha: 0.8),
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  if (user?.verificationStatus != 'SUBMITTED')
+                                    ElevatedButton(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.white,
+                                        foregroundColor: const Color(0xFF1E40AF),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                      ),
+                                      onPressed: () {
+                                        Navigator.of(context).push(
+                                          MaterialPageRoute(
+                                            builder: (_) => const QuickJobIntroPage(),
+                                          ),
+                                        );
+                                      },
+                                      child: const Text(
+                                        'Tìm hiểu ngay →',
+                                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          )
+                        else
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            child: AvailabilityCard(
+                              isAvailable: user?.isActive == true,
+                              onChanged: (val) {
+                                if (val) {
+                                  _enableAvailability();
+                                } else {
+                                  ref.read(authControllerProvider.notifier).updateAvailability(false);
+                                }
+                              },
+                            ),
+                          ),
+                      ],
 
                       // Filters section collapsible
                       Padding(
@@ -734,26 +1049,7 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
                             ? Container(
                                 padding: const EdgeInsets.all(32),
                                 alignment: Alignment.center,
-                                child: Column(
-                                  children: [
-                                    const Icon(
-                                      Icons.work_off_outlined,
-                                      size: 48,
-                                      color: Colors.grey,
-                                    ),
-                                    const SizedBox(height: 12),
-                                    Text(
-                                      'Không tìm thấy công việc nào phù hợp.',
-                                      style: textTheme.titleMedium?.copyWith(
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    const Text(
-                                      'Hãy thử thay đổi từ khóa hoặc bộ lọc của bạn.',
-                                    ),
-                                  ],
-                                ),
+                                child: _buildEmptyPlaceholder(user),
                               )
                             : _viewMode == 'list'
                             ? ListView.separated(
@@ -767,6 +1063,7 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
                                   return JobPostCard(
                                     job: job,
                                     isSaved: savedJobIds.contains(job.id),
+                                    distance: _jobDistances[job.id],
                                     onSaveToggle: () => ref
                                         .read(authControllerProvider.notifier)
                                         .toggleSavedJob(job.id),
@@ -792,6 +1089,7 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
                                   return JobPostCard(
                                     job: job,
                                     isSaved: savedJobIds.contains(job.id),
+                                    distance: _jobDistances[job.id],
                                     onSaveToggle: () => ref
                                         .read(authControllerProvider.notifier)
                                         .toggleSavedJob(job.id),

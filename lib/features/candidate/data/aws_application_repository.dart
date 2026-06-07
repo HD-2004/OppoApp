@@ -100,4 +100,54 @@ class AwsApplicationRepository implements ApplicationRepository {
       throw Exception(errorMsg);
     }
   }
+
+  @override
+  Future<List<Map<String, dynamic>>> getCandidateApplications(String userId) async {
+    try {
+      final token = await _getAuthToken();
+      final response = await http.get(
+        Uri.parse('$_applicationsBaseUrl/applications/candidate/$userId'),
+        headers: _buildHeaders(token),
+      );
+
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body);
+        if (body['applications'] != null) {
+          final list = body['applications'] as List;
+          return list.map((item) => Map<String, dynamic>.from(item as Map)).toList();
+        }
+      }
+      return [];
+    } catch (e) {
+      safePrint('Error fetching candidate applications: $e');
+      return [];
+    }
+  }
+
+  @override
+  Future<void> updateApplicationChat({
+    required String applicationId,
+    required String status,
+    required List<Map<String, dynamic>> chatMessages,
+  }) async {
+    final token = await _getAuthToken();
+    if (token == null) {
+      throw Exception('Vui lòng đăng nhập để thực hiện hành động này.');
+    }
+
+    final response = await http.put(
+      Uri.parse('$_applicationsBaseUrl/applications/$applicationId/status'),
+      headers: _buildHeaders(token),
+      body: jsonEncode({
+        'status': status,
+        'chatMessages': chatMessages,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      final body = jsonDecode(response.body);
+      final errorMsg = body['error'] ?? body['message'] ?? 'Lỗi khi cập nhật tin nhắn';
+      throw Exception(errorMsg);
+    }
+  }
 }

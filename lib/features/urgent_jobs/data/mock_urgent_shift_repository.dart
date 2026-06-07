@@ -6,40 +6,7 @@ import 'urgent_shift_repository.dart';
 
 class MockUrgentShiftRepository implements UrgentShiftRepository {
   MockUrgentShiftRepository() {
-    _jobs = [
-      UrgentShiftJob(
-        jobId: 'shift-001',
-        employerId: 'employer-demo',
-        title: 'Warehouse packing shift',
-        category: 'Logistics',
-        address: 'District 7, Ho Chi Minh City',
-        latitude: 10.738,
-        longitude: 106.721,
-        startTime: DateTime.now().add(const Duration(hours: 3)),
-        endTime: DateTime.now().add(const Duration(hours: 9)),
-        payAmount: 420000,
-        currency: 'VND',
-        requiredWorkers: 4,
-        acceptedWorkers: 1,
-        status: UrgentShiftStatus.open,
-      ),
-      UrgentShiftJob(
-        jobId: 'shift-002',
-        employerId: 'employer-demo',
-        title: 'Cafe service evening shift',
-        category: 'Food service',
-        address: 'District 1, Ho Chi Minh City',
-        latitude: 10.776,
-        longitude: 106.700,
-        startTime: DateTime.now().add(const Duration(hours: 5)),
-        endTime: DateTime.now().add(const Duration(hours: 10)),
-        payAmount: 320000,
-        currency: 'VND',
-        requiredWorkers: 2,
-        acceptedWorkers: 0,
-        status: UrgentShiftStatus.open,
-      ),
-    ];
+    _jobs = const [];
     _emit();
   }
 

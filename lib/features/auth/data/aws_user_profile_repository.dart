@@ -233,6 +233,66 @@ class AwsUserProfileRepository implements UserProfileRepository {
     throw Exception('Failed to update profile completion status in DynamoDB');
   }
 
+  @override
+  Future<AuthUserProfile> submitVerificationRequest({
+    required String userId,
+  }) async {
+    final token = await _getAuthToken();
+    final response = await http.put(
+      Uri.parse('$_apiBaseUrl/profile/$userId'),
+      headers: _buildHeaders(token),
+      body: jsonEncode({
+        'verificationStatus': 'SUBMITTED',
+        'verificationSubmittedAt': DateTime.now().toIso8601String(),
+        'updatedAt': DateTime.now().toIso8601String(),
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      final body = jsonDecode(response.body);
+      if (body['success'] == true && body['data'] != null) {
+        final data = body['data'] as Map<String, dynamic>;
+        return _mapJsonToProfile(data, userId);
+      }
+    }
+
+    final updated = await getByUserId(userId);
+    if (updated != null) return updated;
+    throw Exception('Failed to submit verification request in DynamoDB');
+  }
+
+  @override
+  Future<AuthUserProfile> updateAvailability({
+    required String userId,
+    required bool isActive,
+    double? latitude,
+    double? longitude,
+  }) async {
+    final token = await _getAuthToken();
+    final response = await http.put(
+      Uri.parse('$_apiBaseUrl/profile/$userId'),
+      headers: _buildHeaders(token),
+      body: jsonEncode({
+        'isActive': isActive,
+        'latitude': ?latitude,
+        'longitude': ?longitude,
+        'updatedAt': DateTime.now().toIso8601String(),
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      final body = jsonDecode(response.body);
+      if (body['success'] == true && body['data'] != null) {
+        final data = body['data'] as Map<String, dynamic>;
+        return _mapJsonToProfile(data, userId);
+      }
+    }
+
+    final updated = await getByUserId(userId);
+    if (updated != null) return updated;
+    throw Exception('Failed to update availability in DynamoDB');
+  }
+
   AuthUserProfile _mapJsonToProfile(
     Map<String, dynamic> data,
     String defaultUserId,
@@ -280,6 +340,10 @@ class AwsUserProfileRepository implements UserProfileRepository {
       updatedAt: data['updatedAt'] != null
           ? DateTime.tryParse(data['updatedAt'] as String)
           : null,
+      verificationStatus: data['verificationStatus'] as String?,
+      isActive: data['isActive'] == true,
+      latitude: double.tryParse(data['latitude']?.toString() ?? ''),
+      longitude: double.tryParse(data['longitude']?.toString() ?? ''),
     );
   }
 }

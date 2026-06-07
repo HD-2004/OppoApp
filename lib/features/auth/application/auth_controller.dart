@@ -223,4 +223,33 @@ class AuthController extends AsyncNotifier<AuthState> {
         );
     state = AsyncData(AuthState.authenticated(updated));
   }
+
+  Future<void> submitVerificationRequest() async {
+    final current = state.asData?.value.user;
+    if (current == null) {
+      return;
+    }
+
+    final updated = await ref
+        .read(authRepositoryProvider)
+        .submitVerificationRequest(userId: current.userId);
+    state = AsyncData(AuthState.authenticated(updated));
+  }
+
+  Future<void> updateAvailability(bool isActive, {double? latitude, double? longitude}) async {
+    final current = state.asData?.value.user;
+    if (current == null) {
+      return;
+    }
+
+    final updated = await ref
+        .read(authRepositoryProvider)
+        .updateAvailability(
+          userId: current.userId,
+          isActive: isActive,
+          latitude: latitude,
+          longitude: longitude,
+        );
+    state = AsyncData(AuthState.authenticated(updated));
+  }
 }

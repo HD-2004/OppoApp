@@ -1,6 +1,8 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../features/auth/application/auth_controller.dart';
 import '../../../../features/candidate/application/jobs_providers.dart';
 import '../../../../features/candidate/domain/job_post.dart';
 
@@ -15,68 +17,121 @@ class HomeHotJobsSection extends ConsumerWidget {
   final VoidCallback onSeeAll;
   final ValueChanged<JobPost> onJobTap;
 
+  double _calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+    const r = 6371; // Earth's radius in km
+    final dLat = (lat2 - lat1) * math.pi / 180;
+    final dLon = (lon2 - lon1) * math.pi / 180;
+    final a = math.sin(dLat / 2) * math.sin(dLat / 2) +
+        math.cos(lat1 * math.pi / 180) *
+            math.cos(lat2 * math.pi / 180) *
+            math.sin(dLon / 2) *
+            math.sin(dLon / 2);
+    final c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
+    return r * c;
+  }
+
+  Widget _buildHeader() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+      child: Row(
+        children: [
+          const Text('🔥', style: TextStyle(fontSize: 18)),
+          const SizedBox(width: 6),
+          const Expanded(
+            child: Text(
+              'Hot Jobs',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF111827),
+              ),
+            ),
+          ),
+          GestureDetector(
+            onTap: onSeeAll,
+            child: const Text(
+              'Xem tất cả',
+              style: TextStyle(
+                fontSize: 13,
+                color: Color(0xFF1E3A8A),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final authState = ref.watch(authControllerProvider).asData?.value;
+    final user = authState?.user;
+    final isApproved = user?.verificationStatus == 'APPROVED';
+    final isActive = user?.isActive == true;
+
+    if (!isApproved || !isActive) {
+      return const SizedBox.shrink();
+    }
+
+    final userLat = user?.latitude;
+    final userLng = user?.longitude;
+    if (userLat == null || userLng == null) {
+      return const SizedBox.shrink();
+    }
+
     final quickJobsAsync = ref.watch(activeQuickJobsProvider);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Header row
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-          child: Row(
-            children: [
-              const Text('🔥', style: TextStyle(fontSize: 18)),
-              const SizedBox(width: 6),
-              const Expanded(
-                child: Text(
-                  'Hot Jobs',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF111827),
-                  ),
-                ),
-              ),
-              GestureDetector(
-                onTap: onSeeAll,
-                child: const Text(
-                  'Xem tất cả',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Color(0xFF1E3A8A),
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+    return quickJobsAsync.when(
+      loading: () => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildHeader(),
+          const SizedBox(height: 230, child: _HotJobsShimmer()),
+        ],
+      ),
+      error: (err, stack) => const SizedBox.shrink(),
+      data: (jobs) {
+        final nearbyJobs = jobs.where((job) {
+          final jobLat = job.latitude;
+          final jobLng = job.longitude;
+          if (jobLat != null && jobLng != null) {
+            final distance = _calculateDistance(userLat, userLng, jobLat, jobLng);
+            return distance <= 3.0;
+          }
+          return false;
+        }).toList();
 
-        // Cards
-        SizedBox(
-          height: 230,
-          child: quickJobsAsync.when(
-            loading: () => const _HotJobsShimmer(),
-            error: (_, _) => _HotJobsError(
-              onRetry: () => ref.invalidate(activeQuickJobsProvider),
-            ),
-            data: (jobs) {
-              if (jobs.isEmpty) return const _HotJobsEmpty();
-              return ListView.separated(
+        if (nearbyJobs.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        // Sort closest first
+        nearbyJobs.sort((a, b) {
+          final distA = _calculateDistance(userLat, userLng, a.latitude!, a.longitude!);
+          final distB = _calculateDistance(userLat, userLng, b.latitude!, b.longitude!);
+          return distA.compareTo(distB);
+        });
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildHeader(),
+            SizedBox(
+              height: 230,
+              child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: jobs.length,
+                itemCount: nearbyJobs.length,
                 separatorBuilder: (_, _) => const SizedBox(width: 12),
                 itemBuilder: (_, i) =>
-                    _HotJobCard(job: jobs[i], onTap: () => onJobTap(jobs[i])),
-              );
-            },
-          ),
-        ),
-        const SizedBox(height: 8),
-      ],
+                    _HotJobCard(job: nearbyJobs[i], onTap: () => onJobTap(nearbyJobs[i])),
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+        );
+      },
     );
   }
 }
@@ -304,55 +359,6 @@ class _HotJobsShimmer extends StatelessWidget {
           color: const Color(0xFFF3F4F6),
           borderRadius: BorderRadius.circular(16),
         ),
-      ),
-    );
-  }
-}
-
-class _HotJobsEmpty extends StatelessWidget {
-  const _HotJobsEmpty();
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.work_off_outlined, size: 36, color: Colors.grey.shade400),
-          const SizedBox(height: 8),
-          Text(
-            'Hiện chưa có Hot Jobs',
-            style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _HotJobsError extends StatelessWidget {
-  const _HotJobsError({required this.onRetry});
-
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(
-            Icons.wifi_off_rounded,
-            color: Color(0xFFD1D5DB),
-            size: 32,
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Không tải được',
-            style: TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
-          ),
-          TextButton(onPressed: onRetry, child: const Text('Thử lại')),
-        ],
       ),
     );
   }
