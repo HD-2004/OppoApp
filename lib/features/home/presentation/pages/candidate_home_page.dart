@@ -18,7 +18,6 @@ class CandidateHomePage extends ConsumerStatefulWidget {
     required this.onNotificationTap,
     required this.onSeeAllJobsTap,
     required this.onWalletTap,
-    required this.onSearchTap,
     required this.onJobsTap,
     required this.onProfileTap,
     required this.onSettingsTap,
@@ -29,7 +28,6 @@ class CandidateHomePage extends ConsumerStatefulWidget {
   final VoidCallback onNotificationTap;
   final VoidCallback onSeeAllJobsTap;
   final VoidCallback onWalletTap;
-  final VoidCallback onSearchTap;
   final VoidCallback onJobsTap;
   final VoidCallback onProfileTap;
   final VoidCallback onSettingsTap;
@@ -235,11 +233,6 @@ class _CandidateHomePageState extends ConsumerState<CandidateHomePage> {
         child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
-            // ── Search bar ───────────────────────────────────────────────
-            SliverToBoxAdapter(
-              child: _HomeSearchBar(onTap: widget.onSearchTap),
-            ),
-
             // ── Hot Jobs ────────────────────────────────────────────────
             SliverToBoxAdapter(
               child: HomeHotJobsSection(
@@ -313,62 +306,6 @@ class _HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
         ),
         const SizedBox(width: 4),
       ],
-    );
-  }
-}
-
-// ── Search bar ────────────────────────────────────────────────────────────────
-
-class _HomeSearchBar extends StatelessWidget {
-  const _HomeSearchBar({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          height: 48,
-          decoration: BoxDecoration(
-            color: const Color(0xFFF3F4F6),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Row(
-            children: [
-              const SizedBox(width: 14),
-              const Icon(
-                Icons.search_rounded,
-                color: Color(0xFF9CA3AF),
-                size: 20,
-              ),
-              const SizedBox(width: 10),
-              const Expanded(
-                child: Text(
-                  'Tìm kiếm công việc F&B n...',
-                  style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 14),
-                ),
-              ),
-              Container(
-                margin: const EdgeInsets.all(6),
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1E3A8A),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(
-                  Icons.tune_rounded,
-                  color: Colors.white,
-                  size: 18,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

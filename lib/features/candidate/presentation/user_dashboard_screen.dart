@@ -125,7 +125,6 @@ class _UserDashboardScreenState extends ConsumerState<UserDashboardScreen> {
         onNotificationTap: _openNotifications,
         onSeeAllJobsTap: () => _selectTab(_tabSearch),
         onWalletTap: () => _selectTab(_tabWallet),
-        onSearchTap: () => _selectTab(_tabSearch),
         onJobsTap: _openJobs,
         onProfileTap: () => _selectTab(_tabProfile),
         onSettingsTap: _openSettings,
@@ -208,8 +207,8 @@ class _HomeBottomNav extends StatelessWidget {
               _NavItem(
                 index: 1,
                 selectedIndex: selectedIndex,
-                icon: Icons.search_rounded,
-                label: 'Tìm kiếm',
+                icon: Icons.work_outline_rounded,
+                label: 'Công việc',
                 onTap: onTabSelected,
               ),
               _NavItem(
