@@ -45,12 +45,11 @@ abstract class UserProfileRepository {
     String? bio,
     List<String>? skills,
     String? profileImage,
+    Map<String, String>? socialLinks,
     List<String>? savedJobs,
   });
 
-  Future<AuthUserProfile> submitVerificationRequest({
-    required String userId,
-  });
+  Future<AuthUserProfile> submitVerificationRequest({required String userId});
 
   Future<AuthUserProfile> updateAvailability({
     required String userId,
@@ -156,6 +155,7 @@ class InMemoryUserProfileRepository implements UserProfileRepository {
     String? bio,
     List<String>? skills,
     String? profileImage,
+    Map<String, String>? socialLinks,
     List<String>? savedJobs,
   }) async {
     final profile = _requireProfile(userId);
@@ -163,12 +163,15 @@ class InMemoryUserProfileRepository implements UserProfileRepository {
       fullName: fullName?.trim().isNotEmpty == true ? fullName!.trim() : null,
       phone: phone?.trim().isNotEmpty == true ? phone!.trim() : null,
       cccd: cccd?.trim().isNotEmpty == true ? cccd!.trim() : null,
-      dateOfBirth: dateOfBirth?.trim().isNotEmpty == true ? dateOfBirth!.trim() : null,
+      dateOfBirth: dateOfBirth?.trim().isNotEmpty == true
+          ? dateOfBirth!.trim()
+          : null,
       location: location?.trim().isNotEmpty == true ? location!.trim() : null,
       title: title?.trim().isNotEmpty == true ? title!.trim() : null,
       bio: bio?.trim().isNotEmpty == true ? bio!.trim() : null,
       skills: skills,
       profileImage: profileImage,
+      socialLinks: socialLinks,
       savedJobs: savedJobs,
       profileCompleted: completed,
       updatedAt: DateTime.now(),

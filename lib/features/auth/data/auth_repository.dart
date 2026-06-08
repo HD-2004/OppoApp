@@ -161,6 +161,7 @@ class AuthRepository {
     String? bio,
     List<String>? skills,
     String? profileImage,
+    Map<String, String>? socialLinks,
     List<String>? savedJobs,
   }) {
     return _userProfileRepository.updateProfileCompleted(
@@ -175,13 +176,12 @@ class AuthRepository {
       bio: bio,
       skills: skills,
       profileImage: profileImage,
+      socialLinks: socialLinks,
       savedJobs: savedJobs,
     );
   }
 
-  Future<AuthUserProfile> submitVerificationRequest({
-    required String userId,
-  }) {
+  Future<AuthUserProfile> submitVerificationRequest({required String userId}) {
     return _userProfileRepository.submitVerificationRequest(userId: userId);
   }
 

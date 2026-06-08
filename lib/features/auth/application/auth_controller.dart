@@ -168,6 +168,7 @@ class AuthController extends AsyncNotifier<AuthState> {
     String? bio,
     List<String>? skills,
     String? profileImage,
+    Map<String, String>? socialLinks,
   }) async {
     final current = state.asData?.value.user;
     if (current == null) {
@@ -188,6 +189,7 @@ class AuthController extends AsyncNotifier<AuthState> {
           bio: bio,
           skills: skills,
           profileImage: profileImage,
+          socialLinks: socialLinks,
         );
     state = AsyncData(AuthState.authenticated(updated));
   }
@@ -219,6 +221,7 @@ class AuthController extends AsyncNotifier<AuthState> {
           bio: current.bio,
           skills: current.skills,
           profileImage: current.profileImage,
+          socialLinks: current.socialLinks,
           savedJobs: savedList,
         );
     state = AsyncData(AuthState.authenticated(updated));
@@ -236,7 +239,11 @@ class AuthController extends AsyncNotifier<AuthState> {
     state = AsyncData(AuthState.authenticated(updated));
   }
 
-  Future<void> updateAvailability(bool isActive, {double? latitude, double? longitude}) async {
+  Future<void> updateAvailability(
+    bool isActive, {
+    double? latitude,
+    double? longitude,
+  }) async {
     final current = state.asData?.value.user;
     if (current == null) {
       return;

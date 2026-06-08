@@ -60,6 +60,7 @@ class AuthUserProfile {
     this.isActive = false,
     this.latitude,
     this.longitude,
+    this.socialLinks,
   });
 
   final String userId;
@@ -85,6 +86,7 @@ class AuthUserProfile {
   final bool isActive;
   final double? latitude;
   final double? longitude;
+  final Map<String, String>? socialLinks;
 
   bool get isEmployerApproved {
     return role == AppRole.employer &&
@@ -125,6 +127,7 @@ class AuthUserProfile {
     bool? isActive,
     double? latitude,
     double? longitude,
+    Map<String, String>? socialLinks,
   }) {
     return AuthUserProfile(
       userId: userId ?? this.userId,
@@ -150,6 +153,7 @@ class AuthUserProfile {
       isActive: isActive ?? this.isActive,
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
+      socialLinks: socialLinks ?? this.socialLinks,
     );
   }
 }

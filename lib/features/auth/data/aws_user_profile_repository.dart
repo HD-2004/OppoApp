@@ -197,6 +197,7 @@ class AwsUserProfileRepository implements UserProfileRepository {
     String? bio,
     List<String>? skills,
     String? profileImage,
+    Map<String, String>? socialLinks,
     List<String>? savedJobs,
   }) async {
     final token = await _getAuthToken();
@@ -212,9 +213,10 @@ class AwsUserProfileRepository implements UserProfileRepository {
         if (location != null) 'location': location.trim(),
         if (title != null) 'title': title.trim(),
         if (bio != null) 'bio': bio.trim(),
-        'skills': ?skills,
-        'profileImage': ?profileImage,
-        'savedJobs': ?savedJobs,
+        if (skills != null) 'skills': skills,
+        if (profileImage != null) 'profileImage': profileImage,
+        if (socialLinks != null) 'socialLinks': socialLinks,
+        if (savedJobs != null) 'savedJobs': savedJobs,
         'updatedAt': DateTime.now().toIso8601String(),
       }),
     );
@@ -317,6 +319,18 @@ class AwsUserProfileRepository implements UserProfileRepository {
       }
     }
 
+    Map<String, String>? socialLinksMap;
+    if (data['socialLinks'] != null) {
+      try {
+        final rawMap = data['socialLinks'] as Map;
+        socialLinksMap = rawMap.map(
+          (key, value) => MapEntry(key.toString(), value.toString()),
+        );
+      } catch (_) {
+        // Fallback or skip if casting fails
+      }
+    }
+
     return AuthUserProfile(
       userId: data['userId'] as String? ?? defaultUserId,
       username: data['username'] as String? ?? data['email'] as String? ?? '',
@@ -344,6 +358,7 @@ class AwsUserProfileRepository implements UserProfileRepository {
       isActive: data['isActive'] == true,
       latitude: double.tryParse(data['latitude']?.toString() ?? ''),
       longitude: double.tryParse(data['longitude']?.toString() ?? ''),
+      socialLinks: socialLinksMap,
     );
   }
 }
