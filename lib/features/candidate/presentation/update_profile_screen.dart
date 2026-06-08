@@ -5,10 +5,14 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
 import '../../auth/application/auth_controller.dart';
+
+const _profileImageMaxDimension = 400;
+const _profileImageJpegQuality = 70;
 
 class UpdateProfileScreen extends ConsumerStatefulWidget {
   const UpdateProfileScreen({super.key});
@@ -99,7 +103,7 @@ class _UpdateProfileScreenState extends ConsumerState<UpdateProfileScreen> {
     if (croppedBytes == null || !mounted) return;
 
     setState(() {
-      _profileImage = 'data:image/png;base64,${base64Encode(croppedBytes)}';
+      _profileImage = 'data:image/jpeg;base64,${base64Encode(croppedBytes)}';
     });
   }
 
@@ -218,6 +222,7 @@ class _UpdateProfileScreenState extends ConsumerState<UpdateProfileScreen> {
                 profileImage: _profileImage,
                 onPickImage: _pickProfileImage,
                 onRemoveImage: _removeProfileImage,
+                isUploading: _isSubmitting && _profileImage != null,
               ),
               const SizedBox(height: 16),
 
@@ -566,11 +571,13 @@ class _ProfileImageSection extends StatelessWidget {
     required this.profileImage,
     required this.onPickImage,
     required this.onRemoveImage,
+    required this.isUploading,
   });
 
   final String? profileImage;
   final VoidCallback onPickImage;
   final VoidCallback onRemoveImage;
+  final bool isUploading;
 
   @override
   Widget build(BuildContext context) {
@@ -601,20 +608,43 @@ class _ProfileImageSection extends StatelessWidget {
           const SizedBox(height: 12),
           Row(
             children: [
-              _ProfileImageAvatar(profileImage: profileImage),
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  _ProfileImageAvatar(profileImage: profileImage),
+                  if (isUploading)
+                    Container(
+                      width: 84,
+                      height: 84,
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.35),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Center(
+                        child: SizedBox.square(
+                          dimension: 24,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     OutlinedButton.icon(
-                      onPressed: onPickImage,
+                      onPressed: isUploading ? null : onPickImage,
                       icon: const Icon(Icons.photo_library_outlined, size: 18),
                       label: const Text('Chọn ảnh'),
                     ),
                     if (profileImage != null)
                       TextButton.icon(
-                        onPressed: onRemoveImage,
+                        onPressed: isUploading ? null : onRemoveImage,
                         icon: const Icon(
                           Icons.delete_outline_rounded,
                           size: 18,
@@ -715,14 +745,26 @@ class _AvatarCropDialogState extends State<_AvatarCropDialog> {
         throw StateError('Không thể tạo ảnh crop.');
       }
 
-      final image = await boundary.toImage(pixelRatio: 2.5);
-      final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-      if (byteData == null) {
-        throw StateError('Không thể xuất ảnh crop.');
-      }
+      final image = await boundary.toImage(pixelRatio: 2);
+      try {
+        final byteData = await image.toByteData(
+          format: ui.ImageByteFormat.rawRgba,
+        );
+        if (byteData == null) {
+          throw StateError('Không thể xuất ảnh crop.');
+        }
 
-      if (!mounted) return;
-      Navigator.of(context).pop(byteData.buffer.asUint8List());
+        final jpegBytes = _encodeJpegProfileImage(
+          image.width,
+          image.height,
+          byteData.buffer,
+        );
+
+        if (!mounted) return;
+        Navigator.of(context).pop(jpegBytes);
+      } finally {
+        image.dispose();
+      }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -733,6 +775,37 @@ class _AvatarCropDialogState extends State<_AvatarCropDialog> {
         setState(() => _isSaving = false);
       }
     }
+  }
+
+  Uint8List _encodeJpegProfileImage(
+    int width,
+    int height,
+    ByteBuffer rgbaBytes,
+  ) {
+    final source = img.Image.fromBytes(
+      width: width,
+      height: height,
+      bytes: rgbaBytes,
+      numChannels: 4,
+      order: img.ChannelOrder.rgba,
+    );
+    final longestSide = source.width > source.height
+        ? source.width
+        : source.height;
+    final output = longestSide > _profileImageMaxDimension
+        ? img.copyResize(
+            source,
+            width: source.width >= source.height
+                ? _profileImageMaxDimension
+                : null,
+            height: source.height > source.width
+                ? _profileImageMaxDimension
+                : null,
+            interpolation: img.Interpolation.average,
+          )
+        : source;
+    final jpegBytes = img.encodeJpg(output, quality: _profileImageJpegQuality);
+    return Uint8List.fromList(jpegBytes);
   }
 
   @override

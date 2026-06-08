@@ -135,6 +135,7 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
       drawer: CandidateMenuDrawer(
         displayName: displayName,
         email: email,
+        profileImage: user?.profileImage,
         onProfileTap: () => Navigator.of(context).pop(),
         onJobsTap: () => _closeDrawerAndRun(
           widget.onJobsTap ?? () => _push(const UserJobsScreen()),

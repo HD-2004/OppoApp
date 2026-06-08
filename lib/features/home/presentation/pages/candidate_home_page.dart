@@ -218,6 +218,7 @@ class _CandidateHomePageState extends ConsumerState<CandidateHomePage> {
       drawer: CandidateMenuDrawer(
         displayName: displayName,
         email: email,
+        profileImage: user?.profileImage,
         onProfileTap: () => _closeDrawerAndRun(widget.onProfileTap),
         onJobsTap: () => _closeDrawerAndRun(widget.onJobsTap),
         onWalletTap: () => _closeDrawerAndRun(widget.onWalletTap),

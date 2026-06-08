@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 
 class CandidateMenuButton extends StatelessWidget {
@@ -25,6 +27,7 @@ class CandidateMenuDrawer extends StatelessWidget {
     super.key,
     required this.displayName,
     required this.email,
+    this.profileImage,
     required this.onProfileTap,
     required this.onJobsTap,
     required this.onWalletTap,
@@ -36,6 +39,7 @@ class CandidateMenuDrawer extends StatelessWidget {
 
   final String displayName;
   final String email;
+  final String? profileImage;
   final VoidCallback onProfileTap;
   final VoidCallback onJobsTap;
   final VoidCallback onWalletTap;
@@ -51,7 +55,11 @@ class CandidateMenuDrawer extends StatelessWidget {
       child: SafeArea(
         child: Column(
           children: [
-            _DrawerHeader(displayName: displayName, email: email),
+            _DrawerHeader(
+              displayName: displayName,
+              email: email,
+              profileImage: profileImage,
+            ),
             const Divider(height: 1),
             Expanded(
               child: ListView(
@@ -113,10 +121,15 @@ class CandidateMenuDrawer extends StatelessWidget {
 }
 
 class _DrawerHeader extends StatelessWidget {
-  const _DrawerHeader({required this.displayName, required this.email});
+  const _DrawerHeader({
+    required this.displayName,
+    required this.email,
+    this.profileImage,
+  });
 
   final String displayName;
   final String email;
+  final String? profileImage;
 
   @override
   Widget build(BuildContext context) {
@@ -124,19 +137,7 @@ class _DrawerHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
       child: Row(
         children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: const BoxDecoration(
-              color: Color(0xFFEFF6FF),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.person_rounded,
-              color: Color(0xFF1E3A8A),
-              size: 26,
-            ),
-          ),
+          _DrawerAvatar(profileImage: profileImage),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -169,6 +170,55 @@ class _DrawerHeader extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+class _DrawerAvatar extends StatelessWidget {
+  const _DrawerAvatar({this.profileImage});
+
+  final String? profileImage;
+
+  @override
+  Widget build(BuildContext context) {
+    final image = profileImage?.trim();
+
+    Widget content;
+    if (image != null && image.startsWith('data:image')) {
+      try {
+        final bytes = base64Decode(image.split(',').last);
+        content = Image.memory(bytes, fit: BoxFit.cover);
+      } catch (_) {
+        content = const _DrawerAvatarFallback();
+      }
+    } else if (image != null && image.isNotEmpty) {
+      content = Image.network(
+        image,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => const _DrawerAvatarFallback(),
+      );
+    } else {
+      content = const _DrawerAvatarFallback();
+    }
+
+    return Container(
+      width: 48,
+      height: 48,
+      decoration: const BoxDecoration(
+        color: Color(0xFFEFF6FF),
+        shape: BoxShape.circle,
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: content,
+    );
+  }
+}
+
+class _DrawerAvatarFallback extends StatelessWidget {
+  const _DrawerAvatarFallback();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Icon(Icons.person_rounded, color: Color(0xFF1E3A8A), size: 26);
   }
 }
 
