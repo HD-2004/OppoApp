@@ -2,13 +2,16 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 
+import '../../../../core/config/s3_asset_config.dart';
+import '../../../../shared/presentation/widgets/network_asset_image.dart';
+
 class CandidateMenuButton extends StatelessWidget {
   const CandidateMenuButton({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(left: 16),
+      padding: const EdgeInsets.only(left: 8),
       child: IconButton(
         tooltip: 'Mở menu',
         onPressed: () => Scaffold.of(context).openDrawer(),
@@ -74,7 +77,7 @@ class CandidateMenuDrawer extends StatelessWidget {
                   _MenuTile(
                     icon: Icons.work_outline_rounded,
                     title: 'Việc của tôi',
-                    subtitle: 'Việc đang ứng tuyển, tuyển gấp, đã lưu',
+                    subtitle: 'Đang ứng tuyển, tuyển gấp, đã lưu',
                     onTap: onJobsTap,
                   ),
                   _MenuTile(
@@ -93,7 +96,7 @@ class CandidateMenuDrawer extends StatelessWidget {
                   _MenuTile(
                     icon: Icons.settings_outlined,
                     title: 'Cài đặt',
-                    subtitle: 'Ngôn ngữ, bảo mật, tuỳ chọn thông báo',
+                    subtitle: 'Ngôn ngữ, bảo mật, tùy chọn thông báo',
                     onTap: onSettingsTap,
                   ),
                   _MenuTile(
@@ -134,13 +137,14 @@ class _DrawerHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
       child: Row(
         children: [
           _DrawerAvatar(profileImage: profileImage),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
@@ -161,10 +165,20 @@ class _DrawerHeader extends StatelessWidget {
                   style: const TextStyle(
                     color: Color(0xFF6B7280),
                     fontSize: 12,
-                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          const SizedBox(
+            width: 44,
+            height: 32,
+            child: NetworkAssetImage(
+              url: S3AssetConfig.logo,
+              fit: BoxFit.contain,
+              semanticLabel: 'Logo Ốp Pờ',
+              placeholder: SizedBox.shrink(),
             ),
           ),
         ],
@@ -181,12 +195,15 @@ class _DrawerAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final image = profileImage?.trim();
+    Widget content = const _DrawerAvatarFallback();
 
-    Widget content;
     if (image != null && image.startsWith('data:image')) {
       try {
-        final bytes = base64Decode(image.split(',').last);
-        content = Image.memory(bytes, fit: BoxFit.cover);
+        content = Image.memory(
+          base64Decode(image.split(',').last),
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => const _DrawerAvatarFallback(),
+        );
       } catch (_) {
         content = const _DrawerAvatarFallback();
       }
@@ -196,18 +213,17 @@ class _DrawerAvatar extends StatelessWidget {
         fit: BoxFit.cover,
         errorBuilder: (_, _, _) => const _DrawerAvatarFallback(),
       );
-    } else {
-      content = const _DrawerAvatarFallback();
     }
 
     return Container(
       width: 48,
       height: 48,
-      decoration: const BoxDecoration(
-        color: Color(0xFFEFF6FF),
-        shape: BoxShape.circle,
-      ),
       clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: const Color(0xFFEFF6FF),
+        shape: BoxShape.circle,
+        border: Border.all(color: const Color(0xFFBFDBFE)),
+      ),
       child: content,
     );
   }
@@ -240,7 +256,6 @@ class _MenuTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = isDanger ? const Color(0xFFDC2626) : const Color(0xFF1E3A8A);
-
     return ListTile(
       leading: Icon(icon, color: color),
       title: Text(

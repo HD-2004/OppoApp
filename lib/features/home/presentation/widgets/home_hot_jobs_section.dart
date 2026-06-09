@@ -1,12 +1,13 @@
 import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../features/auth/application/auth_controller.dart';
 import '../../../../features/candidate/application/jobs_providers.dart';
 import '../../../../features/candidate/domain/job_post.dart';
+import '../../../../features/jobs/presentation/widgets/employer_avatar.dart';
 
-/// "Hot Jobs" section — horizontal swipe cards giống ảnh tham khảo
 class HomeHotJobsSection extends ConsumerWidget {
   const HomeHotJobsSection({
     super.key,
@@ -17,29 +18,33 @@ class HomeHotJobsSection extends ConsumerWidget {
   final VoidCallback onSeeAll;
   final ValueChanged<JobPost> onJobTap;
 
-  double _calculateDistance(double lat1, double lon1, double lat2, double lon2) {
-    const r = 6371; // Earth's radius in km
+  double _distance(double lat1, double lon1, double lat2, double lon2) {
+    const radius = 6371;
     final dLat = (lat2 - lat1) * math.pi / 180;
     final dLon = (lon2 - lon1) * math.pi / 180;
-    final a = math.sin(dLat / 2) * math.sin(dLat / 2) +
+    final a =
+        math.sin(dLat / 2) * math.sin(dLat / 2) +
         math.cos(lat1 * math.pi / 180) *
             math.cos(lat2 * math.pi / 180) *
             math.sin(dLon / 2) *
             math.sin(dLon / 2);
-    final c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
-    return r * c;
+    return radius * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
   }
 
-  Widget _buildHeader() {
+  Widget _header() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
       child: Row(
         children: [
-          const Text('🔥', style: TextStyle(fontSize: 18)),
+          const Icon(
+            Icons.local_fire_department_rounded,
+            color: Color(0xFFF97316),
+            size: 22,
+          ),
           const SizedBox(width: 6),
           const Expanded(
             child: Text(
-              'Hot Jobs',
+              'Việc làm nổi bật',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w800,
@@ -47,17 +52,7 @@ class HomeHotJobsSection extends ConsumerWidget {
               ),
             ),
           ),
-          GestureDetector(
-            onTap: onSeeAll,
-            child: const Text(
-              'Xem tất cả',
-              style: TextStyle(
-                fontSize: 13,
-                color: Color(0xFF1E3A8A),
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
+          TextButton(onPressed: onSeeAll, child: const Text('Xem tất cả')),
         ],
       ),
     );
@@ -65,67 +60,62 @@ class HomeHotJobsSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final authState = ref.watch(authControllerProvider).asData?.value;
-    final user = authState?.user;
-    final isApproved = user?.verificationStatus == 'APPROVED';
-    final isActive = user?.isActive == true;
+    final user = ref.watch(authControllerProvider).asData?.value.user;
+    final quickJobs = ref.watch(activeQuickJobsProvider);
 
-    if (!isApproved || !isActive) {
-      return const SizedBox.shrink();
-    }
-
-    final userLat = user?.latitude;
-    final userLng = user?.longitude;
-    if (userLat == null || userLng == null) {
-      return const SizedBox.shrink();
-    }
-
-    final quickJobsAsync = ref.watch(activeQuickJobsProvider);
-
-    return quickJobsAsync.when(
+    return quickJobs.when(
       loading: () => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildHeader(),
-          const SizedBox(height: 230, child: _HotJobsShimmer()),
+          _header(),
+          const SizedBox(height: 238, child: _HotJobsShimmer()),
         ],
       ),
-      error: (err, stack) => const SizedBox.shrink(),
+      error: (_, _) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _header(),
+          _HotJobsError(onRetry: () => ref.invalidate(activeQuickJobsProvider)),
+        ],
+      ),
       data: (jobs) {
-        final nearbyJobs = jobs.where((job) {
-          final jobLat = job.latitude;
-          final jobLng = job.longitude;
-          if (jobLat != null && jobLng != null) {
-            final distance = _calculateDistance(userLat, userLng, jobLat, jobLng);
-            return distance <= 3.0;
-          }
-          return false;
-        }).toList();
+        if (jobs.isEmpty) return const SizedBox.shrink();
 
-        if (nearbyJobs.isEmpty) {
-          return const SizedBox.shrink();
+        final sorted = [...jobs];
+        final userLat = user?.latitude;
+        final userLng = user?.longitude;
+        if (userLat != null && userLng != null) {
+          sorted.sort((a, b) {
+            final aLat = a.latitude;
+            final aLng = a.longitude;
+            final bLat = b.latitude;
+            final bLng = b.longitude;
+            if (aLat == null || aLng == null) return 1;
+            if (bLat == null || bLng == null) return -1;
+            return _distance(
+              userLat,
+              userLng,
+              aLat,
+              aLng,
+            ).compareTo(_distance(userLat, userLng, bLat, bLng));
+          });
         }
-
-        // Sort closest first
-        nearbyJobs.sort((a, b) {
-          final distA = _calculateDistance(userLat, userLng, a.latitude!, a.longitude!);
-          final distB = _calculateDistance(userLat, userLng, b.latitude!, b.longitude!);
-          return distA.compareTo(distB);
-        });
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildHeader(),
+            _header(),
             SizedBox(
-              height: 230,
+              height: 238,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: nearbyJobs.length,
+                itemCount: sorted.length,
                 separatorBuilder: (_, _) => const SizedBox(width: 12),
-                itemBuilder: (_, i) =>
-                    _HotJobCard(job: nearbyJobs[i], onTap: () => onJobTap(nearbyJobs[i])),
+                itemBuilder: (_, index) => _HotJobCard(
+                  job: sorted[index],
+                  onTap: () => onJobTap(sorted[index]),
+                ),
               ),
             ),
             const SizedBox(height: 8),
@@ -144,204 +134,117 @@ class _HotJobCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final company = job.companyName ?? job.employerName;
-    final salary = job.salary.isNotEmpty ? job.salary : 'Thỏa thuận';
-    final isUrgent = job.isQuickJob || job.jobType == JobPostType.urgent;
+    final company = job.companyName?.trim().isNotEmpty == true
+        ? job.companyName!
+        : job.employerName;
 
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 220,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFE5E7EB)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Top: logo area + urgent badge
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 14, 14, 0),
-              child: Row(
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          width: 224,
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFE5E7EB)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Company logo
-                  _CompanyLogo(logoUrl: job.employerAvatarUrl),
+                  EmployerAvatar(
+                    employerName: company,
+                    imageUrl: job.employerAvatarUrl,
+                    size: 46,
+                    borderRadius: 10,
+                  ),
                   const Spacer(),
-                  if (isUrgent)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFEF3C7),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: const Text(
-                        'Urgent',
-                        style: TextStyle(
-                          color: Color(0xFFD97706),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
+                  const _UrgentBadge(),
                 ],
               ),
-            ),
-            const SizedBox(height: 10),
-
-            // Title
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              child: Text(
+              const SizedBox(height: 10),
+              Text(
                 job.title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w800,
                   color: Color(0xFF111827),
                   height: 1.3,
                 ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
               ),
-            ),
-            const SizedBox(height: 4),
-
-            // Company
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              child: Text(
+              const SizedBox(height: 4),
+              Text(
                 company,
-                style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 12, color: Color(0xFF6B7280)),
               ),
-            ),
-            const SizedBox(height: 10),
-
-            // Salary + job type tags
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              child: Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: [
-                  _TagChip(label: salary, isBlue: true),
-                  _TagChip(label: job.jobType.label, isBlue: false),
-                ],
+              const SizedBox(height: 10),
+              Text(
+                job.salary.isEmpty ? 'Thỏa thuận' : job.salary,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Color(0xFF1E3A8A),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
-            ),
-
-            const Spacer(),
-
-            // Quick Apply button
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
-              child: SizedBox(
+              const Spacer(),
+              SizedBox(
                 width: double.infinity,
-                child: ElevatedButton(
+                child: FilledButton(
                   onPressed: onTap,
-                  style: ElevatedButton.styleFrom(
+                  style: FilledButton.styleFrom(
                     backgroundColor: const Color(0xFF1E3A8A),
-                    foregroundColor: Colors.white,
-                    elevation: 0,
                     padding: const EdgeInsets.symmetric(vertical: 10),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
                   child: const Text(
-                    'Quick Apply',
-                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                    'Ứng tuyển nhanh',
+                    style: TextStyle(fontWeight: FontWeight.w700),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-class _TagChip extends StatelessWidget {
-  const _TagChip({required this.label, required this.isBlue});
-
-  final String label;
-  final bool isBlue;
+class _UrgentBadge extends StatelessWidget {
+  const _UrgentBadge();
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: isBlue ? const Color(0xFFEFF6FF) : const Color(0xFFF3F4F6),
+        color: const Color(0xFFFEF3C7),
         borderRadius: BorderRadius.circular(6),
       ),
-      child: Text(
-        label,
+      child: const Text(
+        'Tuyển gấp',
         style: TextStyle(
+          color: Color(0xFFD97706),
           fontSize: 11,
-          fontWeight: FontWeight.w600,
-          color: isBlue ? const Color(0xFF1E40AF) : const Color(0xFF4B5563),
+          fontWeight: FontWeight.w700,
         ),
       ),
     );
   }
 }
-
-class _CompanyLogo extends StatelessWidget {
-  const _CompanyLogo({this.logoUrl});
-
-  final String? logoUrl;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 44,
-      height: 44,
-      decoration: BoxDecoration(
-        color: const Color(0xFFF3F4F6),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: logoUrl != null && logoUrl!.isNotEmpty
-          ? ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: Image.network(
-                logoUrl!,
-                fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => const _LogoFallback(),
-              ),
-            )
-          : const _LogoFallback(),
-    );
-  }
-}
-
-class _LogoFallback extends StatelessWidget {
-  const _LogoFallback();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Icon(
-      Icons.business_rounded,
-      size: 22,
-      color: Color(0xFFD1D5DB),
-    );
-  }
-}
-
-// ── States ────────────────────────────────────────────────────────────────────
 
 class _HotJobsShimmer extends StatelessWidget {
   const _HotJobsShimmer();
@@ -354,11 +257,35 @@ class _HotJobsShimmer extends StatelessWidget {
       itemCount: 3,
       separatorBuilder: (_, _) => const SizedBox(width: 12),
       itemBuilder: (_, _) => Container(
-        width: 220,
+        width: 224,
         decoration: BoxDecoration(
           color: const Color(0xFFF3F4F6),
           borderRadius: BorderRadius.circular(16),
         ),
+      ),
+    );
+  }
+}
+
+class _HotJobsError extends StatelessWidget {
+  const _HotJobsError({required this.onRetry});
+
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      child: Row(
+        children: [
+          const Expanded(
+            child: Text(
+              'Không tải được việc làm tuyển gấp.',
+              style: TextStyle(color: Color(0xFF6B7280)),
+            ),
+          ),
+          TextButton(onPressed: onRetry, child: const Text('Thử lại')),
+        ],
       ),
     );
   }
