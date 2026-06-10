@@ -50,54 +50,50 @@ class AwsUserProfileRepository implements UserProfileRepository {
 
   @override
   Future<AuthUserProfile?> getByUserId(String userId) async {
-    try {
-      final token = await _getAuthToken();
-      final response = await http.get(
-        Uri.parse('$_apiBaseUrl/profile/$userId'),
-        headers: _buildHeaders(token),
-      );
+    final token = await _getAuthToken();
+    final response = await http.get(
+      Uri.parse('$_apiBaseUrl/profile/$userId'),
+      headers: _buildHeaders(token),
+    );
 
-      if (response.statusCode == 404) {
-        safePrint('Profile not found (404) for userId: $userId');
-        return null;
-      }
-
-      if (response.statusCode == 200) {
-        final body = jsonDecode(response.body);
-        if (body['success'] == true && body['data'] != null) {
-          final data = body['data'] as Map<String, dynamic>;
-          return _mapJsonToProfile(data, userId);
-        }
-      }
-      return null;
-    } catch (e) {
-      safePrint('Error fetching profile from DynamoDB: $e');
+    if (response.statusCode == 404) {
       return null;
     }
+
+    if (response.statusCode == 200) {
+      final body = jsonDecode(response.body);
+      if (body['success'] == true && body['data'] != null) {
+        final data = body['data'] as Map<String, dynamic>;
+        return _mapJsonToProfile(data, userId);
+      }
+    }
+    throw Exception(
+      'Không thể tải hồ sơ từ database (HTTP ${response.statusCode}).',
+    );
   }
 
   @override
   Future<AuthUserProfile?> getByEmail(String email) async {
-    try {
-      final token = await _getAuthToken();
-      final encodedEmail = Uri.encodeComponent(email);
-      final response = await http.get(
-        Uri.parse('$_apiBaseUrl/profile/email/$encodedEmail'),
-        headers: _buildHeaders(token),
-      );
+    final token = await _getAuthToken();
+    final encodedEmail = Uri.encodeComponent(email);
+    final response = await http.get(
+      Uri.parse('$_apiBaseUrl/profile/email/$encodedEmail'),
+      headers: _buildHeaders(token),
+    );
 
-      if (response.statusCode == 200) {
-        final body = jsonDecode(response.body);
-        if (body['success'] == true && body['data'] != null) {
-          final data = body['data'] as Map<String, dynamic>;
-          return _mapJsonToProfile(data, data['userId'] ?? '');
-        }
-      }
-      return null;
-    } catch (e) {
-      safePrint('Error fetching profile by email from DynamoDB: $e');
+    if (response.statusCode == 404) {
       return null;
     }
+    if (response.statusCode == 200) {
+      final body = jsonDecode(response.body);
+      if (body['success'] == true && body['data'] != null) {
+        final data = body['data'] as Map<String, dynamic>;
+        return _mapJsonToProfile(data, data['userId'] ?? '');
+      }
+    }
+    throw Exception(
+      'Không thể tải hồ sơ từ database (HTTP ${response.statusCode}).',
+    );
   }
 
   @override
@@ -151,15 +147,8 @@ class AwsUserProfileRepository implements UserProfileRepository {
       }
     }
 
-    // Fallback if API fails
-    return AuthUserProfile(
-      userId: userId,
-      username: username,
-      role: role ?? AppRole.candidate,
-      email: email,
-      fullName: fullName,
-      kycCompleted: false,
-      profileCompleted: false,
+    throw Exception(
+      'Không thể tạo hồ sơ trong database (HTTP ${response.statusCode}).',
     );
   }
 

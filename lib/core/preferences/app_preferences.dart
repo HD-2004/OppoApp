@@ -12,7 +12,6 @@ class AppPreferenceKeys {
   static const notificationPaymentUpdates = 'notification_payment_updates';
   static const notificationSystemAnnouncements =
       'notification_system_announcements';
-  static const candidateAvailability = 'candidate_availability';
   static const deleteAccountRequestReason = 'delete_account_request_reason';
   static const deleteAccountRequestSubmittedAt =
       'delete_account_request_submitted_at';

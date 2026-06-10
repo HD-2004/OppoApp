@@ -12,10 +12,10 @@ import '../../../../features/candidate/domain/job_post.dart';
 import '../../../../features/candidate/notifications/application/notification_controller.dart';
 import '../../../../features/candidate/presentation/user_job_detail_screen.dart';
 import '../../../../features/employer_packages/application/featured_employer_package_providers.dart';
-import '../../../../features/employer_packages/presentation/widgets/featured_employer_banner.dart';
 import '../../../../features/employer_packages/presentation/widgets/featured_employer_section.dart';
 import '../../../../features/messaging/application/messaging_providers.dart';
 import '../../../../features/messaging/presentation/pages/messages_screen.dart';
+import '../../../../features/recommendations/presentation/ai_job_recommendations_modal.dart';
 import '../../../../features/wallet/presentation/controllers/wallet_controller.dart';
 import '../../../../shared/presentation/widgets/network_asset_image.dart';
 import '../widgets/candidate_menu_drawer.dart';
@@ -85,6 +85,13 @@ class _CandidateHomePageState extends ConsumerState<CandidateHomePage> {
         ),
       ),
     );
+  }
+
+  Future<void> _openAiRecommendations() async {
+    final job = await showAiJobRecommendationsModal(context);
+    if (job != null && mounted) {
+      _openJobDetail(job);
+    }
   }
 
   void _openCurrentJobDetail(JobPost job) {
@@ -379,7 +386,10 @@ class _CandidateHomePageState extends ConsumerState<CandidateHomePage> {
         onSupportTap: () => _closeDrawerAndRun(widget.onSupportTap),
         onSignOutTap: () => _closeDrawerAndRun(widget.onSignOutTap),
       ),
-      appBar: _HomeAppBar(onNotificationTap: widget.onNotificationTap),
+      appBar: _HomeAppBar(
+        onNotificationTap: widget.onNotificationTap,
+        onRecommendationsTap: _openAiRecommendations,
+      ),
       body: RefreshIndicator(
         onRefresh: _onRefresh,
         color: AppColors.primary,
@@ -401,9 +411,6 @@ class _CandidateHomePageState extends ConsumerState<CandidateHomePage> {
                   );
                 },
               ),
-            ),
-            SliverToBoxAdapter(
-              child: FeaturedEmployerBanner(onViewJobs: widget.onSeeAllJobsTap),
             ),
             SliverToBoxAdapter(
               child: HomeCurrentJobSection(
@@ -735,9 +742,13 @@ class _ChatUnreadBadge extends StatelessWidget {
 }
 
 class _HomeAppBar extends ConsumerWidget implements PreferredSizeWidget {
-  const _HomeAppBar({required this.onNotificationTap});
+  const _HomeAppBar({
+    required this.onNotificationTap,
+    required this.onRecommendationsTap,
+  });
 
   final VoidCallback onNotificationTap;
+  final VoidCallback onRecommendationsTap;
 
   @override
   Size get preferredSize => const Size.fromHeight(56);
@@ -771,6 +782,15 @@ class _HomeAppBar extends ConsumerWidget implements PreferredSizeWidget {
         ),
       ),
       actions: [
+        IconButton(
+          tooltip: 'AI gợi ý việc làm',
+          onPressed: onRecommendationsTap,
+          icon: const Icon(
+            Icons.auto_awesome_rounded,
+            color: AppColors.primary,
+            size: 23,
+          ),
+        ),
         IconButton(
           tooltip: 'Thông báo',
           onPressed: onNotificationTap,

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/localization/app_localizations.dart';
+import '../../auth/application/auth_controller.dart';
 import '../application/urgent_shift_providers.dart';
 import '../domain/urgent_shift_job.dart';
 import 'job_status_chip.dart';
@@ -106,9 +107,18 @@ class _ShiftDetailBodyState extends ConsumerState<_ShiftDetailBody> {
   Future<void> _claim() async {
     setState(() => _isClaiming = true);
     try {
+      final workerId = ref
+          .read(authControllerProvider)
+          .asData
+          ?.value
+          .user
+          ?.userId;
+      if (workerId == null || workerId.isEmpty) {
+        throw StateError('Không tìm thấy phiên đăng nhập.');
+      }
       final booking = await ref
           .read(urgentShiftRepositoryProvider)
-          .claimShift(jobId: widget.job.jobId, workerId: 'worker-demo');
+          .claimShift(jobId: widget.job.jobId, workerId: workerId);
       if (mounted) {
         context.go('/bookings/${booking.bookingId}');
       }

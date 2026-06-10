@@ -89,9 +89,8 @@ class AwsApplicationRepository implements ApplicationRepository {
         }
       }
       return [];
-    } catch (e) {
-      safePrint('Error fetching CV info: $e');
-      return [];
+    } catch (_) {
+      rethrow;
     }
   }
 
@@ -296,9 +295,8 @@ class AwsApplicationRepository implements ApplicationRepository {
         }
       }
       return [];
-    } catch (e) {
-      safePrint('Error fetching candidate applications: $e');
-      return [];
+    } catch (_) {
+      rethrow;
     }
   }
 
