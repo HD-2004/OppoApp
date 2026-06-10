@@ -7,7 +7,6 @@ import 'package:go_router/go_router.dart';
 import '../../../core/localization/app_localizations.dart';
 import '../../auth/application/auth_controller.dart';
 import '../../home/presentation/pages/candidate_home_page.dart';
-import '../../search/presentation/pages/search_page.dart';
 import '../notifications/application/notification_controller.dart';
 import '../notifications/presentation/candidate_notifications_screen.dart';
 import 'digital_wallet_screen.dart';
@@ -27,7 +26,7 @@ class UserDashboardScreen extends ConsumerStatefulWidget {
 class _UserDashboardScreenState extends ConsumerState<UserDashboardScreen> {
   int _selectedIndex = 0;
 
-  static const _tabSearch = 1;
+  static const _tabJobs = 1;
   static const _tabWallet = 2;
   static const _tabProfile = 3;
 
@@ -125,7 +124,7 @@ class _UserDashboardScreenState extends ConsumerState<UserDashboardScreen> {
       // 0 – Trang chủ
       CandidateHomePage(
         onNotificationTap: _openNotifications,
-        onSeeAllJobsTap: () => _selectTab(_tabSearch),
+        onSeeAllJobsTap: () => _selectTab(_tabJobs),
         onWalletTap: () => _selectTab(_tabWallet),
         onJobsTap: _openJobs,
         onProfileTap: () => _selectTab(_tabProfile),
@@ -133,16 +132,8 @@ class _UserDashboardScreenState extends ConsumerState<UserDashboardScreen> {
         onSupportTap: _openSupport,
         onSignOutTap: _confirmSignOut,
       ),
-      // 1 – Tìm kiếm
-      SearchPage(
-        onNotificationTap: _openNotifications,
-        onJobsTap: _openJobs,
-        onWalletTap: () => _selectTab(_tabWallet),
-        onProfileTap: () => _selectTab(_tabProfile),
-        onSettingsTap: _openSettings,
-        onSupportTap: _openSupport,
-        onSignOutTap: _confirmSignOut,
-      ),
+      // 1 – Công việc, đồng bộ với màn "Việc của tôi" trên web
+      const UserJobsScreen(showBackButton: false),
       // 2 – Ví
       const DigitalWalletScreen(),
       // 3 – Cá nhân

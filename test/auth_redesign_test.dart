@@ -37,10 +37,13 @@ void main() {
     await pumpAuthScreen(tester, const LoginScreen());
 
     expect(find.textContaining('Tìm việc nhanh'), findsOneWidget);
-    expect(find.textContaining('Đi làm ngay'), findsOneWidget);
+    expect(find.textContaining('Chủ động ca làm'), findsOneWidget);
     expect(find.textContaining('Nhận lương liền'), findsOneWidget);
     expect(find.text('Đăng nhập'), findsWidgets);
-    expect(find.text('Chưa có tài khoản? Đăng ký ngay'), findsOneWidget);
+    expect(
+      find.textContaining('Đăng ký ngay', findRichText: true),
+      findsOneWidget,
+    );
   });
 
   testWidgets('login social buttons are enabled for hosted UI sign in', (
@@ -102,9 +105,9 @@ void main() {
   testWidgets('forgot password focuses on OTP recovery action', (tester) async {
     await pumpAuthScreen(tester, const ForgotPasswordScreen());
 
-    expect(find.text('Quên mật khẩu?'), findsOneWidget);
-    expect(find.text('Gửi mã OTP'), findsOneWidget);
-    expect(find.byIcon(Icons.key_rounded), findsOneWidget);
+    expect(find.text('Khôi phục\nmật khẩu'), findsOneWidget);
+    expect(find.text('Gửi mã xác nhận'), findsOneWidget);
+    expect(find.byIcon(Icons.mark_email_read_outlined), findsOneWidget);
   });
 
   testWidgets('confirm signup uses six-box OTP verification UI', (
@@ -129,8 +132,8 @@ void main() {
       const ResetPasswordScreen(email: 'user@example.com'),
     );
 
-    expect(find.text('Tạo mật khẩu mới'), findsOneWidget);
-    expect(find.text('Mật khẩu mới'), findsOneWidget);
+    expect(find.text('Tạo mật khẩu\nmới'), findsOneWidget);
+    expect(find.text('Mật khẩu mới'), findsWidgets);
     expect(find.text('Độ mạnh mật khẩu'), findsOneWidget);
     expect(find.text('Đổi mật khẩu'), findsWidgets);
   });

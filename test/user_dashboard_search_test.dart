@@ -19,74 +19,77 @@ import 'package:oppo_temp_jobs/shared/domain/app_role.dart';
 import 'package:oppo_temp_jobs/features/auth/domain/auth_user_profile.dart';
 
 void main() {
-  testWidgets(
-    'home does not show search bar while jobs tab still opens search page',
-    (tester) async {
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            authControllerProvider.overrideWithBuild(
-              (_, _) => AuthState.authenticated(_candidateUser),
-            ),
-            candidateNotificationControllerProvider.overrideWithBuild(
-              (_, _) => const CandidateNotificationList(
-                items: [],
-                summary: CandidateNotificationSummary(total: 0, unread: 0),
-              ),
-            ),
-            walletControllerProvider.overrideWithBuild(
-              (_, _) => const WalletState(
-                wallet: WalletOverview(
-                  availableBalance: 0,
-                  pendingBalance: 0,
-                  totalEarnings: 0,
-                  currency: 'VND',
-                  status: WalletStatus.active,
-                ),
-                recentTransactions: [],
-                transactions: [],
-                statistics: RevenueStatistics(
-                  thisWeekIncome: 0,
-                  thisMonthIncome: 0,
-                  completedShifts: 0,
-                  averageIncomePerShift: 0,
-                ),
-              ),
-            ),
-            activeJobsProvider.overrideWith((_) async => <JobPost>[]),
-            activeQuickJobsProvider.overrideWith((_) async => <JobPost>[]),
-          ],
-          child: const MaterialApp(
-            locale: Locale('vi'),
-            supportedLocales: AppLocalizations.supportedLocales,
-            localizationsDelegates: [
-              AppLocalizations.delegate,
-              GlobalMaterialLocalizations.delegate,
-              GlobalWidgetsLocalizations.delegate,
-              GlobalCupertinoLocalizations.delegate,
-            ],
-            home: UserDashboardScreen(),
+  testWidgets('jobs tab opens the web-aligned candidate jobs screen', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authControllerProvider.overrideWithBuild(
+            (_, _) => AuthState.authenticated(_candidateUser),
           ),
+          candidateNotificationControllerProvider.overrideWithBuild(
+            (_, _) => const CandidateNotificationList(
+              items: [],
+              summary: CandidateNotificationSummary(total: 0, unread: 0),
+            ),
+          ),
+          walletControllerProvider.overrideWithBuild(
+            (_, _) => const WalletState(
+              wallet: WalletOverview(
+                availableBalance: 0,
+                pendingBalance: 0,
+                totalEarnings: 0,
+                currency: 'VND',
+                status: WalletStatus.active,
+              ),
+              recentTransactions: [],
+              transactions: [],
+              statistics: RevenueStatistics(
+                thisWeekIncome: 0,
+                thisMonthIncome: 0,
+                completedShifts: 0,
+                averageIncomePerShift: 0,
+              ),
+            ),
+          ),
+          activeJobsProvider.overrideWith((_) async => <JobPost>[]),
+          activeQuickJobsProvider.overrideWith((_) async => <JobPost>[]),
+        ],
+        child: const MaterialApp(
+          locale: Locale('vi'),
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          home: UserDashboardScreen(),
         ),
-      );
-      await tester.pumpAndSettle();
+      ),
+    );
+    await tester.pumpAndSettle();
 
-      expect(find.text('Tìm kiếm công việc F&B n...'), findsNothing);
-      expect(find.text('Tìm kiếm'), findsNothing);
-      expect(find.text('Công việc'), findsOneWidget);
+    expect(find.text('Tìm kiếm công việc F&B n...'), findsNothing);
+    expect(find.text('Tìm kiếm'), findsNothing);
+    expect(find.text('Công việc'), findsOneWidget);
 
-      await tester.tap(find.text('Công việc'));
-      await tester.pumpAndSettle();
+    await tester.tap(find.text('Công việc'));
+    await tester.pumpAndSettle();
 
-      expect(find.text('Tìm kiếm ca làm, quán cafe...'), findsOneWidget);
+    expect(find.text('Tìm công việc mơ ước của bạn'), findsOneWidget);
+    expect(find.text('Công việc tiêu chuẩn'), findsOneWidget);
+    expect(find.text('Công việc Tuyển gấp'), findsOneWidget);
+    expect(find.text('Công việc đã lưu'), findsOneWidget);
+    expect(find.byIcon(Icons.arrow_back), findsNothing);
 
-      final homeNavLabel = tester.widget<Text>(find.text('Trang chủ'));
-      expect(homeNavLabel.style?.color, const Color(0xFF6B7280));
+    final homeNavLabel = tester.widget<Text>(find.text('Trang chủ'));
+    expect(homeNavLabel.style?.color, const Color(0xFF6B7280));
 
-      final searchNavLabel = tester.widget<Text>(find.text('Công việc'));
-      expect(searchNavLabel.style?.color, AppColors.primary);
-    },
-  );
+    final searchNavLabel = tester.widget<Text>(find.text('Công việc'));
+    expect(searchNavLabel.style?.color, AppColors.primary);
+  });
 }
 
 const _candidateUser = AuthUserProfile(

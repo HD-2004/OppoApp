@@ -24,8 +24,11 @@ class ConversationTile extends StatelessWidget {
     this.status = ConversationStatus.none,
     this.isOnline = false,
     this.isUnread = false,
+    this.unreadCount = 0,
     this.lastMessage,
     this.lastMessageTime,
+    this.onDelete,
+    this.canDelete = false,
   });
 
   final JobPost job;
@@ -33,6 +36,9 @@ class ConversationTile extends StatelessWidget {
   final ConversationStatus status;
   final bool isOnline;
   final bool isUnread;
+  final int unreadCount;
+  final VoidCallback? onDelete;
+  final bool canDelete;
 
   /// Optional preview supplied by the caller; falls back to job-derived text.
   final String? lastMessage;
@@ -136,17 +142,60 @@ class ConversationTile extends StatelessWidget {
                                   ),
                                 ),
                                 const SizedBox(width: 8),
-                                Text(
-                                  timeLabel,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: isUnread
-                                        ? AppColors.primary
-                                        : const Color(0xFF9CA3AF),
-                                    fontWeight: isUnread
-                                        ? FontWeight.w600
-                                        : FontWeight.w400,
-                                  ),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          timeLabel,
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: isUnread
+                                                ? AppColors.primary
+                                                : const Color(0xFF9CA3AF),
+                                            fontWeight: isUnread
+                                                ? FontWeight.w600
+                                                : FontWeight.w400,
+                                          ),
+                                        ),
+                                        if (onDelete != null) ...[
+                                          const SizedBox(width: 4),
+                                          Tooltip(
+                                            message: canDelete
+                                                ? 'Xóa cuộc trò chuyện'
+                                                : 'Chỉ xóa được sau khi hoàn thành công việc',
+                                            child: InkWell(
+                                              onTap: onDelete,
+                                              borderRadius:
+                                                  BorderRadius.circular(18),
+                                              child: Padding(
+                                                padding: const EdgeInsets.all(
+                                                  4,
+                                                ),
+                                                child: Icon(
+                                                  canDelete
+                                                      ? Icons
+                                                            .delete_outline_rounded
+                                                      : Icons
+                                                            .lock_outline_rounded,
+                                                  size: 18,
+                                                  color: canDelete
+                                                      ? const Color(0xFFDC2626)
+                                                      : const Color(0xFF9CA3AF),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                    if (unreadCount > 0) ...[
+                                      const SizedBox(height: 6),
+                                      _UnreadCountBadge(count: unreadCount),
+                                    ],
+                                  ],
                                 ),
                               ],
                             ),
@@ -220,6 +269,33 @@ class ConversationTile extends StatelessWidget {
       case ConversationStatus.none:
         return job.title;
     }
+  }
+}
+
+class _UnreadCountBadge extends StatelessWidget {
+  const _UnreadCountBadge({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(minWidth: 22, minHeight: 22),
+      padding: const EdgeInsets.symmetric(horizontal: 6),
+      alignment: Alignment.center,
+      decoration: const BoxDecoration(
+        color: Color(0xFFDC2626),
+        shape: BoxShape.circle,
+      ),
+      child: Text(
+        count > 99 ? '99+' : '$count',
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
   }
 }
 

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../auth/application/auth_controller.dart';
 import '../../../candidate/data/aws_application_repository.dart';
+import '../../../candidate/domain/application_repository.dart';
 import '../../../candidate/domain/job_post.dart';
 import '../../../candidate/presentation/user_job_detail_screen.dart';
 import '../controllers/jobs_controller.dart';
@@ -161,12 +162,24 @@ class _JobsPageState extends ConsumerState<JobsPage> {
       builder: (_) => const Center(child: CircularProgressIndicator()),
     );
     try {
+      final user = ref.read(authControllerProvider).asData?.value.user;
+      if (user == null) {
+        throw Exception('Vui lòng đăng nhập để ứng tuyển.');
+      }
       await ref
           .read(applicationRepositoryProvider)
           .submitApplication(
             jobId: job.idJob,
             cvUrl: cvUrl,
             cvFilename: cvFilename,
+            notification: ApplicationNotificationDetails(
+              employerId: job.employerId,
+              candidateId: user.userId,
+              candidateName: user.fullName,
+              jobTitle: job.title,
+              companyName: job.companyName ?? job.employerName,
+              isQuickJob: job.isQuickJob,
+            ),
           );
       if (!mounted) return;
       Navigator.pop(context);

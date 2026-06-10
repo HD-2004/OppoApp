@@ -68,8 +68,8 @@ void main() {
     await tester.tap(find.text('Quên mật khẩu'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Quên mật khẩu?'), findsOneWidget);
-    expect(find.text('Gửi mã OTP'), findsOneWidget);
+    expect(find.text('Khôi phục\nmật khẩu'), findsOneWidget);
+    expect(find.text('Gửi mã xác nhận'), findsOneWidget);
   });
 
   testWidgets('opens candidate register screen from login', (

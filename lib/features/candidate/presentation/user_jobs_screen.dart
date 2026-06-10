@@ -9,6 +9,7 @@ import '../../auth/application/auth_controller.dart';
 import '../../auth/domain/auth_user_profile.dart';
 import '../application/jobs_providers.dart';
 import '../data/aws_application_repository.dart';
+import '../domain/application_repository.dart';
 import '../domain/job_post.dart';
 import 'quick_job_intro_page.dart';
 import 'user_job_detail_screen.dart';
@@ -16,7 +17,9 @@ import 'widgets/availability_card.dart';
 import 'widgets/job_post_card.dart';
 
 class UserJobsScreen extends ConsumerStatefulWidget {
-  const UserJobsScreen({super.key});
+  const UserJobsScreen({super.key, this.showBackButton = true});
+
+  final bool showBackButton;
 
   @override
   ConsumerState<UserJobsScreen> createState() => _UserJobsScreenState();
@@ -526,10 +529,22 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
 
     try {
       final repository = ref.read(applicationRepositoryProvider);
+      final user = ref.read(authControllerProvider).asData?.value.user;
+      if (user == null) {
+        throw Exception('Vui lòng đăng nhập để ứng tuyển.');
+      }
       await repository.submitApplication(
         jobId: job.idJob,
         cvUrl: cvUrl,
         cvFilename: cvFilename,
+        notification: ApplicationNotificationDetails(
+          employerId: job.employerId,
+          candidateId: user.userId,
+          candidateName: user.fullName,
+          jobTitle: job.title,
+          companyName: job.companyName ?? job.employerName,
+          isQuickJob: job.isQuickJob,
+        ),
       );
       if (!mounted) {
         return;
@@ -659,28 +674,30 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(
-                              children: [
-                                InkWell(
-                                  onTap: () => Navigator.of(context).pop(),
-                                  child: Container(
-                                    padding: const EdgeInsets.all(8),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white.withValues(
-                                        alpha: 0.15,
+                            if (widget.showBackButton) ...[
+                              Row(
+                                children: [
+                                  InkWell(
+                                    onTap: () => Navigator.of(context).pop(),
+                                    child: Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withValues(
+                                          alpha: 0.15,
+                                        ),
+                                        shape: BoxShape.circle,
                                       ),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: const Icon(
-                                      Icons.arrow_back,
-                                      color: Colors.white,
-                                      size: 20,
+                                      child: const Icon(
+                                        Icons.arrow_back,
+                                        color: Colors.white,
+                                        size: 20,
+                                      ),
                                     ),
                                   ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 16),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                            ],
                             Text(
                               'Tìm công việc mơ ước của bạn',
                               style: textTheme.headlineSmall?.copyWith(

@@ -14,10 +14,12 @@ class UserJobDetailScreen extends StatelessWidget {
     super.key,
     required this.job,
     required this.onApplyPressed,
+    this.showApplyButton = true,
   });
 
   final JobPost job;
   final VoidCallback onApplyPressed;
+  final bool showApplyButton;
 
   @override
   Widget build(BuildContext context) {
@@ -87,7 +89,7 @@ class UserJobDetailScreen extends StatelessWidget {
                     _SimilarPositions(job: job),
 
                     // Bottom spacing cho sticky button
-                    const SizedBox(height: 100),
+                    SizedBox(height: showApplyButton ? 100 : 24),
                   ],
                 ),
               ),
@@ -95,12 +97,13 @@ class UserJobDetailScreen extends StatelessWidget {
           ),
 
           // ── Sticky bottom apply button ─────────────────────────
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: _StickyApplyBar(onApply: onApplyPressed),
-          ),
+          if (showApplyButton)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: _StickyApplyBar(onApply: onApplyPressed),
+            ),
         ],
       ),
     );

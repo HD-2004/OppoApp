@@ -32,6 +32,14 @@ class AwsUserProfileRepository implements UserProfileRepository {
     };
   }
 
+  int _utf8Size(String value) => utf8.encode(value).length;
+
+  String _truncateForLog(String value) {
+    const maxLength = 500;
+    if (value.length <= maxLength) return value;
+    return '${value.substring(0, maxLength)}...';
+  }
+
   @override
   Future<void> savePendingRegistration(
     PendingRegistrationProfile profile,
@@ -197,26 +205,40 @@ class AwsUserProfileRepository implements UserProfileRepository {
     String? bio,
     List<String>? skills,
     String? profileImage,
+    Map<String, String>? socialLinks,
     List<String>? savedJobs,
   }) async {
     final token = await _getAuthToken();
+    final payload = {
+      'profileCompleted': completed,
+      if (fullName != null) 'fullName': fullName.trim(),
+      if (phone != null) 'phone': phone.trim(),
+      if (cccd != null) 'cccd': cccd.trim(),
+      if (dateOfBirth != null) 'dateOfBirth': dateOfBirth.trim(),
+      if (location != null) 'location': location.trim(),
+      if (title != null) 'title': title.trim(),
+      if (bio != null) 'bio': bio.trim(),
+      'skills': ?skills,
+      'profileImage': ?profileImage,
+      'socialLinks': ?socialLinks,
+      'savedJobs': ?savedJobs,
+      'updatedAt': DateTime.now().toIso8601String(),
+    };
+    final encodedPayload = jsonEncode(payload);
+    final payloadSize = _utf8Size(encodedPayload);
+    if (profileImage != null) {
+      safePrint(
+        'Updating profile with profileImage: '
+        'imageChars=${profileImage.length}, payloadBytes=$payloadSize',
+      );
+    } else {
+      safePrint('Updating profile: payloadBytes=$payloadSize');
+    }
+
     final response = await http.put(
       Uri.parse('$_apiBaseUrl/profile/$userId'),
       headers: _buildHeaders(token),
-      body: jsonEncode({
-        'profileCompleted': completed,
-        if (fullName != null) 'fullName': fullName.trim(),
-        if (phone != null) 'phone': phone.trim(),
-        if (cccd != null) 'cccd': cccd.trim(),
-        if (dateOfBirth != null) 'dateOfBirth': dateOfBirth.trim(),
-        if (location != null) 'location': location.trim(),
-        if (title != null) 'title': title.trim(),
-        if (bio != null) 'bio': bio.trim(),
-        'skills': ?skills,
-        'profileImage': ?profileImage,
-        'savedJobs': ?savedJobs,
-        'updatedAt': DateTime.now().toIso8601String(),
-      }),
+      body: encodedPayload,
     );
 
     if (response.statusCode == 200) {
@@ -225,12 +247,22 @@ class AwsUserProfileRepository implements UserProfileRepository {
         final data = body['data'] as Map<String, dynamic>;
         return _mapJsonToProfile(data, userId);
       }
+      safePrint(
+        'Profile update returned 200 without profile data: '
+        '${_truncateForLog(response.body)}',
+      );
     }
 
-    // Fallback fetch if update response doesn't contain updated profile
-    final updated = await getByUserId(userId);
-    if (updated != null) return updated;
-    throw Exception('Failed to update profile completion status in DynamoDB');
+    final responseSize = _utf8Size(response.body);
+    safePrint(
+      'Failed to update profile in DynamoDB: '
+      'status=${response.statusCode}, payloadBytes=$payloadSize, '
+      'responseBytes=$responseSize, body=${_truncateForLog(response.body)}',
+    );
+    throw Exception(
+      'Failed to update profile in DynamoDB '
+      '(status ${response.statusCode}, payload $payloadSize bytes)',
+    );
   }
 
   @override
@@ -317,6 +349,18 @@ class AwsUserProfileRepository implements UserProfileRepository {
       }
     }
 
+    Map<String, String>? socialLinksMap;
+    if (data['socialLinks'] != null) {
+      try {
+        final rawMap = data['socialLinks'] as Map;
+        socialLinksMap = rawMap.map(
+          (key, value) => MapEntry(key.toString(), value.toString()),
+        );
+      } catch (_) {
+        // Fallback or skip if casting fails
+      }
+    }
+
     return AuthUserProfile(
       userId: data['userId'] as String? ?? defaultUserId,
       username: data['username'] as String? ?? data['email'] as String? ?? '',
@@ -344,6 +388,7 @@ class AwsUserProfileRepository implements UserProfileRepository {
       isActive: data['isActive'] == true,
       latitude: double.tryParse(data['latitude']?.toString() ?? ''),
       longitude: double.tryParse(data['longitude']?.toString() ?? ''),
+      socialLinks: socialLinksMap,
     );
   }
 }

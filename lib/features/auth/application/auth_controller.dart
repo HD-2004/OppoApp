@@ -1,7 +1,9 @@
 import 'package:amplify_flutter/amplify_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/errors/auth_failure.dart';
+import '../../../core/preferences/app_preferences.dart';
 import '../../../shared/domain/app_role.dart';
 import '../data/auth_repository.dart';
 import '../data/auth_service.dart';
@@ -28,6 +30,19 @@ final authControllerProvider = AsyncNotifierProvider<AuthController, AuthState>(
 );
 
 class AuthController extends AsyncNotifier<AuthState> {
+  Future<AuthUserProfile> _withLocalAvailability(
+    AuthUserProfile profile,
+  ) async {
+    final preferences = await SharedPreferences.getInstance();
+    final localAvailability = preferences.getBool(
+      AppPreferenceKeys.candidateAvailability,
+    );
+    if (localAvailability == null) {
+      return profile;
+    }
+    return profile.copyWith(isActive: localAvailability);
+  }
+
   String routeAfterLogin(AuthUserProfile user) {
     if (user.role == AppRole.employer) {
       if (user.isEmployerApproved) {
@@ -60,11 +75,12 @@ class AuthController extends AsyncNotifier<AuthState> {
       if (profile == null) {
         return const AuthState.unauthenticated();
       }
-      if (profile.role == null) {
-        return AuthState.missingRole(profile);
+      final resolvedProfile = await _withLocalAvailability(profile);
+      if (resolvedProfile.role == null) {
+        return AuthState.missingRole(resolvedProfile);
       }
 
-      return AuthState.authenticated(profile);
+      return AuthState.authenticated(resolvedProfile);
     } on AuthFailure catch (failure) {
       if (failure.code == 'configuration') {
         safePrint(failure.message);
@@ -109,11 +125,12 @@ class AuthController extends AsyncNotifier<AuthState> {
       state = const AsyncData(AuthState.unauthenticated());
       return;
     }
+    final resolvedProfile = await _withLocalAvailability(profile);
 
     state = AsyncData(
-      profile.role == null
-          ? AuthState.missingRole(profile)
-          : AuthState.authenticated(profile),
+      resolvedProfile.role == null
+          ? AuthState.missingRole(resolvedProfile)
+          : AuthState.authenticated(resolvedProfile),
     );
   }
 
@@ -178,6 +195,7 @@ class AuthController extends AsyncNotifier<AuthState> {
     String? bio,
     List<String>? skills,
     String? profileImage,
+    Map<String, String>? socialLinks,
   }) async {
     final current = state.asData?.value.user;
     if (current == null) {
@@ -198,6 +216,7 @@ class AuthController extends AsyncNotifier<AuthState> {
           bio: bio,
           skills: skills,
           profileImage: profileImage,
+          socialLinks: socialLinks,
         );
     state = AsyncData(AuthState.authenticated(updated));
   }
@@ -229,6 +248,7 @@ class AuthController extends AsyncNotifier<AuthState> {
           bio: current.bio,
           skills: current.skills,
           profileImage: current.profileImage,
+          socialLinks: current.socialLinks,
           savedJobs: savedList,
         );
     state = AsyncData(AuthState.authenticated(updated));
@@ -255,7 +275,6 @@ class AuthController extends AsyncNotifier<AuthState> {
     if (current == null) {
       return;
     }
-
     final updated = await ref
         .read(authRepositoryProvider)
         .updateAvailability(
@@ -264,6 +283,17 @@ class AuthController extends AsyncNotifier<AuthState> {
           latitude: latitude,
           longitude: longitude,
         );
-    state = AsyncData(AuthState.authenticated(updated));
+    final resolved = updated.copyWith(
+      isActive: isActive,
+      latitude: latitude ?? updated.latitude ?? current.latitude,
+      longitude: longitude ?? updated.longitude ?? current.longitude,
+    );
+
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setBool(
+      AppPreferenceKeys.candidateAvailability,
+      isActive,
+    );
+    state = AsyncData(AuthState.authenticated(resolved));
   }
 }

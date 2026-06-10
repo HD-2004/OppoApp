@@ -8,213 +8,268 @@ import '../domain/job_post.dart';
 import '../domain/job_repository.dart';
 
 final jobRepositoryProvider = Provider<JobRepository>((ref) {
-  return AwsJobRepository();
+  final client = http.Client();
+  ref.onDispose(client.close);
+  return AwsJobRepository(client: client);
 });
 
 class AwsJobRepository implements JobRepository {
+  AwsJobRepository({http.Client? client}) : _client = client ?? http.Client();
+
   static const _standardJobsUrl =
       'https://dlidp35x33.execute-api.ap-southeast-1.amazonaws.com/prod';
   static const _quickJobsUrl =
       'https://6zw89pkuxb.execute-api.ap-southeast-1.amazonaws.com/prod';
 
-  String _formatSalaryFromDB(dynamic raw, {String fallback = 'Thỏa thuận'}) {
-    if (raw == null) return fallback;
-    final str = raw.toString().trim();
-    if (str.isEmpty) return fallback;
-    if (str.contains('VNĐ') || str.contains('VND') || str.contains('đ')) {
-      return str;
-    }
-    final num = int.tryParse(str.replaceAll(RegExp(r'\D'), ''));
-    if (num == null || num == 0) return fallback;
-
-    final formatted = num.toString().replaceAllMapped(
-      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-      (Match m) => '${m[1]}.',
-    );
-    return '$formatted VNĐ/giờ';
-  }
-
-  String _formatMoney(int amount) {
-    return amount.toString().replaceAllMapped(
-      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-      (Match m) => '${m[1]}.',
-    );
-  }
+  final http.Client _client;
 
   @override
   Future<List<JobPost>> getActiveJobs() async {
-    try {
-      final response = await http.get(
-        Uri.parse('$_standardJobsUrl/jobs/active'),
-      );
-      if (response.statusCode == 200) {
-        final body = jsonDecode(response.body);
-        if (body['success'] == true && body['data'] != null) {
-          final list = body['data'] as List;
-          return list.map((item) {
-            final job = item as Map<String, dynamic>;
-            final idJob = job['idJob'] as String? ?? '';
-            final lat =
-                double.tryParse(job['latitude']?.toString() ?? '') ??
-                double.tryParse(job['lat']?.toString() ?? '') ??
-                10.7769;
-            final lng =
-                double.tryParse(job['longitude']?.toString() ?? '') ??
-                double.tryParse(job['lng']?.toString() ?? '') ??
-                106.7009;
-
-            List<String> tagsList = [];
-            if (job['tags'] != null && job['tags'].toString().isNotEmpty) {
-              tagsList = job['tags']
-                  .toString()
-                  .split(',')
-                  .map((t) => t.trim())
-                  .where((t) => t.isNotEmpty)
-                  .toList();
-            }
-
-            final jobTypeStr = (job['jobType'] as String? ?? '').toLowerCase();
-            final jobType = jobTypeStr == 'part-time'
-                ? JobPostType.partTime
-                : JobPostType.fullTime;
-
-            return JobPost(
-              id: 'dynamo-$idJob',
-              idJob: idJob,
-              employerId: job['employerId'] as String? ?? '',
-              employerName:
-                  job['employerName'] as String? ??
-                  job['employerEmail'] as String? ??
-                  'Công ty',
-              title: job['title'] as String? ?? 'Untitled Job',
-              jobType: jobType,
-              location: job['location'] as String? ?? '',
-              latitude: lat,
-              longitude: lng,
-              salary: _formatSalaryFromDB(job['salary']),
-              shiftTime: job['workHours'] as String? ?? '',
-              description: job['description'] as String? ?? '',
-              tags: tagsList,
-              postedAt:
-                  DateTime.tryParse(job['createdAt']?.toString() ?? '') ??
-                  DateTime.now(),
-              applicants:
-                  int.tryParse(job['applicants']?.toString() ?? '0') ?? 0,
-              views: int.tryParse(job['views']?.toString() ?? '0') ?? 0,
-              visibilityScore:
-                  double.tryParse(job['visibilityScore']?.toString() ?? '0') ??
-                  0,
-              workHours: job['workHours'] as String?,
-              workDays: job['workDays'] as String?,
-              responsibilities: job['responsibilities'] as String?,
-              requirements: job['requirements'] as String?,
-              benefits: job['benefits'] as String?,
-              isQuickJob: false,
-            );
-          }).toList();
-        }
-      }
-      return [];
-    } catch (e, stackTrace) {
-      developer.log(
-        'Error fetching standard active jobs',
-        error: e,
-        stackTrace: stackTrace,
-      );
-      return [];
-    }
+    final response = await _client.get(
+      Uri.parse('$_standardJobsUrl/jobs/active'),
+    );
+    final data = _decodeJobList(response, source: 'danh sách công việc');
+    return data.map(mapStandardJob).toList()
+      ..sort((a, b) => b.postedAt.compareTo(a.postedAt));
   }
 
   @override
   Future<List<JobPost>> getActiveQuickJobs() async {
-    try {
-      final response = await http.get(
-        Uri.parse('$_quickJobsUrl/quick-jobs/active'),
+    final response = await _client.get(
+      Uri.parse('$_quickJobsUrl/quick-jobs/active'),
+    );
+    final data = _decodeJobList(response, source: 'danh sách tuyển gấp');
+    return data.map(mapQuickJob).toList()
+      ..sort((a, b) => b.postedAt.compareTo(a.postedAt));
+  }
+
+  static List<Map<String, dynamic>> _decodeJobList(
+    http.Response response, {
+    required String source,
+  }) {
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw JobRepositoryException(
+        'Không tải được $source (HTTP ${response.statusCode}).',
       );
-      if (response.statusCode == 200) {
-        final body = jsonDecode(response.body);
-        if (body['success'] == true && body['data'] != null) {
-          final list = body['data'] as List;
-          return list.map((item) {
-            final job = item as Map<String, dynamic>;
-            final idJob =
-                job['jobID'] as String? ?? job['idJob'] as String? ?? '';
-            final hourlyRate =
-                int.tryParse(job['hourlyRate']?.toString() ?? '0') ?? 0;
-            final totalHours =
-                double.tryParse(job['totalHours']?.toString() ?? '0') ?? 0.0;
-            final totalSalary =
-                int.tryParse(job['totalSalary']?.toString() ?? '0') ??
-                (hourlyRate * totalHours).round();
-
-            final candidateIncome = (totalSalary * 0.85).round();
-            final lat =
-                double.tryParse(job['latitude']?.toString() ?? '') ??
-                double.tryParse(job['lat']?.toString() ?? '') ??
-                10.7769;
-            final lng =
-                double.tryParse(job['longitude']?.toString() ?? '') ??
-                double.tryParse(job['lng']?.toString() ?? '') ??
-                106.7009;
-
-            final hoursStr = totalHours.toStringAsFixed(
-              totalHours.truncateToDouble() == totalHours ? 0 : 1,
-            );
-            final salaryStr = candidateIncome > 0
-                ? '${_formatMoney(candidateIncome)} VNĐ/${hoursStr}h'
-                : '${_formatMoney((hourlyRate * 0.85).round())} VNĐ/giờ';
-
-            final startTime = job['startTime'] as String? ?? '';
-            final endTime = job['endTime'] as String? ?? '';
-            final shiftTime = (startTime.isNotEmpty && endTime.isNotEmpty)
-                ? '$startTime - $endTime'
-                : '';
-
-            return JobPost(
-              id: 'quick-$idJob',
-              idJob: idJob,
-              employerId: job['employerId'] as String? ?? '',
-              employerName: job['companyName'] as String? ?? 'Công ty',
-              title: job['title'] as String? ?? 'Untitled Job',
-              jobType: JobPostType.urgent,
-              location: job['location'] as String? ?? '',
-              latitude: lat,
-              longitude: lng,
-              salary: salaryStr,
-              shiftTime: shiftTime,
-              description: job['description'] as String? ?? '',
-              tags: const ['Tuyển gấp', 'Làm ngay'],
-              postedAt:
-                  DateTime.tryParse(job['createdAt']?.toString() ?? '') ??
-                  DateTime.now(),
-              applicants:
-                  int.tryParse(job['applicants']?.toString() ?? '0') ?? 0,
-              views: int.tryParse(job['views']?.toString() ?? '0') ?? 0,
-              visibilityScore:
-                  double.tryParse(job['visibilityScore']?.toString() ?? '0') ??
-                  0,
-              workDate: job['workDate'] as String?,
-              companyName: job['companyName'] as String?,
-              hourlyRate: hourlyRate,
-              totalHours: totalHours,
-              totalSalary: totalSalary,
-              startTime: startTime,
-              endTime: endTime,
-              requirements: job['requirements'] as String?,
-              isQuickJob: true,
-            );
-          }).toList();
-        }
-      }
-      return [];
-    } catch (e, stackTrace) {
-      developer.log(
-        'Error fetching active quick jobs',
-        error: e,
-        stackTrace: stackTrace,
-      );
-      return [];
     }
+
+    final dynamic decoded;
+    try {
+      decoded = jsonDecode(response.body);
+    } on FormatException catch (error) {
+      throw JobRepositoryException('Dữ liệu $source không hợp lệ.', error);
+    }
+
+    if (decoded is! Map<String, dynamic> || decoded['success'] != true) {
+      throw JobRepositoryException('API $source trả về trạng thái thất bại.');
+    }
+
+    final rawData = decoded['data'];
+    if (rawData == null) return const [];
+    if (rawData is! List) {
+      throw JobRepositoryException('$source không đúng định dạng.');
+    }
+
+    return rawData
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList();
+  }
+
+  static JobPost mapStandardJob(Map<String, dynamic> job) {
+    final idJob = _string(job['idJob']);
+    return JobPost(
+      id: 'dynamo-$idJob',
+      idJob: idJob,
+      employerId: _string(job['employerId']),
+      employerName: _firstNonEmpty([
+        job['employerName'],
+        job['companyName'],
+        job['employerEmail'],
+      ], fallback: 'Nhà tuyển dụng'),
+      employerAvatarUrl: employerLogoFrom(job),
+      title: _firstNonEmpty([job['title']], fallback: 'Công việc chưa đặt tên'),
+      jobType: _jobType(job['jobType']),
+      location: _string(job['location']),
+      latitude: _coordinate(job['latitude'] ?? job['lat'], latitude: true),
+      longitude: _coordinate(job['longitude'] ?? job['lng'], latitude: false),
+      salary: formatSalary(job['salary']),
+      shiftTime: _string(job['workHours']),
+      description: _string(job['description']),
+      tags: _tags(job['tags']),
+      postedAt: _date(job['createdAt']),
+      applicants: _int(job['applicants']),
+      views: _int(job['views']),
+      workHours: _nullableString(job['workHours']),
+      workDays: _nullableString(job['workDays']),
+      responsibilities: _nullableString(job['responsibilities']),
+      requirements: _nullableString(job['requirements']),
+      benefits: _nullableString(job['benefits']),
+    );
+  }
+
+  static JobPost mapQuickJob(Map<String, dynamic> job) {
+    final idJob = _firstNonEmpty([job['jobID'], job['idJob']]);
+    final hourlyRate = _int(job['hourlyRate']);
+    final totalHours = _double(job['totalHours']);
+    final suppliedTotal = _int(job['totalSalary']);
+    final totalSalary = suppliedTotal > 0
+        ? suppliedTotal
+        : (hourlyRate * totalHours).round();
+    final candidateIncome = (totalSalary * 0.85).round();
+    final candidateHourlyRate = (hourlyRate * 0.85).round();
+    final salary = candidateIncome > 0
+        ? '${_formatMoney(candidateIncome)} VNĐ/${_formatHours(totalHours)} giờ'
+        : candidateHourlyRate > 0
+        ? '${_formatMoney(candidateHourlyRate)} VNĐ/giờ'
+        : 'Thỏa thuận';
+    final startTime = _string(job['startTime']);
+    final endTime = _string(job['endTime']);
+
+    return JobPost(
+      id: 'quick-$idJob',
+      idJob: idJob,
+      employerId: _string(job['employerId']),
+      employerName: _firstNonEmpty([
+        job['companyName'],
+        job['employerName'],
+      ], fallback: 'Nhà tuyển dụng'),
+      employerAvatarUrl: employerLogoFrom(job),
+      title: _firstNonEmpty([job['title']], fallback: 'Công việc chưa đặt tên'),
+      jobType: JobPostType.urgent,
+      location: _string(job['location']),
+      latitude: _coordinate(job['latitude'] ?? job['lat'], latitude: true),
+      longitude: _coordinate(job['longitude'] ?? job['lng'], latitude: false),
+      salary: salary,
+      shiftTime: startTime.isNotEmpty && endTime.isNotEmpty
+          ? '$startTime - $endTime'
+          : '',
+      description: _string(job['description']),
+      tags: const ['Tuyển gấp', 'Làm ngay'],
+      postedAt: _date(job['createdAt']),
+      applicants: _int(job['applicants']),
+      views: _int(job['views']),
+      workDate: _nullableString(job['workDate']),
+      companyName: _nullableString(job['companyName']),
+      hourlyRate: hourlyRate,
+      totalHours: totalHours,
+      totalSalary: totalSalary,
+      startTime: startTime,
+      endTime: endTime,
+      requirements: _nullableString(job['requirements']),
+      isQuickJob: true,
+    );
+  }
+
+  static String? employerLogoFrom(Map<String, dynamic> job) {
+    for (final key in const [
+      'employerAvatarUrl',
+      'companyLogo',
+      'logoUrl',
+      'avatarUrl',
+      'profileImage',
+    ]) {
+      final value = _nullableString(job[key]);
+      if (value != null) return value;
+    }
+    return null;
+  }
+
+  static String formatSalary(dynamic raw, {String fallback = 'Thỏa thuận'}) {
+    final value = _nullableString(raw);
+    if (value == null || value == '0') return fallback;
+    if (RegExp(r'[^\d.,\s]').hasMatch(value)) {
+      return value
+          .replaceAll('VND', 'VNĐ')
+          .replaceAll('/hour', '/giờ')
+          .replaceAll('/hr', '/giờ');
+    }
+
+    final amount = int.tryParse(value.replaceAll(RegExp(r'\D'), ''));
+    if (amount == null || amount == 0) return fallback;
+    return '${_formatMoney(amount)} VNĐ/giờ';
+  }
+
+  static JobPostType _jobType(dynamic raw) {
+    final value = _string(
+      raw,
+    ).toLowerCase().replaceAll('_', '-').replaceAll(' ', '-');
+    if (value.contains('part')) return JobPostType.partTime;
+    if (value.contains('quick') || value.contains('urgent')) {
+      return JobPostType.urgent;
+    }
+    return JobPostType.fullTime;
+  }
+
+  static List<String> _tags(dynamic raw) {
+    if (raw is List) {
+      return raw
+          .map(_string)
+          .where((tag) => tag.isNotEmpty)
+          .toList(growable: false);
+    }
+    return _string(raw)
+        .split(',')
+        .map((tag) => tag.trim())
+        .where((tag) => tag.isNotEmpty)
+        .toList(growable: false);
+  }
+
+  static double? _coordinate(dynamic raw, {required bool latitude}) {
+    final value = _doubleOrNull(raw);
+    if (value == null) return null;
+    final isValid = latitude
+        ? value >= -90 && value <= 90
+        : value >= -180 && value <= 180;
+    return isValid ? value : null;
+  }
+
+  static DateTime _date(dynamic raw) {
+    return DateTime.tryParse(_string(raw))?.toLocal() ??
+        DateTime.fromMillisecondsSinceEpoch(0);
+  }
+
+  static String _firstNonEmpty(
+    Iterable<dynamic> values, {
+    String fallback = '',
+  }) {
+    for (final value in values) {
+      final text = _string(value);
+      if (text.isNotEmpty) return text;
+    }
+    return fallback;
+  }
+
+  static String _string(dynamic raw) => raw?.toString().trim() ?? '';
+
+  static String? _nullableString(dynamic raw) {
+    final value = _string(raw);
+    return value.isEmpty ? null : value;
+  }
+
+  static int _int(dynamic raw) {
+    if (raw is num) return raw.toInt();
+    return int.tryParse(_string(raw).replaceAll(RegExp(r'[^\d-]'), '')) ?? 0;
+  }
+
+  static double _double(dynamic raw) => _doubleOrNull(raw) ?? 0;
+
+  static double? _doubleOrNull(dynamic raw) {
+    if (raw is num) return raw.toDouble();
+    return double.tryParse(_string(raw));
+  }
+
+  static String _formatMoney(int amount) {
+    return amount.toString().replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+      (match) => '${match[1]}.',
+    );
+  }
+
+  static String _formatHours(double hours) {
+    return hours == hours.truncateToDouble()
+        ? hours.toInt().toString()
+        : hours.toStringAsFixed(1);
   }
 
   @override
@@ -227,13 +282,23 @@ class AwsJobRepository implements JobRepository {
       final endpoint = isQuickJob
           ? '/quick-jobs/$jobId/views'
           : '/jobs/$jobId/views';
-      await http.post(Uri.parse('$baseUrl$endpoint'));
-    } catch (e, stackTrace) {
+      await _client.post(Uri.parse('$baseUrl$endpoint'));
+    } catch (error, stackTrace) {
       developer.log(
-        'Error incrementing job views',
-        error: e,
+        'Không thể cập nhật lượt xem công việc',
+        error: error,
         stackTrace: stackTrace,
       );
     }
   }
+}
+
+class JobRepositoryException implements Exception {
+  const JobRepositoryException(this.message, [this.cause]);
+
+  final String message;
+  final Object? cause;
+
+  @override
+  String toString() => message;
 }

@@ -35,6 +35,11 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
     final chatsAsync = ref.watch(candidateChatsProvider);
     final standardAsync = ref.watch(activeJobsProvider);
     final quickAsync = ref.watch(activeQuickJobsProvider);
+    final unreadTotal = chatsAsync.value == null
+        ? 0
+        : ref
+              .read(candidateChatsProvider.notifier)
+              .totalUnreadCount(chatsAsync.value!);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FC),
@@ -60,6 +65,7 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
           // ── Filter tabs ────────────────────────────────────────────
           _FilterTabs(
             selectedIndex: _selectedTabIndex,
+            unreadCount: unreadTotal,
             onTabSelected: (idx) => setState(() => _selectedTabIndex = idx),
           ),
 
@@ -91,42 +97,42 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
     List<JobPost> standardJobs,
     List<JobPost> quickJobs,
   ) {
-    // 1. Filter out conversations without clear Employer name
-    var filteredChats = chats.where((c) {
-      final name = c.employerName.trim();
-      return name.isNotEmpty &&
-          name != '?' &&
-          name.toLowerCase() != 'null' &&
-          name.toLowerCase() != 'unknown' &&
-          name.toLowerCase() != 'anonymous';
-    }).toList();
+    final allJobs = [...standardJobs, ...quickJobs];
+    var conversations = chats
+        .map(
+          (chat) => _ResolvedConversation(
+            chat: chat,
+            job: _resolveJob(chat, allJobs),
+          ),
+        )
+        .toList();
 
-    // 2. Keyword filter
+    // Job records are the source of truth for company/title, matching the web.
     if (_keyword.trim().isNotEmpty) {
       final kw = _keyword.toLowerCase();
-      filteredChats = filteredChats
+      conversations = conversations
           .where(
-            (c) =>
-                c.employerName.toLowerCase().contains(kw) ||
-                c.jobTitle.toLowerCase().contains(kw),
+            (item) =>
+                item.companyName.toLowerCase().contains(kw) ||
+                item.jobTitle.toLowerCase().contains(kw),
           )
           .toList();
     }
 
-    // 3. Tab filter
     if (_selectedTabIndex == 1) {
-      // Unread
-      filteredChats = filteredChats
-          .where((c) => ref.read(candidateChatsProvider.notifier).isUnread(c))
+      conversations = conversations
+          .where(
+            (item) =>
+                ref.read(candidateChatsProvider.notifier).isUnread(item.chat),
+          )
           .toList();
     } else if (_selectedTabIndex == 2) {
-      // Đã nhận việc / Completed
-      filteredChats = filteredChats
-          .where((c) => c.status == 'completed')
+      conversations = conversations
+          .where((item) => item.chat.status == 'completed')
           .toList();
     }
 
-    if (filteredChats.isEmpty) {
+    if (conversations.isEmpty) {
       return const _EmptyState(
         icon: Icons.chat_bubble_outline_rounded,
         message: 'Bạn chưa có cuộc trò chuyện nào trong mục này.',
@@ -135,43 +141,18 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
 
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      itemCount: filteredChats.length,
+      itemCount: conversations.length,
       itemBuilder: (_, i) {
-        final chat = filteredChats[i];
-
-        // Tìm JobPost tương thích để lấy các metadata (như logo)
-        JobPost? resolvedJob;
-        for (final job in [...standardJobs, ...quickJobs]) {
-          if (job.idJob == chat.jobId || job.id == chat.jobId) {
-            resolvedJob = job;
-            break;
-          }
-        }
-
-        // Tạo fallback JobPost nếu không tìm thấy trong list active jobs
-        final job =
-            resolvedJob ??
-            JobPost(
-              id: chat.jobId,
-              idJob: chat.jobId,
-              employerId: chat.employerId,
-              employerName: chat.employerName,
-              title: chat.jobTitle,
-              jobType: chat.jobType == 'quick'
-                  ? JobPostType.urgent
-                  : JobPostType.partTime,
-              location: '',
-              salary: '',
-              shiftTime: '',
-              description: '',
-              tags: const [],
-              postedAt: chat.appliedAt,
-              isQuickJob: chat.jobType == 'quick',
-            );
+        final conversation = conversations[i];
+        final chat = conversation.chat;
+        final job = conversation.job;
 
         final isUnread = ref
             .read(candidateChatsProvider.notifier)
             .isUnread(chat);
+        final unreadCount = ref
+            .read(candidateChatsProvider.notifier)
+            .unreadCount(chat);
         final lastMsg = chat.chatMessages.isNotEmpty
             ? chat.chatMessages.last
             : null;
@@ -188,10 +169,13 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
           status: status,
           isOnline: i == 0,
           isUnread: isUnread,
+          unreadCount: unreadCount,
           lastMessage: previewText,
           lastMessageTime: lastMsg != null
               ? DateTime.fromMillisecondsSinceEpoch(lastMsg.id)
               : chat.updatedAt,
+          canDelete: canDeleteConversation(chat.status),
+          onDelete: () => _requestDeleteConversation(chat),
           onTap: () => Navigator.of(context).push(
             MaterialPageRoute(
               builder: (_) => ChatRoomScreen(
@@ -204,6 +188,103 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
       },
     );
   }
+
+  Future<void> _requestDeleteConversation(CandidateApplication chat) async {
+    if (!canDeleteConversation(chat.status)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Cuộc trò chuyện đang được sử dụng. Bạn chỉ có thể xóa sau khi công việc hoàn thành.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        icon: const Icon(
+          Icons.delete_outline_rounded,
+          color: Color(0xFFDC2626),
+          size: 32,
+        ),
+        title: const Text('Xóa cuộc trò chuyện'),
+        content: const Text(
+          'Bạn có chắc chắn muốn xóa cuộc trò chuyện này khỏi danh sách không?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Hủy'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFDC2626),
+            ),
+            child: const Text('Xóa'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    try {
+      await ref.read(candidateChatsProvider.notifier).deleteConversation(chat);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error.toString().replaceFirst('Bad state: ', '')),
+        ),
+      );
+    }
+  }
+
+  JobPost _resolveJob(CandidateApplication chat, List<JobPost> jobs) {
+    for (final job in jobs) {
+      if (job.idJob == chat.jobId || job.id == chat.jobId) {
+        return job;
+      }
+    }
+
+    final employerName = chat.employerName.trim().isNotEmpty
+        ? chat.employerName.trim()
+        : 'Nhà tuyển dụng';
+    final title = chat.jobTitle.trim().isNotEmpty
+        ? chat.jobTitle.trim()
+        : 'Công việc';
+    final isQuick = chat.jobType == 'quick' || chat.jobId.startsWith('QJOB-');
+
+    return JobPost(
+      id: chat.jobId,
+      idJob: chat.jobId,
+      employerId: chat.employerId,
+      employerName: employerName,
+      companyName: employerName,
+      title: title,
+      jobType: isQuick ? JobPostType.urgent : JobPostType.partTime,
+      location: '',
+      salary: '',
+      shiftTime: '',
+      description: '',
+      tags: const [],
+      postedAt: chat.appliedAt,
+      isQuickJob: isQuick,
+    );
+  }
+}
+
+class _ResolvedConversation {
+  const _ResolvedConversation({required this.chat, required this.job});
+
+  final CandidateApplication chat;
+  final JobPost job;
+
+  String get companyName => job.companyName ?? job.employerName;
+  String get jobTitle => job.title;
 }
 
 // ── AppBar ────────────────────────────────────────────────────────────────────
@@ -311,9 +392,14 @@ class _SearchBar extends StatelessWidget {
 // ── Filter tabs ───────────────────────────────────────────────────────────────
 
 class _FilterTabs extends StatelessWidget {
-  const _FilterTabs({required this.selectedIndex, required this.onTabSelected});
+  const _FilterTabs({
+    required this.selectedIndex,
+    required this.unreadCount,
+    required this.onTabSelected,
+  });
 
   final int selectedIndex;
+  final int unreadCount;
   final ValueChanged<int> onTabSelected;
 
   @override
@@ -330,7 +416,7 @@ class _FilterTabs extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           _Tab(
-            label: 'Chưa đọc',
+            label: unreadCount > 0 ? 'Chưa đọc ($unreadCount)' : 'Chưa đọc',
             isActive: selectedIndex == 1,
             onTap: () => onTabSelected(1),
           ),

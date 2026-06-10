@@ -8,6 +8,7 @@ import '../../auth/application/auth_controller.dart';
 import '../../auth/domain/auth_user_profile.dart';
 import '../application/jobs_providers.dart';
 import '../data/aws_application_repository.dart';
+import '../domain/application_repository.dart';
 import '../domain/job_post.dart';
 import 'user_job_detail_screen.dart';
 import 'widgets/home_filter_chips.dart';
@@ -176,10 +177,22 @@ class _UserHomeFeedScreenState extends ConsumerState<UserHomeFeedScreen> {
 
     try {
       final repository = ref.read(applicationRepositoryProvider);
+      final user = ref.read(authControllerProvider).asData?.value.user;
+      if (user == null) {
+        throw Exception('Vui lòng đăng nhập để ứng tuyển.');
+      }
       await repository.submitApplication(
         jobId: job.idJob,
         cvUrl: cvUrl,
         cvFilename: cvFilename,
+        notification: ApplicationNotificationDetails(
+          employerId: job.employerId,
+          candidateId: user.userId,
+          candidateName: user.fullName,
+          jobTitle: job.title,
+          companyName: job.companyName ?? job.employerName,
+          isQuickJob: job.isQuickJob,
+        ),
       );
       if (!mounted) {
         return;
