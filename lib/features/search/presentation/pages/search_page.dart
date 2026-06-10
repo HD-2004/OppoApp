@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../features/auth/application/auth_controller.dart';
 import '../../../../features/candidate/application/jobs_providers.dart';
 import '../../../../features/candidate/data/aws_application_repository.dart';
+import '../../../../features/candidate/domain/application_repository.dart';
 import '../../../../features/candidate/domain/job_post.dart';
 import '../../../../features/candidate/notifications/application/notification_controller.dart';
 import '../../../../features/candidate/presentation/user_job_detail_screen.dart';
@@ -243,12 +244,24 @@ class _SearchPageState extends ConsumerState<SearchPage> {
       builder: (_) => const Center(child: CircularProgressIndicator()),
     );
     try {
+      final user = ref.read(authControllerProvider).asData?.value.user;
+      if (user == null) {
+        throw Exception('Vui lòng đăng nhập để ứng tuyển.');
+      }
       await ref
           .read(applicationRepositoryProvider)
           .submitApplication(
             jobId: job.idJob,
             cvUrl: cvUrl,
             cvFilename: cvFilename,
+            notification: ApplicationNotificationDetails(
+              employerId: job.employerId,
+              candidateId: user.userId,
+              candidateName: user.fullName,
+              jobTitle: job.title,
+              companyName: job.companyName ?? job.employerName,
+              isQuickJob: job.isQuickJob,
+            ),
           );
       if (!mounted) return;
       Navigator.pop(context);

@@ -265,20 +265,25 @@ class AuthController extends AsyncNotifier<AuthState> {
     if (current == null) {
       return;
     }
+    final updated = await ref
+        .read(authRepositoryProvider)
+        .updateAvailability(
+          userId: current.userId,
+          isActive: isActive,
+          latitude: latitude,
+          longitude: longitude,
+        );
+    final resolved = updated.copyWith(
+      isActive: isActive,
+      latitude: latitude ?? updated.latitude ?? current.latitude,
+      longitude: longitude ?? updated.longitude ?? current.longitude,
+    );
+
     final preferences = await SharedPreferences.getInstance();
     await preferences.setBool(
       AppPreferenceKeys.candidateAvailability,
       isActive,
     );
-
-    state = AsyncData(
-      AuthState.authenticated(
-        current.copyWith(
-          isActive: isActive,
-          latitude: latitude ?? current.latitude,
-          longitude: longitude ?? current.longitude,
-        ),
-      ),
-    );
+    state = AsyncData(AuthState.authenticated(resolved));
   }
 }

@@ -306,6 +306,8 @@ class AwsUserProfileRepository implements UserProfileRepository {
       headers: _buildHeaders(token),
       body: jsonEncode({
         'isActive': isActive,
+        'latitude': ?latitude,
+        'longitude': ?longitude,
         'updatedAt': DateTime.now().toIso8601String(),
       }),
     );

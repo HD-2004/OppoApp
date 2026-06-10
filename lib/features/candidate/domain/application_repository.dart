@@ -1,3 +1,21 @@
+class ApplicationNotificationDetails {
+  const ApplicationNotificationDetails({
+    required this.employerId,
+    required this.candidateId,
+    required this.candidateName,
+    required this.jobTitle,
+    required this.companyName,
+    required this.isQuickJob,
+  });
+
+  final String employerId;
+  final String candidateId;
+  final String candidateName;
+  final String jobTitle;
+  final String companyName;
+  final bool isQuickJob;
+}
+
 abstract class ApplicationRepository {
   Future<List<Map<String, dynamic>>> getCandidateCVs(String userId);
   Future<Map<String, dynamic>> uploadCandidateCV({
@@ -11,8 +29,17 @@ abstract class ApplicationRepository {
     required String jobId,
     required String cvUrl,
     required String cvFilename,
+    required ApplicationNotificationDetails notification,
   });
   Future<List<Map<String, dynamic>>> getCandidateApplications(String userId);
+  Future<void> confirmApplicationCompletion({
+    required String applicationId,
+    required DateTime confirmedAt,
+  });
+  Future<void> submitCandidateRating({
+    required String applicationId,
+    required Map<String, dynamic> candidateRating,
+  });
   Future<void> updateApplicationChat({
     required String applicationId,
     required String status,

@@ -112,9 +112,7 @@ class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
           Expanded(
             child: messagesAsync.when(
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (err, _) => Center(
-                child: Text('Lỗi tải tin nhắn: $err'),
-              ),
+              error: (err, _) => Center(child: Text('Lỗi tải tin nhắn: $err')),
               data: (messages) => _MessagesArea(
                 messages: messages,
                 scrollController: _scrollController,
@@ -239,8 +237,12 @@ class _ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                     ),
                     if (isCompleted) ...[
                       const SizedBox(width: 4),
-                      const Icon(Icons.lock_rounded, size: 14, color: Color(0xFF9CA3AF)),
-                    ]
+                      const Icon(
+                        Icons.lock_rounded,
+                        size: 14,
+                        color: Color(0xFF9CA3AF),
+                      ),
+                    ],
                   ],
                 ),
                 Text(
@@ -252,8 +254,8 @@ class _ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                     color: isCompleted
                         ? const Color(0xFF9CA3AF)
                         : (isOnline
-                            ? const Color(0xFF22C55E)
-                            : const Color(0xFF9CA3AF)),
+                              ? const Color(0xFF22C55E)
+                              : const Color(0xFF9CA3AF)),
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -318,7 +320,8 @@ class _MessagesArea extends StatelessWidget {
         }
 
         final message = messages[index];
-        final isMe = message.sender == 'them'; // candidate is 'them' (me in the app)
+        final isMe =
+            message.sender == 'them'; // candidate is 'them' (me in the app)
 
         return _buildMessageRow(message, isMe);
       },
@@ -401,7 +404,9 @@ class _MessagesArea extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
-        mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: isMe
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (!isMe) ...[
@@ -410,12 +415,15 @@ class _MessagesArea extends StatelessWidget {
           ],
           Flexible(
             child: Column(
-              crossAxisAlignment:
-                  isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+              crossAxisAlignment: isMe
+                  ? CrossAxisAlignment.end
+                  : CrossAxisAlignment.start,
               children: [
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 10,
+                  ),
                   decoration: BoxDecoration(
                     color: isMe ? const Color(0xFF1E3A8A) : Colors.white,
                     borderRadius: BorderRadius.only(
@@ -431,8 +439,9 @@ class _MessagesArea extends StatelessWidget {
                         offset: const Offset(0, 1),
                       ),
                     ],
-                    border:
-                        isMe ? null : Border.all(color: const Color(0xFFE5E7EB)),
+                    border: isMe
+                        ? null
+                        : Border.all(color: const Color(0xFFE5E7EB)),
                   ),
                   child: Text(
                     message.text,
@@ -483,7 +492,8 @@ class _SmallAvatar extends StatelessWidget {
               child: Image.network(
                 avatarUrl,
                 fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => _Initial(name: name),
+                errorBuilder: (context, error, stackTrace) =>
+                    _Initial(name: name),
               ),
             )
           : _Initial(name: name),
@@ -572,7 +582,10 @@ class _InputBar extends StatelessWidget {
                   hintText: isCompleted
                       ? 'Hội thoại đã kết thúc và bị khóa'
                       : 'Nhắn tin...',
-                  hintStyle: const TextStyle(color: Color(0xFF9CA3AF), fontSize: 14),
+                  hintStyle: const TextStyle(
+                    color: Color(0xFF9CA3AF),
+                    fontSize: 14,
+                  ),
                   border: InputBorder.none,
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 16,
@@ -591,7 +604,9 @@ class _InputBar extends StatelessWidget {
               width: 42,
               height: 42,
               decoration: BoxDecoration(
-                color: isCompleted ? const Color(0xFF9CA3AF) : const Color(0xFF1E3A8A),
+                color: isCompleted
+                    ? const Color(0xFF9CA3AF)
+                    : const Color(0xFF1E3A8A),
                 shape: BoxShape.circle,
               ),
               child: const Icon(

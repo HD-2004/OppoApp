@@ -7,9 +7,33 @@ import '../../candidate/data/aws_application_repository.dart';
 import '../../candidate/domain/application_repository.dart';
 import '../domain/candidate_application.dart';
 
+int countUnreadEmployerMessages(List<ChatMessage> messages, {int? lastReadId}) {
+  final lastReadIndex = lastReadId == null
+      ? -1
+      : messages.lastIndexWhere((message) => message.id == lastReadId);
+  final unreadMessages = messages.skip(lastReadIndex + 1);
+
+  return unreadMessages.where(_isEmployerMessage).length;
+}
+
+bool _isEmployerMessage(ChatMessage message) {
+  final sender = message.sender.trim().toLowerCase();
+  return sender == 'me' ||
+      sender == 'employer' ||
+      sender == 'recruiter' ||
+      sender == 'company';
+}
+
+bool canDeleteConversation(String status) {
+  return status.trim().toLowerCase() == 'completed';
+}
+
 class CandidateChatsNotifier extends AsyncNotifier<List<CandidateApplication>> {
+  static const _deletedChatsKey = 'deleted_chats';
+
   Timer? _timer;
   Map<String, int> _lastReadIds = {};
+  Set<String> _deletedChatIds = {};
 
   @override
   FutureOr<List<CandidateApplication>> build() async {
@@ -32,6 +56,7 @@ class CandidateChatsNotifier extends AsyncNotifier<List<CandidateApplication>> {
           }
         }
       }
+      _deletedChatIds = prefs.getStringList(_deletedChatsKey)?.toSet() ?? {};
     } catch (_) {}
 
     _startPolling(userId);
@@ -56,12 +81,17 @@ class CandidateChatsNotifier extends AsyncNotifier<List<CandidateApplication>> {
     });
   }
 
-  Future<List<CandidateApplication>> _fetch(String userId, ApplicationRepository repo) async {
+  Future<List<CandidateApplication>> _fetch(
+    String userId,
+    ApplicationRepository repo,
+  ) async {
     final rawApps = await repo.getCandidateApplications(userId);
     // Filter accepted or completed apps
     final validApps = rawApps.where((app) {
-      final status = app['status']?.toString() ?? '';
-      return status == 'accepted' || status == 'completed';
+      final status = app['status']?.toString().trim().toLowerCase() ?? '';
+      final applicationId = app['applicationId']?.toString() ?? '';
+      return (status == 'accepted' || status == 'completed') &&
+          !_deletedChatIds.contains(applicationId);
     }).toList();
 
     // Sort by updatedAt or appliedAt desc
@@ -71,7 +101,9 @@ class CandidateChatsNotifier extends AsyncNotifier<List<CandidateApplication>> {
       return bTime.toString().compareTo(aTime.toString());
     });
 
-    return validApps.map((json) => CandidateApplication.fromJson(json)).toList();
+    return validApps
+        .map((json) => CandidateApplication.fromJson(json))
+        .toList();
   }
 
   // Method to mark a chat as read
@@ -90,11 +122,45 @@ class CandidateChatsNotifier extends AsyncNotifier<List<CandidateApplication>> {
   }
 
   bool isUnread(CandidateApplication chat) {
-    if (chat.chatMessages.isEmpty) return false;
-    final lastMsg = chat.chatMessages.last;
-    if (lastMsg.sender != 'me') return false; // Not sent by employer
-    final lastReadId = _lastReadIds[chat.applicationId];
-    return lastReadId != lastMsg.id;
+    return unreadCount(chat) > 0;
+  }
+
+  int unreadCount(CandidateApplication chat) {
+    return countUnreadEmployerMessages(
+      chat.chatMessages,
+      lastReadId: _lastReadIds[chat.applicationId],
+    );
+  }
+
+  int totalUnreadCount(List<CandidateApplication> chats) {
+    return chats.fold<int>(0, (total, chat) => total + unreadCount(chat));
+  }
+
+  Future<void> deleteConversation(CandidateApplication chat) async {
+    if (!canDeleteConversation(chat.status)) {
+      throw StateError(
+        'Chỉ có thể xóa cuộc trò chuyện sau khi công việc đã hoàn thành.',
+      );
+    }
+
+    _deletedChatIds.add(chat.applicationId);
+    _lastReadIds.remove(chat.applicationId);
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(
+      _deletedChatsKey,
+      _deletedChatIds.toList()..sort(),
+    );
+    await prefs.remove('chat_read_${chat.applicationId}');
+
+    final current = state.value;
+    if (current != null) {
+      state = AsyncData(
+        current
+            .where((item) => item.applicationId != chat.applicationId)
+            .toList(),
+      );
+    }
   }
 
   Future<void> refresh() async {
@@ -112,9 +178,11 @@ class CandidateChatsNotifier extends AsyncNotifier<List<CandidateApplication>> {
   }
 }
 
-final candidateChatsProvider = AsyncNotifierProvider.autoDispose<CandidateChatsNotifier, List<CandidateApplication>>(() {
-  return CandidateChatsNotifier();
-});
+final candidateChatsProvider =
+    AsyncNotifierProvider.autoDispose<
+      CandidateChatsNotifier,
+      List<CandidateApplication>
+    >(CandidateChatsNotifier.new);
 
 class ActiveChatNotifier extends AsyncNotifier<List<ChatMessage>> {
   final String applicationId;
@@ -136,7 +204,13 @@ class ActiveChatNotifier extends AsyncNotifier<List<ChatMessage>> {
       _timer?.cancel();
     });
 
-    return _fetch(userId, repository);
+    final messages = await _fetch(userId, repository);
+    if (messages.isNotEmpty) {
+      await ref
+          .read(candidateChatsProvider.notifier)
+          .markAsRead(applicationId, messages.last.id);
+    }
+    return messages;
   }
 
   void _startPolling(String userId) {
@@ -146,10 +220,12 @@ class ActiveChatNotifier extends AsyncNotifier<List<ChatMessage>> {
       try {
         final messages = await _fetch(userId, repository);
         state = AsyncData(messages);
-        
+
         // Auto mark as read if screen is open and there are messages
         if (messages.isNotEmpty) {
-          ref.read(candidateChatsProvider.notifier).markAsRead(applicationId, messages.last.id);
+          ref
+              .read(candidateChatsProvider.notifier)
+              .markAsRead(applicationId, messages.last.id);
         }
       } catch (e) {
         // Silent
@@ -157,20 +233,17 @@ class ActiveChatNotifier extends AsyncNotifier<List<ChatMessage>> {
     });
   }
 
-  Future<List<ChatMessage>> _fetch(String userId, ApplicationRepository repo) async {
+  Future<List<ChatMessage>> _fetch(
+    String userId,
+    ApplicationRepository repo,
+  ) async {
     final rawApps = await repo.getCandidateApplications(userId);
     final app = rawApps.firstWhere(
-      (a) => a['applicationId'] == applicationId,
+      (a) => a['applicationId']?.toString() == applicationId,
       orElse: () => throw Exception('Không tìm thấy cuộc trò chuyện'),
     );
 
-    final messagesList = app['chatMessages'] as List?;
-    if (messagesList != null) {
-      return messagesList
-          .map((m) => ChatMessage.fromJson(Map<String, dynamic>.from(m as Map)))
-          .toList();
-    }
-    return [];
+    return CandidateApplication.fromJson(app).chatMessages;
   }
 
   Future<void> sendMessage(String text) async {
@@ -181,7 +254,9 @@ class ActiveChatNotifier extends AsyncNotifier<List<ChatMessage>> {
 
     // Format time: e.g. "02:30 PM"
     final now = DateTime.now();
-    final hour = now.hour > 12 ? now.hour - 12 : (now.hour == 0 ? 12 : now.hour);
+    final hour = now.hour > 12
+        ? now.hour - 12
+        : (now.hour == 0 ? 12 : now.hour);
     final minute = now.minute.toString().padLeft(2, '0');
     final period = now.hour >= 12 ? 'PM' : 'AM';
     final timeStr = '${hour.toString().padLeft(2, '0')}:$minute $period';
@@ -196,27 +271,40 @@ class ActiveChatNotifier extends AsyncNotifier<List<ChatMessage>> {
 
     final updated = [...currentMessages, newMessage];
 
-    // Optimistic update
+    // Optimistic update. Roll back if the shared application API rejects it.
     state = AsyncData(updated);
 
     final repository = ref.read(applicationRepositoryProvider);
     final authState = ref.read(authControllerProvider).value;
     final userId = authState?.user?.userId;
-    if (userId == null) return;
+    if (userId == null) {
+      state = AsyncData(currentMessages);
+      throw Exception('Vui lòng đăng nhập để gửi tin nhắn.');
+    }
 
-    // Fetch full application to keep its status
-    final rawApps = await repository.getCandidateApplications(userId);
-    final app = rawApps.firstWhere((a) => a['applicationId'] == applicationId);
-    final status = app['status']?.toString() ?? 'accepted';
+    try {
+      // Fetch full application to preserve the current workflow status.
+      final rawApps = await repository.getCandidateApplications(userId);
+      final app = rawApps.firstWhere(
+        (a) => a['applicationId']?.toString() == applicationId,
+        orElse: () => throw Exception('Không tìm thấy cuộc trò chuyện.'),
+      );
+      final status = app['status']?.toString() ?? 'accepted';
 
-    await repository.updateApplicationChat(
-      applicationId: applicationId,
-      status: status,
-      chatMessages: updated.map((m) => m.toJson()).toList(),
-    );
+      await repository.updateApplicationChat(
+        applicationId: applicationId,
+        status: status,
+        chatMessages: updated.map((m) => m.toJson()).toList(),
+      );
+      ref.invalidate(candidateChatsProvider);
+    } catch (_) {
+      state = AsyncData(currentMessages);
+      rethrow;
+    }
   }
 }
 
-final activeChatProvider = AsyncNotifierProvider.autoDispose.family<ActiveChatNotifier, List<ChatMessage>, String>((applicationId) {
-  return ActiveChatNotifier(applicationId);
-});
+final activeChatProvider = AsyncNotifierProvider.autoDispose
+    .family<ActiveChatNotifier, List<ChatMessage>, String>(
+      ActiveChatNotifier.new,
+    );
