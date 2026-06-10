@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+
+import 'package:oppo_temp_jobs/core/theme/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -39,7 +41,6 @@ class _KycVerificationScreenState extends ConsumerState<KycVerificationScreen> {
   // Step 1 - Selfie Image
   XFile? _selfieFile;
   Uint8List? _selfieBytes;
-  Map<String, dynamic>? _faceResult;
 
   @override
   void initState() {
@@ -57,7 +58,9 @@ class _KycVerificationScreenState extends ConsumerState<KycVerificationScreen> {
     });
 
     try {
-      final res = await ref.read(ekycRepositoryProvider).getKycStatus(user.userId);
+      final res = await ref
+          .read(ekycRepositoryProvider)
+          .getKycStatus(user.userId);
       if (res['success'] == true &&
           (res['kycCompleted'] == true || res['kycStatus'] == 'VERIFIED')) {
         if (mounted) {
@@ -118,7 +121,6 @@ class _KycVerificationScreenState extends ConsumerState<KycVerificationScreen> {
         } else if (field == 'selfie') {
           _selfieFile = file;
           _selfieBytes = bytes;
-          _faceResult = null;
         }
       });
     } catch (e) {
@@ -174,20 +176,23 @@ class _KycVerificationScreenState extends ConsumerState<KycVerificationScreen> {
 
     try {
       final frontBase64 = base64Encode(_frontBytes!);
-      final frontMime = _frontFile!.path.endsWith('.png') ? 'image/png' : 'image/jpeg';
+      final frontMime = _frontFile!.path.endsWith('.png')
+          ? 'image/png'
+          : 'image/jpeg';
       final frontDataUrl = 'data:$frontMime;base64,$frontBase64';
 
       String? backDataUrl;
       if (_backFile != null && _backBytes != null) {
         final backBase64 = base64Encode(_backBytes!);
-        final backMime = _backFile!.path.endsWith('.png') ? 'image/png' : 'image/jpeg';
+        final backMime = _backFile!.path.endsWith('.png')
+            ? 'image/png'
+            : 'image/jpeg';
         backDataUrl = 'data:$backMime;base64,$backBase64';
       }
 
-      final res = await ref.read(ekycRepositoryProvider).ocrCCCD(
-            imageFront: frontDataUrl,
-            imageBack: backDataUrl,
-          );
+      final res = await ref
+          .read(ekycRepositoryProvider)
+          .ocrCCCD(imageFront: frontDataUrl, imageBack: backDataUrl);
 
       if (res['success'] == true) {
         setState(() {
@@ -224,28 +229,32 @@ class _KycVerificationScreenState extends ConsumerState<KycVerificationScreen> {
 
     try {
       final selfieBase64 = base64Encode(_selfieBytes!);
-      final selfieMime = _selfieFile!.path.endsWith('.png') ? 'image/png' : 'image/jpeg';
+      final selfieMime = _selfieFile!.path.endsWith('.png')
+          ? 'image/png'
+          : 'image/jpeg';
       final selfieDataUrl = 'data:$selfieMime;base64,$selfieBase64';
 
-      final res = await ref.read(ekycRepositoryProvider).verifyFace(
+      final res = await ref
+          .read(ekycRepositoryProvider)
+          .verifyFace(
             faceImage: selfieDataUrl,
             frontHash: _frontHash,
             frontToken: _frontToken,
           );
-
-      setState(() {
-        _faceResult = res;
-      });
 
       if (res['kycStatus'] == 'VERIFIED') {
         // Sync name, DOB, and CCCD to database candidate profile
         final authUser = ref.read(authControllerProvider).asData?.value.user;
         if (authUser != null && _ocrResult != null) {
           try {
-            await ref.read(authControllerProvider.notifier).completeProfile(
-                  fullName: _ocrResult!['name']?.toString() ?? authUser.fullName,
+            await ref
+                .read(authControllerProvider.notifier)
+                .completeProfile(
+                  fullName:
+                      _ocrResult!['name']?.toString() ?? authUser.fullName,
                   cccd: _ocrResult!['id']?.toString() ?? authUser.cccd,
-                  dateOfBirth: _ocrResult!['dob']?.toString() ?? authUser.dateOfBirth,
+                  dateOfBirth:
+                      _ocrResult!['dob']?.toString() ?? authUser.dateOfBirth,
                   phone: authUser.phone,
                   location: authUser.location,
                   title: authUser.title,
@@ -267,9 +276,8 @@ class _KycVerificationScreenState extends ConsumerState<KycVerificationScreen> {
           }
         });
       } else {
-        final double similarity = double.tryParse(
-              res['object']?['similarity']?.toString() ?? '',
-            ) ??
+        final double similarity =
+            double.tryParse(res['object']?['similarity']?.toString() ?? '') ??
             0.0;
         setState(() {
           _error =
@@ -293,7 +301,6 @@ class _KycVerificationScreenState extends ConsumerState<KycVerificationScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final theme = Theme.of(context);
 
     // Full screen loading indicator overlay
     if (_loading) {
@@ -306,7 +313,10 @@ class _KycVerificationScreenState extends ConsumerState<KycVerificationScreen> {
               const SizedBox(height: 20),
               Text(
                 _loadingMsg,
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ],
           ),
@@ -338,7 +348,10 @@ class _KycVerificationScreenState extends ConsumerState<KycVerificationScreen> {
         child: _currentStep == 2
             ? _buildSuccessScreen()
             : SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 24,
+                ),
                 child: Center(
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 600),
@@ -371,12 +384,12 @@ class _KycVerificationScreenState extends ConsumerState<KycVerificationScreen> {
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: const Color(0xFF1E3A8A).withOpacity(0.1),
+            color: AppColors.primary.withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
           child: const Icon(
             Icons.shield_outlined,
-            color: Color(0xFF1E3A8A),
+            color: AppColors.primary,
             size: 36,
           ),
         ),
@@ -393,10 +406,7 @@ class _KycVerificationScreenState extends ConsumerState<KycVerificationScreen> {
         const Text(
           'Hoàn tất 2 bước để xác minh danh tính và bắt đầu ứng tuyển',
           textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 13,
-            color: Color(0xFF64748B),
-          ),
+          style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
         ),
       ],
     );
@@ -412,10 +422,7 @@ class _KycVerificationScreenState extends ConsumerState<KycVerificationScreen> {
         Positioned(
           left: 60,
           right: 60,
-          child: Container(
-            height: 3,
-            color: const Color(0xFFE2E8F0),
-          ),
+          child: Container(height: 3, color: const Color(0xFFE2E8F0)),
         ),
         Positioned(
           left: 60,
@@ -427,9 +434,7 @@ class _KycVerificationScreenState extends ConsumerState<KycVerificationScreen> {
             alignment: Alignment.centerLeft,
             child: FractionallySizedBox(
               widthFactor: progress / 100,
-              child: Container(
-                color: const Color(0xFF1E3A8A),
-              ),
+              child: Container(color: AppColors.primary),
             ),
           ),
         ),
@@ -475,8 +480,8 @@ class _KycVerificationScreenState extends ConsumerState<KycVerificationScreen> {
       border = const Color(0xFF10B981);
       child = const Icon(Icons.check, color: Colors.white, size: 18);
     } else if (active) {
-      bg = const Color(0xFF1E3A8A);
-      border = const Color(0xFF1E3A8A);
+      bg = AppColors.primary;
+      border = AppColors.primary;
       child = Text(
         '${index + 1}',
         style: const TextStyle(
@@ -498,10 +503,10 @@ class _KycVerificationScreenState extends ConsumerState<KycVerificationScreen> {
             boxShadow: active
                 ? [
                     BoxShadow(
-                      color: const Color(0xFF1E3A8A).withOpacity(0.3),
+                      color: AppColors.primary.withValues(alpha: 0.3),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
-                    )
+                    ),
                   ]
                 : null,
           ),
@@ -514,10 +519,10 @@ class _KycVerificationScreenState extends ConsumerState<KycVerificationScreen> {
             fontSize: 12,
             fontWeight: active || completed ? FontWeight.bold : FontWeight.w500,
             color: active
-                ? const Color(0xFF1E3A8A)
+                ? AppColors.primary
                 : completed
-                    ? const Color(0xFF10B981)
-                    : const Color(0xFF64748B),
+                ? const Color(0xFF10B981)
+                : const Color(0xFF64748B),
           ),
         ),
       ],
@@ -563,7 +568,7 @@ class _KycVerificationScreenState extends ConsumerState<KycVerificationScreen> {
         border: Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -583,10 +588,7 @@ class _KycVerificationScreenState extends ConsumerState<KycVerificationScreen> {
           const SizedBox(height: 6),
           const Text(
             'Tải lên ảnh 2 mặt để hệ thống tự động đọc thông tin',
-            style: TextStyle(
-              fontSize: 13,
-              color: Color(0xFF64748B),
-            ),
+            style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
           ),
           const SizedBox(height: 20),
           _buildInfoBox([
@@ -623,7 +625,7 @@ class _KycVerificationScreenState extends ConsumerState<KycVerificationScreen> {
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF1E3A8A),
+                backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(
@@ -663,7 +665,7 @@ class _KycVerificationScreenState extends ConsumerState<KycVerificationScreen> {
                         }
                       : null,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1E3A8A),
+                    backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
@@ -704,7 +706,9 @@ class _KycVerificationScreenState extends ConsumerState<KycVerificationScreen> {
           onTap: onTap,
           child: CustomPaint(
             painter: DashedBorderPainter(
-              color: bytes != null ? const Color(0xFF10B981) : const Color(0xFFCBD5E1),
+              color: bytes != null
+                  ? const Color(0xFF10B981)
+                  : const Color(0xFFCBD5E1),
               strokeWidth: 2,
               gap: 6,
             ),
@@ -713,7 +717,7 @@ class _KycVerificationScreenState extends ConsumerState<KycVerificationScreen> {
               width: double.infinity,
               decoration: BoxDecoration(
                 color: bytes != null
-                    ? const Color(0xFF10B981).withOpacity(0.02)
+                    ? const Color(0xFF10B981).withValues(alpha: 0.02)
                     : const Color(0xFFF8FAFC),
                 borderRadius: BorderRadius.circular(16),
               ),
@@ -722,17 +726,14 @@ class _KycVerificationScreenState extends ConsumerState<KycVerificationScreen> {
                 child: bytes != null
                     ? ClipRRect(
                         borderRadius: BorderRadius.circular(8),
-                        child: Image.memory(
-                          bytes,
-                          fit: BoxFit.contain,
-                        ),
+                        child: Image.memory(bytes, fit: BoxFit.contain),
                       )
                     : const Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(
                             Icons.cloud_upload_outlined,
-                            color: Color(0xFF1E3A8A),
+                            color: AppColors.primary,
                             size: 32,
                           ),
                           SizedBox(height: 8),
@@ -775,7 +776,11 @@ class _KycVerificationScreenState extends ConsumerState<KycVerificationScreen> {
         children: [
           const Row(
             children: [
-              Icon(Icons.check_circle_outline, color: Color(0xFF16A34A), size: 18),
+              Icon(
+                Icons.check_circle_outline,
+                color: Color(0xFF16A34A),
+                size: 18,
+              ),
               SizedBox(width: 8),
               Text(
                 'Thông tin đọc từ CCCD',
@@ -903,7 +908,7 @@ class _KycVerificationScreenState extends ConsumerState<KycVerificationScreen> {
         border: Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -923,10 +928,7 @@ class _KycVerificationScreenState extends ConsumerState<KycVerificationScreen> {
           const SizedBox(height: 6),
           const Text(
             'Chụp selfie để so khớp với ảnh chân dung trên CCCD',
-            style: TextStyle(
-              fontSize: 13,
-              color: Color(0xFF64748B),
-            ),
+            style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
           ),
           const SizedBox(height: 20),
           _buildInfoBox([
@@ -934,9 +936,7 @@ class _KycVerificationScreenState extends ConsumerState<KycVerificationScreen> {
             'Khuôn mặt sẽ được so khớp với ảnh CCCD (độ tương đồng ≥ 85%)',
           ]),
           const SizedBox(height: 24),
-          Center(
-            child: _buildSelfiePreview(),
-          ),
+          Center(child: _buildSelfiePreview()),
           const SizedBox(height: 32),
           Row(
             children: [
@@ -962,7 +962,7 @@ class _KycVerificationScreenState extends ConsumerState<KycVerificationScreen> {
                 child: ElevatedButton(
                   onPressed: _selfieFile == null ? null : _submitFaceVerify,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1E3A8A),
+                    backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
@@ -991,20 +991,17 @@ class _KycVerificationScreenState extends ConsumerState<KycVerificationScreen> {
             width: 220,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(color: const Color(0xFF1E3A8A), width: 3),
+              border: Border.all(color: AppColors.primary, width: 3),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.08),
+                  color: Colors.black.withValues(alpha: 0.08),
                   blurRadius: 16,
                   offset: const Offset(0, 8),
                 ),
               ],
             ),
             child: ClipOval(
-              child: Image.memory(
-                _selfieBytes!,
-                fit: BoxFit.cover,
-              ),
+              child: Image.memory(_selfieBytes!, fit: BoxFit.cover),
             ),
           ),
           const SizedBox(height: 16),
@@ -1030,11 +1027,7 @@ class _KycVerificationScreenState extends ConsumerState<KycVerificationScreen> {
         child: const Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.face_outlined,
-              color: Color(0xFF64748B),
-              size: 48,
-            ),
+            Icon(Icons.face_outlined, color: Color(0xFF64748B), size: 48),
             SizedBox(height: 12),
             Text(
               'Chụp ảnh Selfie',
@@ -1047,10 +1040,7 @@ class _KycVerificationScreenState extends ConsumerState<KycVerificationScreen> {
             SizedBox(height: 4),
             Text(
               'Nhấn để bắt đầu',
-              style: TextStyle(
-                fontSize: 11,
-                color: Color(0xFF94A3B8),
-              ),
+              style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
             ),
           ],
         ),
@@ -1073,7 +1063,7 @@ class _KycVerificationScreenState extends ConsumerState<KycVerificationScreen> {
               borderRadius: BorderRadius.circular(24),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF10B981).withOpacity(0.08),
+                  color: const Color(0xFF10B981).withValues(alpha: 0.08),
                   blurRadius: 32,
                   offset: const Offset(0, 16),
                 ),
@@ -1089,7 +1079,7 @@ class _KycVerificationScreenState extends ConsumerState<KycVerificationScreen> {
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF10B981).withOpacity(0.2),
+                        color: const Color(0xFF10B981).withValues(alpha: 0.2),
                         blurRadius: 16,
                         offset: const Offset(0, 8),
                       ),
@@ -1137,7 +1127,10 @@ class _KycVerificationScreenState extends ConsumerState<KycVerificationScreen> {
                     ),
                     child: const Text(
                       'Về Hồ Sơ',
-                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),
@@ -1155,8 +1148,8 @@ class _KycVerificationScreenState extends ConsumerState<KycVerificationScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E3A8A).withOpacity(0.04),
-        border: Border.all(color: const Color(0xFF1E3A8A).withOpacity(0.12)),
+        color: AppColors.primary.withValues(alpha: 0.04),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.12)),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -1169,7 +1162,7 @@ class _KycVerificationScreenState extends ConsumerState<KycVerificationScreen> {
                   children: [
                     const Icon(
                       Icons.info_outline,
-                      color: Color(0xFF1E3A8A),
+                      color: AppColors.primary,
                       size: 16,
                     ),
                     const SizedBox(width: 8),

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:oppo_temp_jobs/core/theme/app_colors.dart';
+
 import '../controllers/jobs_controller.dart';
 
 /// 2 tabs: "Việc làm thường" | "Việc làm gấp"
@@ -80,9 +82,7 @@ class _TabButton extends StatelessWidget {
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w700,
-              color: isSelected
-                  ? const Color(0xFF0D9488)
-                  : const Color(0xFF4B5563),
+              color: isSelected ? AppColors.secondary : const Color(0xFF4B5563),
             ),
           ),
         ),

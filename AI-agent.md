@@ -76,3 +76,4 @@ pytest
 - Preserve existing patterns once the project develops them.
 - After changes, tell the user exactly what to test.
 - Do not add AI features until the core shift lifecycle is stable.
+- Ứng dụng app chỉ có một vai trò là ứng viên và không có nhà tuyển dụng.

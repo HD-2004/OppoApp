@@ -46,6 +46,7 @@ class JobPost {
     // Counters
     this.applicants = 0,
     this.views = 0,
+    this.visibilityScore = 0,
   });
 
   final String id;
@@ -85,10 +86,9 @@ class JobPost {
   // Common counters
   final int applicants;
   final int views;
+  final double visibilityScore;
 
-  JobPost copyWith({
-    bool? isSaved,
-  }) {
+  JobPost copyWith({bool? isSaved}) {
     return JobPost(
       id: id,
       idJob: idJob,
@@ -115,6 +115,7 @@ class JobPost {
       benefits: benefits,
       applicants: applicants,
       views: views,
+      visibilityScore: visibilityScore,
       companyName: companyName,
       hourlyRate: hourlyRate,
       totalHours: totalHours,

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import 'package:oppo_temp_jobs/core/theme/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
@@ -56,14 +58,14 @@ class _WalletCardContent extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFF0D9488), Color(0xFF0F766E)],
+          colors: [AppColors.secondary, Color(0xFF0F766E)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF0D9488).withValues(alpha: 0.3),
+            color: AppColors.secondary.withValues(alpha: 0.3),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -122,7 +124,7 @@ class _WalletCardContent extends StatelessWidget {
                     'Rút tiền',
                     style: TextStyle(
                       color: canWithdraw
-                          ? const Color(0xFF0D9488)
+                          ? AppColors.secondary
                           : const Color(0xFF9CA3AF),
                       fontWeight: FontWeight.w700,
                       fontSize: 13,
@@ -133,7 +135,7 @@ class _WalletCardContent extends StatelessWidget {
                     Icons.arrow_forward_rounded,
                     size: 14,
                     color: canWithdraw
-                        ? const Color(0xFF0D9488)
+                        ? AppColors.secondary
                         : const Color(0xFF9CA3AF),
                   ),
                 ],
@@ -154,7 +156,7 @@ class _WalletCardSkeleton extends StatelessWidget {
     return Container(
       height: 88,
       decoration: BoxDecoration(
-        color: const Color(0xFF0D9488).withValues(alpha: 0.3),
+        color: AppColors.secondary.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(16),
       ),
       child: const Center(

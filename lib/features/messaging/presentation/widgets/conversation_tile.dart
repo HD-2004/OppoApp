@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:oppo_temp_jobs/core/theme/app_colors.dart';
+
 import '../../../candidate/domain/job_post.dart';
 
 /// Trạng thái hội thoại derive từ job data trong app-only messaging shell.
@@ -70,7 +72,7 @@ class ConversationTile extends StatelessWidget {
                 Container(
                   width: 4,
                   decoration: const BoxDecoration(
-                    color: Color(0xFF1E3A8A),
+                    color: AppColors.primary,
                     borderRadius: BorderRadius.only(
                       topLeft: Radius.circular(14),
                       bottomLeft: Radius.circular(14),
@@ -139,7 +141,7 @@ class ConversationTile extends StatelessWidget {
                                   style: TextStyle(
                                     fontSize: 12,
                                     color: isUnread
-                                        ? const Color(0xFF1E3A8A)
+                                        ? AppColors.primary
                                         : const Color(0xFF9CA3AF),
                                     fontWeight: isUnread
                                         ? FontWeight.w600
@@ -235,13 +237,13 @@ class _StatusBadge extends StatelessWidget {
       case ConversationStatus.interview:
         return _Badge(
           label: '📅  Phỏng vấn lúc 14:00 ngày mai',
-          bgColor: const Color(0xFF1E3A8A),
+          bgColor: AppColors.primary,
           textColor: Colors.white,
         );
       case ConversationStatus.newMessage:
         return _Badge(
           label: 'MỚI',
-          bgColor: const Color(0xFF1E3A8A),
+          bgColor: AppColors.primary,
           textColor: Colors.white,
           isCompact: true,
         );

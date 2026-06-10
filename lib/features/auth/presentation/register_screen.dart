@@ -1,3 +1,4 @@
+import 'package:amplify_flutter/amplify_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -8,6 +9,12 @@ import '../../../shared/domain/app_role.dart';
 import '../application/auth_controller.dart';
 import '../data/auth_repository.dart';
 import 'auth_form_fields.dart';
+import 'widgets/auth_footer_link.dart';
+import 'widgets/auth_header.dart';
+import 'widgets/auth_primary_button.dart';
+import 'widgets/auth_scaffold.dart';
+import 'widgets/auth_text_field.dart';
+import 'widgets/password_requirement_list.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -17,11 +24,6 @@ class RegisterScreen extends ConsumerStatefulWidget {
 }
 
 class _RegisterScreenState extends ConsumerState<RegisterScreen> {
-  static const _brandTeal = Color(0xFF08798A);
-  static const _deepText = Color(0xFF061B2B);
-  static const _mutedText = Color(0xFF40525A);
-  static const _warmBackground = Color(0xFFF8FAFF);
-
   final _formKey = GlobalKey<FormState>();
   final _fullNameController = TextEditingController();
   final _emailController = TextEditingController();
@@ -30,265 +32,304 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   bool _isSubmitting = false;
+  AuthProvider? _socialProviderSubmitting;
+  bool _canSubmit = false;
+
+  @override
+  void initState() {
+    super.initState();
+    for (final c in [
+      _fullNameController,
+      _emailController,
+      _passwordController,
+      _confirmPasswordController,
+    ]) {
+      c.addListener(_updateSubmitState);
+    }
+  }
 
   @override
   void dispose() {
-    _fullNameController.dispose();
-    _emailController.dispose();
-    _passwordController.dispose();
-    _confirmPasswordController.dispose();
+    for (final c in [
+      _fullNameController,
+      _emailController,
+      _passwordController,
+      _confirmPasswordController,
+    ]) {
+      c.removeListener(_updateSubmitState);
+      c.dispose();
+    }
     super.dispose();
   }
 
-  Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
+  void _updateSubmitState() {
+    final next =
+        _fullNameController.text.trim().isNotEmpty &&
+        _emailController.text.trim().isNotEmpty &&
+        _passwordController.text.isNotEmpty &&
+        _confirmPasswordController.text.isNotEmpty;
+    if (next != _canSubmit) {
+      setState(() => _canSubmit = next);
+    } else {
+      setState(() {});
     }
-    final l10n = AppLocalizations.of(context);
+  }
 
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+    final l10n = AppLocalizations.of(context);
     setState(() => _isSubmitting = true);
     try {
       await ref
           .read(authControllerProvider.notifier)
           .register(
             RegisterRequest(
-              fullName: _fullNameController.text,
-              email: _emailController.text,
+              fullName: _fullNameController.text.trim(),
+              email: _emailController.text.trim(),
               password: _passwordController.text,
               role: AppRole.candidate,
             ),
           );
-    } on AuthFailure catch (failure) {
-      _showError(failure.message);
-    } catch (error) {
+    } on AuthFailure catch (f) {
+      _showError(f.message);
+    } catch (_) {
       _showError(l10n.unknownError);
     } finally {
-      if (mounted) {
-        setState(() => _isSubmitting = false);
-      }
+      if (mounted) setState(() => _isSubmitting = false);
     }
   }
 
-  void _showError(String message) {
-    if (!mounted) {
-      return;
+  Future<void> _submitSocial(AuthProvider provider) async {
+    if (_isSubmitting || _socialProviderSubmitting != null) return;
+    final l10n = AppLocalizations.of(context);
+    setState(() => _socialProviderSubmitting = provider);
+    try {
+      await ref
+          .read(authControllerProvider.notifier)
+          .signInWithSocialProvider(provider);
+    } on AuthFailure catch (f) {
+      _showError(f.message);
+    } catch (_) {
+      _showError(l10n.unknownError);
+    } finally {
+      if (mounted) setState(() => _socialProviderSubmitting = null);
     }
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  void _showError(String msg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final textTheme = Theme.of(context).textTheme;
+    return AuthScaffold(
+      child: _RegisterFormStep(
+        formKey: _formKey,
+        fullNameController: _fullNameController,
+        emailController: _emailController,
+        passwordController: _passwordController,
+        confirmPasswordController: _confirmPasswordController,
+        obscurePassword: _obscurePassword,
+        obscureConfirmPassword: _obscureConfirmPassword,
+        isSubmitting: _isSubmitting,
+        socialProviderSubmitting: _socialProviderSubmitting,
+        canSubmit: _canSubmit,
+        onTogglePassword: () =>
+            setState(() => _obscurePassword = !_obscurePassword),
+        onToggleConfirmPassword: () =>
+            setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+        onSubmit: _submit,
+        onSubmitSocial: _submitSocial,
+        l10n: l10n,
+      ),
+    );
+  }
+}
 
-    return Scaffold(
-      backgroundColor: _warmBackground,
-      body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 480),
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(24, 28, 24, 28),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    l10n.appName,
-                    style: textTheme.headlineMedium?.copyWith(
-                      color: _brandTeal,
-                      fontWeight: FontWeight.w900,
-                      height: 1,
-                    ),
+class _RegisterFormStep extends StatelessWidget {
+  const _RegisterFormStep({
+    required this.formKey,
+    required this.fullNameController,
+    required this.emailController,
+    required this.passwordController,
+    required this.confirmPasswordController,
+    required this.obscurePassword,
+    required this.obscureConfirmPassword,
+    required this.isSubmitting,
+    required this.socialProviderSubmitting,
+    required this.canSubmit,
+    required this.onTogglePassword,
+    required this.onToggleConfirmPassword,
+    required this.onSubmit,
+    required this.onSubmitSocial,
+    required this.l10n,
+  });
+
+  final GlobalKey<FormState> formKey;
+  final TextEditingController fullNameController;
+  final TextEditingController emailController;
+  final TextEditingController passwordController;
+  final TextEditingController confirmPasswordController;
+  final bool obscurePassword;
+  final bool obscureConfirmPassword;
+  final bool isSubmitting;
+  final AuthProvider? socialProviderSubmitting;
+  final bool canSubmit;
+  final VoidCallback onTogglePassword;
+  final VoidCallback onToggleConfirmPassword;
+  final VoidCallback onSubmit;
+  final ValueChanged<AuthProvider> onSubmitSocial;
+  final AppLocalizations l10n;
+
+  @override
+  Widget build(BuildContext context) {
+    return Form(
+      key: formKey,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AuthHeader(
+            compact: true,
+            title: 'Tạo tài khoản ứng viên',
+            subtitle: 'Điền thông tin để bắt đầu hành trình.',
+          ),
+          const SizedBox(height: 28),
+          AuthFormCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                AuthTextField(
+                  controller: fullNameController,
+                  label: l10n.fullName,
+                  icon: Icons.badge_outlined,
+                  textInputAction: TextInputAction.next,
+                  validator: (v) => requiredTextValidator(
+                    v,
+                    message: l10n.text('requiredField'),
                   ),
-                  const SizedBox(height: 10),
-                  Text(
-                    'Tạo hồ sơ ứng viên để bắt đầu tìm ca làm F&B phù hợp.',
-                    style: textTheme.bodyLarge?.copyWith(
-                      color: _mutedText,
-                      fontWeight: FontWeight.w500,
-                    ),
+                ),
+                const SizedBox(height: 14),
+                AuthTextField(
+                  controller: emailController,
+                  label: l10n.email,
+                  icon: Icons.mail_outline_rounded,
+                  keyboardType: TextInputType.emailAddress,
+                  textInputAction: TextInputAction.next,
+                  validator: (v) => emailValidator(
+                    v,
+                    requiredMessage: l10n.emailRequired,
+                    invalidMessage: l10n.text('invalidEmail'),
                   ),
-                  const SizedBox(height: 42),
-                  DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.92),
-                      borderRadius: BorderRadius.circular(24),
-                      boxShadow: [
-                        BoxShadow(
-                          color: _brandTeal.withValues(alpha: 0.12),
-                          blurRadius: 32,
-                          offset: const Offset(0, 16),
-                        ),
-                      ],
+                ),
+                const SizedBox(height: 14),
+                AuthTextField(
+                  controller: passwordController,
+                  label: l10n.password,
+                  icon: Icons.lock_outline_rounded,
+                  obscureText: obscurePassword,
+                  textInputAction: TextInputAction.next,
+                  validator: (v) => cognitoPasswordValidator(
+                    v,
+                    requiredMessage: l10n.passwordRequired,
+                    weakPasswordMessage: l10n.weakPassword,
+                  ),
+                  suffix: IconButton(
+                    tooltip: obscurePassword
+                        ? l10n.text('showPassword')
+                        : l10n.text('hidePassword'),
+                    icon: Icon(
+                      obscurePassword
+                          ? Icons.visibility_outlined
+                          : Icons.visibility_off_outlined,
                     ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(22),
-                      child: Form(
-                        key: _formKey,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Text(
-                              l10n.signUp,
-                              style: textTheme.headlineSmall?.copyWith(
-                                color: _deepText,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Chỉ dành cho người dùng/ứng viên. Bạn có thể cập nhật hồ sơ sau khi đăng ký.',
-                              style: textTheme.bodyMedium?.copyWith(
-                                color: _mutedText,
-                                height: 1.35,
-                              ),
-                            ),
-                            const SizedBox(height: 24),
-                            TextFormField(
-                              controller: _fullNameController,
-                              style: authInputTextStyle,
-                              textInputAction: TextInputAction.next,
-                              decoration: authInputDecoration(
-                                label: l10n.fullName,
-                                icon: Icons.badge_outlined,
-                              ),
-                              validator: (value) => requiredTextValidator(
-                                value,
-                                message: l10n.text('requiredField'),
-                              ),
-                            ),
-                            const SizedBox(height: 14),
-                            TextFormField(
-                              controller: _emailController,
-                              style: authInputTextStyle,
-                              keyboardType: TextInputType.emailAddress,
-                              textInputAction: TextInputAction.next,
-                              decoration: authInputDecoration(
-                                label: l10n.email,
-                                icon: Icons.mail_outline_rounded,
-                              ),
-                              validator: (value) => requiredTextValidator(
-                                value,
-                                message: l10n.emailRequired,
-                              ),
-                            ),
-                            const SizedBox(height: 14),
-                            TextFormField(
-                              controller: _passwordController,
-                              style: authInputTextStyle,
-                              obscureText: _obscurePassword,
-                              textInputAction: TextInputAction.next,
-                              decoration:
-                                  authInputDecoration(
-                                    label: l10n.password,
-                                    icon: Icons.lock_outline_rounded,
-                                  ).copyWith(
-                                    suffixIcon: IconButton(
-                                      tooltip: _obscurePassword
-                                          ? l10n.text('showPassword')
-                                          : l10n.text('hidePassword'),
-                                      icon: Icon(
-                                        _obscurePassword
-                                            ? Icons.visibility_outlined
-                                            : Icons.visibility_off_outlined,
-                                      ),
-                                      onPressed: () => setState(
-                                        () => _obscurePassword =
-                                            !_obscurePassword,
-                                      ),
-                                    ),
-                                  ),
-                              validator: (value) => cognitoPasswordValidator(
-                                value,
-                                requiredMessage: l10n.passwordRequired,
-                                weakPasswordMessage: l10n.weakPassword,
-                              ),
-                            ),
-                            const SizedBox(height: 14),
-                            TextFormField(
-                              controller: _confirmPasswordController,
-                              style: authInputTextStyle,
-                              obscureText: _obscureConfirmPassword,
-                              decoration:
-                                  authInputDecoration(
-                                    label: l10n.confirmPassword,
-                                    icon: Icons.lock_reset_outlined,
-                                  ).copyWith(
-                                    suffixIcon: IconButton(
-                                      tooltip: _obscureConfirmPassword
-                                          ? l10n.text('showPassword')
-                                          : l10n.text('hidePassword'),
-                                      icon: Icon(
-                                        _obscureConfirmPassword
-                                            ? Icons.visibility_outlined
-                                            : Icons.visibility_off_outlined,
-                                      ),
-                                      onPressed: () => setState(
-                                        () => _obscureConfirmPassword =
-                                            !_obscureConfirmPassword,
-                                      ),
-                                    ),
-                                  ),
-                              validator: (value) {
-                                if (value != _passwordController.text) {
-                                  return l10n.passwordMismatch;
-                                }
-                                return requiredTextValidator(
-                                  value,
-                                  message: l10n.passwordRequired,
-                                );
-                              },
-                            ),
-                            const SizedBox(height: 22),
-                            SizedBox(
-                              height: 56,
-                              child: FilledButton.icon(
-                                style: FilledButton.styleFrom(
-                                  backgroundColor: _brandTeal,
-                                  foregroundColor: Colors.white,
-                                  textStyle: textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(14),
-                                  ),
-                                ),
-                                onPressed: _isSubmitting ? null : _submit,
-                                icon: _isSubmitting
-                                    ? const SizedBox.square(
-                                        dimension: 18,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          color: Colors.white,
-                                        ),
-                                      )
-                                    : const Icon(Icons.person_add_alt_1),
-                                label: Text(l10n.signUp),
-                              ),
-                            ),
-                          ],
-                        ),
+                    onPressed: onTogglePassword,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                PasswordRequirementList(password: passwordController.text),
+                const SizedBox(height: 14),
+                AuthTextField(
+                  controller: confirmPasswordController,
+                  label: l10n.confirmPassword,
+                  icon: Icons.lock_reset_outlined,
+                  obscureText: obscureConfirmPassword,
+                  validator: (v) {
+                    if (v != passwordController.text) {
+                      return l10n.passwordMismatch;
+                    }
+                    return requiredTextValidator(
+                      v,
+                      message: l10n.passwordRequired,
+                    );
+                  },
+                  suffix: IconButton(
+                    tooltip: obscureConfirmPassword
+                        ? l10n.text('showPassword')
+                        : l10n.text('hidePassword'),
+                    icon: Icon(
+                      obscureConfirmPassword
+                          ? Icons.visibility_outlined
+                          : Icons.visibility_off_outlined,
+                    ),
+                    onPressed: onToggleConfirmPassword,
+                  ),
+                ),
+                const SizedBox(height: 22),
+                AuthPrimaryButton(
+                  label: 'Tạo tài khoản',
+                  icon: Icons.person_add_alt_1_rounded,
+                  isLoading: isSubmitting,
+                  onPressed: canSubmit && socialProviderSubmitting == null
+                      ? onSubmit
+                      : null,
+                ),
+                const SizedBox(height: 18),
+                const AuthSectionDivider(label: 'Hoặc'),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Expanded(
+                      child: AuthSocialButton(
+                        label: 'Google',
+                        iconText: 'G',
+                        accentColor: const Color(0xFFE04F3D),
+                        isLoading:
+                            socialProviderSubmitting == AuthProvider.google,
+                        onPressed:
+                            socialProviderSubmitting == null && !isSubmitting
+                            ? () => onSubmitSocial(AuthProvider.google)
+                            : null,
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 18),
-                  TextButton(
-                    onPressed: () => context.go('/login'),
-                    child: const Text(
-                      'Bạn đã có tài khoản? Đăng nhập',
-                      style: TextStyle(
-                        color: _brandTeal,
-                        fontWeight: FontWeight.w800,
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: AuthSocialButton(
+                        label: 'Facebook',
+                        iconText: 'f',
+                        accentColor: const Color(0xFF3167B7),
+                        isLoading:
+                            socialProviderSubmitting == AuthProvider.facebook,
+                        onPressed:
+                            socialProviderSubmitting == null && !isSubmitting
+                            ? () => onSubmitSocial(AuthProvider.facebook)
+                            : null,
                       ),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
+              ],
             ),
           ),
-        ),
+          const SizedBox(height: 18),
+          AuthFooterLink(
+            text: 'Đã có tài khoản?',
+            actionText: 'Đăng nhập',
+            onPressed: () => context.go('/login'),
+          ),
+          const SizedBox(height: 8),
+        ],
       ),
     );
   }

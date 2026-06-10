@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import 'package:oppo_temp_jobs/core/theme/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../candidate/application/jobs_providers.dart';
@@ -103,9 +105,11 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
     if (_keyword.trim().isNotEmpty) {
       final kw = _keyword.toLowerCase();
       filteredChats = filteredChats
-          .where((c) =>
-              c.employerName.toLowerCase().contains(kw) ||
-              c.jobTitle.toLowerCase().contains(kw))
+          .where(
+            (c) =>
+                c.employerName.toLowerCase().contains(kw) ||
+                c.jobTitle.toLowerCase().contains(kw),
+          )
           .toList();
     }
 
@@ -117,7 +121,9 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
           .toList();
     } else if (_selectedTabIndex == 2) {
       // Đã nhận việc / Completed
-      filteredChats = filteredChats.where((c) => c.status == 'completed').toList();
+      filteredChats = filteredChats
+          .where((c) => c.status == 'completed')
+          .toList();
     }
 
     if (filteredChats.isEmpty) {
@@ -143,14 +149,17 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
         }
 
         // Tạo fallback JobPost nếu không tìm thấy trong list active jobs
-        final job = resolvedJob ??
+        final job =
+            resolvedJob ??
             JobPost(
               id: chat.jobId,
               idJob: chat.jobId,
               employerId: chat.employerId,
               employerName: chat.employerName,
               title: chat.jobTitle,
-              jobType: chat.jobType == 'quick' ? JobPostType.urgent : JobPostType.partTime,
+              jobType: chat.jobType == 'quick'
+                  ? JobPostType.urgent
+                  : JobPostType.partTime,
               location: '',
               salary: '',
               shiftTime: '',
@@ -160,8 +169,12 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
               isQuickJob: chat.jobType == 'quick',
             );
 
-        final isUnread = ref.read(candidateChatsProvider.notifier).isUnread(chat);
-        final lastMsg = chat.chatMessages.isNotEmpty ? chat.chatMessages.last : null;
+        final isUnread = ref
+            .read(candidateChatsProvider.notifier)
+            .isUnread(chat);
+        final lastMsg = chat.chatMessages.isNotEmpty
+            ? chat.chatMessages.last
+            : null;
         final previewText = lastMsg != null
             ? (lastMsg.sender == 'them' ? 'Bạn: ${lastMsg.text}' : lastMsg.text)
             : 'Bắt đầu cuộc trò chuyện...';
@@ -219,7 +232,7 @@ class _MessagesAppBar extends StatelessWidget implements PreferredSizeWidget {
       ),
       actions: [
         IconButton(
-          icon: const Icon(Icons.edit_square, color: Color(0xFF1E3A8A)),
+          icon: const Icon(Icons.edit_square, color: AppColors.primary),
           onPressed: onCompose,
           tooltip: 'Soạn tin nhắn',
         ),
@@ -298,10 +311,7 @@ class _SearchBar extends StatelessWidget {
 // ── Filter tabs ───────────────────────────────────────────────────────────────
 
 class _FilterTabs extends StatelessWidget {
-  const _FilterTabs({
-    required this.selectedIndex,
-    required this.onTabSelected,
-  });
+  const _FilterTabs({required this.selectedIndex, required this.onTabSelected});
 
   final int selectedIndex;
   final ValueChanged<int> onTabSelected;
@@ -337,11 +347,7 @@ class _FilterTabs extends StatelessWidget {
 }
 
 class _Tab extends StatelessWidget {
-  const _Tab({
-    required this.label,
-    required this.onTap,
-    this.isActive = false,
-  });
+  const _Tab({required this.label, required this.onTap, this.isActive = false});
 
   final String label;
   final VoidCallback onTap;
@@ -354,10 +360,10 @@ class _Tab extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
-          color: isActive ? const Color(0xFF1E3A8A) : Colors.white,
+          color: isActive ? AppColors.primary : Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isActive ? const Color(0xFF1E3A8A) : const Color(0xFFE5E7EB),
+            color: isActive ? AppColors.primary : const Color(0xFFE5E7EB),
           ),
         ),
         child: Text(
@@ -398,10 +404,10 @@ class _EmptyState extends StatelessWidget {
               width: 72,
               height: 72,
               decoration: const BoxDecoration(
-                color: Color(0xFFEFF6FF),
+                color: AppColors.primarySoft,
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, size: 34, color: const Color(0xFF1E3A8A)),
+              child: Icon(icon, size: 34, color: AppColors.primary),
             ),
             const SizedBox(height: 16),
             Text(

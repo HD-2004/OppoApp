@@ -94,6 +94,16 @@ class AuthController extends AsyncNotifier<AuthState> {
   Future<void> signIn({required String email, required String password}) async {
     final repository = ref.read(authRepositoryProvider);
     await repository.signIn(email: email, password: password);
+    await _syncSignedInProfile(repository);
+  }
+
+  Future<void> signInWithSocialProvider(AuthProvider provider) async {
+    final repository = ref.read(authRepositoryProvider);
+    await repository.signInWithSocialProvider(provider);
+    await _syncSignedInProfile(repository);
+  }
+
+  Future<void> _syncSignedInProfile(AuthRepository repository) async {
     final profile = await repository.fetchCurrentProfile();
     if (profile == null) {
       state = const AsyncData(AuthState.unauthenticated());
@@ -236,7 +246,11 @@ class AuthController extends AsyncNotifier<AuthState> {
     state = AsyncData(AuthState.authenticated(updated));
   }
 
-  Future<void> updateAvailability(bool isActive, {double? latitude, double? longitude}) async {
+  Future<void> updateAvailability(
+    bool isActive, {
+    double? latitude,
+    double? longitude,
+  }) async {
     final current = state.asData?.value.user;
     if (current == null) {
       return;

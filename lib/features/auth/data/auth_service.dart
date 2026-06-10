@@ -101,6 +101,23 @@ class AuthService {
     }
   }
 
+  Future<SignInResult> signInWithSocialProvider({
+    required AuthProvider provider,
+  }) async {
+    await _ensureConfigured();
+
+    try {
+      final existingSession = await Amplify.Auth.fetchAuthSession();
+      if (existingSession.isSignedIn) {
+        await Amplify.Auth.signOut();
+      }
+
+      return await Amplify.Auth.signInWithWebUI(provider: provider);
+    } on Exception catch (error) {
+      throw _mapAuthError(error);
+    }
+  }
+
   Future<void> signOut() async {
     await _ensureConfigured();
     await Amplify.Auth.signOut();

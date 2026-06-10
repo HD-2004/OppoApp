@@ -101,6 +101,14 @@ class AuthExceptionMapper {
         code: 'invalid_parameter',
       );
     }
+    if (combined.contains('hosted ui') ||
+        combined.contains('oauth') ||
+        combined.contains('redirectsignin') ||
+        combined.contains('redirectsignout') ||
+        combined.contains('socialproviders') ||
+        combined.contains('signinwithwebui')) {
+      return AuthFailure.socialSignInConfiguration;
+    }
     if (combined.contains('configuration') ||
         combined.contains('config') ||
         combined.contains('appclientid')) {

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:oppo_temp_jobs/core/theme/app_colors.dart';
+
 /// Top app bar cho màn hình Jobs:
 /// Logo icon | "Ốp Pờ" | search icon
 class JobsHeader extends StatelessWidget implements PreferredSizeWidget {
@@ -24,13 +26,13 @@ class JobsHeader extends StatelessWidget implements PreferredSizeWidget {
             width: 32,
             height: 32,
             decoration: BoxDecoration(
-              color: const Color(0xFF0D9488).withValues(alpha: 0.12),
+              color: AppColors.secondary.withValues(alpha: 0.12),
               shape: BoxShape.circle,
             ),
             child: const Icon(
               Icons.person_outline_rounded,
               size: 18,
-              color: Color(0xFF0D9488),
+              color: AppColors.secondary,
             ),
           ),
           const SizedBox(width: 8),
@@ -39,7 +41,7 @@ class JobsHeader extends StatelessWidget implements PreferredSizeWidget {
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w800,
-              color: Color(0xFF0D9488),
+              color: AppColors.secondary,
               letterSpacing: -0.3,
             ),
           ),

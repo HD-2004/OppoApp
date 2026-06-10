@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import 'package:oppo_temp_jobs/core/theme/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../features/candidate/application/jobs_providers.dart';
@@ -195,7 +197,7 @@ class _LatestJobCard extends StatelessWidget {
                         style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
-                          color: Color(0xFF1E3A8A),
+                          color: AppColors.primary,
                         ),
                       ),
                     ],
@@ -242,9 +244,9 @@ class _LatestJobCard extends StatelessWidget {
                       OutlinedButton(
                         onPressed: onApply,
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: const Color(0xFF1E3A8A),
+                          foregroundColor: AppColors.primary,
                           side: const BorderSide(
-                            color: Color(0xFF1E3A8A),
+                            color: AppColors.primary,
                             width: 1.5,
                           ),
                           padding: const EdgeInsets.symmetric(

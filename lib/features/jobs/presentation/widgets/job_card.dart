@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:oppo_temp_jobs/core/theme/app_colors.dart';
+
 import '../../../candidate/domain/job_post.dart';
 
 /// Job card theo ảnh tham khảo:
@@ -56,9 +58,7 @@ class JobCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w800,
-                    color: isUrgent
-                        ? const Color(0xFF0D9488)
-                        : const Color(0xFF0D9488),
+                    color: isUrgent ? AppColors.secondary : AppColors.secondary,
                   ),
                 ),
               ],
@@ -114,7 +114,7 @@ class JobCard extends StatelessWidget {
                 const Icon(
                   Icons.verified_rounded,
                   size: 15,
-                  color: Color(0xFF0D9488),
+                  color: AppColors.secondary,
                 ),
               ],
             ),
@@ -136,8 +136,8 @@ class JobCard extends StatelessWidget {
               _InfoRow(
                 icon: Icons.access_time_rounded,
                 text: shiftTime,
-                iconColor: const Color(0xFF0D9488),
-                textColor: const Color(0xFF0D9488),
+                iconColor: AppColors.secondary,
+                textColor: AppColors.secondary,
                 fontWeight: FontWeight.w600,
               ),
             ],

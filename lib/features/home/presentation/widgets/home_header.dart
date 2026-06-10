@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import 'package:oppo_temp_jobs/core/theme/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -71,7 +73,7 @@ class HomeHeader extends ConsumerWidget {
                       const TextSpan(text: 'Chào bạn, '),
                       TextSpan(
                         text: '$displayName!',
-                        style: const TextStyle(color: Color(0xFF0D9488)),
+                        style: const TextStyle(color: AppColors.secondary),
                       ),
                     ],
                   ),
@@ -145,7 +147,7 @@ class _UserAvatar extends StatelessWidget {
       height: 44,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        border: Border.all(color: const Color(0xFF0D9488), width: 2),
+        border: Border.all(color: AppColors.secondary, width: 2),
         color: const Color(0xFFE5E7EB),
       ),
       child: ClipOval(
@@ -214,9 +216,7 @@ class _AvailabilityToggleState extends State<_AvailabilityToggle> {
           'Sẵn\nsàng',
           style: TextStyle(
             fontSize: 10,
-            color: _available
-                ? const Color(0xFF0D9488)
-                : const Color(0xFF9CA3AF),
+            color: _available ? AppColors.secondary : const Color(0xFF9CA3AF),
             fontWeight: FontWeight.w600,
           ),
           textAlign: TextAlign.center,
@@ -226,7 +226,7 @@ class _AvailabilityToggleState extends State<_AvailabilityToggle> {
           child: Switch(
             value: _available,
             onChanged: _setAvailability,
-            activeThumbColor: const Color(0xFF0D9488),
+            activeThumbColor: AppColors.secondary,
             materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
           ),
         ),

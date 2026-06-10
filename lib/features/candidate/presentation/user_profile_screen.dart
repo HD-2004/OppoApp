@@ -1,6 +1,8 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+
+import 'package:oppo_temp_jobs/core/theme/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -208,7 +210,7 @@ class _ProfileAppBar extends StatelessWidget implements PreferredSizeWidget {
         style: TextStyle(
           fontSize: 20,
           fontWeight: FontWeight.w900,
-          color: Color(0xFF1E3A8A),
+          color: AppColors.primary,
         ),
       ),
       actions: [
@@ -253,7 +255,7 @@ class _HeroCard extends StatelessWidget {
             height: 100,
             decoration: const BoxDecoration(
               gradient: LinearGradient(
-                colors: [Color(0xFF1E3A8A), Color(0xFF2563EB)],
+                colors: [AppColors.primary, AppColors.secondary],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -331,7 +333,7 @@ class _HeroCard extends StatelessWidget {
                           style: TextStyle(fontSize: 11, height: 1.3),
                         ),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF1E3A8A),
+                          backgroundColor: AppColors.primary,
                           foregroundColor: Colors.white,
                           elevation: 0,
                           padding: const EdgeInsets.symmetric(
@@ -357,9 +359,9 @@ class _HeroCard extends StatelessWidget {
                         _StatusBadge(
                           icon: Icons.verified_rounded,
                           label: 'Verified Student',
-                          bgColor: const Color(0xFFEFF6FF),
-                          textColor: const Color(0xFF1E3A8A),
-                          iconColor: const Color(0xFF1E3A8A),
+                          bgColor: AppColors.primarySoft,
+                          textColor: AppColors.primary,
+                          iconColor: AppColors.primary,
                         ),
                       _StatusBadge(
                         icon: null,
@@ -442,14 +444,14 @@ class _InitialsAvatar extends StatelessWidget {
         ? name[0].toUpperCase()
         : '?';
     return Container(
-      color: const Color(0xFFDBEAFE),
+      color: AppColors.secondarySoft,
       child: Center(
         child: Text(
           initials,
           style: const TextStyle(
             fontSize: 26,
             fontWeight: FontWeight.w800,
-            color: Color(0xFF1E3A8A),
+            color: AppColors.primary,
           ),
         ),
       ),
@@ -563,13 +565,13 @@ class _ExperienceSection extends StatelessWidget {
               onTap: onAdd,
               child: const Row(
                 children: [
-                  Icon(Icons.add_rounded, size: 16, color: Color(0xFF1E3A8A)),
+                  Icon(Icons.add_rounded, size: 16, color: AppColors.primary),
                   SizedBox(width: 3),
                   Text(
                     'Add',
                     style: TextStyle(
                       fontSize: 13,
-                      color: Color(0xFF1E3A8A),
+                      color: AppColors.primary,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -614,13 +616,13 @@ class _SkillsSection extends StatelessWidget {
               onTap: onAdd,
               child: const Row(
                 children: [
-                  Icon(Icons.add_rounded, size: 16, color: Color(0xFF1E3A8A)),
+                  Icon(Icons.add_rounded, size: 16, color: AppColors.primary),
                   SizedBox(width: 3),
                   Text(
                     'Add',
                     style: TextStyle(
                       fontSize: 13,
-                      color: Color(0xFF1E3A8A),
+                      color: AppColors.primary,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -678,7 +680,7 @@ class _SkillChip extends StatelessWidget {
             const Icon(
               Icons.verified_rounded,
               size: 16,
-              color: Color(0xFF1E3A8A),
+              color: AppColors.primary,
             ),
           ],
         ],
@@ -705,13 +707,13 @@ class _EducationSection extends StatelessWidget {
               onTap: onAdd,
               child: const Row(
                 children: [
-                  Icon(Icons.add_rounded, size: 16, color: Color(0xFF1E3A8A)),
+                  Icon(Icons.add_rounded, size: 16, color: AppColors.primary),
                   SizedBox(width: 3),
                   Text(
                     'Add',
                     style: TextStyle(
                       fontSize: 13,
-                      color: Color(0xFF1E3A8A),
+                      color: AppColors.primary,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -760,8 +762,8 @@ class _AccountSection extends StatelessWidget {
         if (!kycCompleted) const SizedBox(height: 8),
         _ActionTile(
           icon: Icons.support_agent_outlined,
-          iconColor: const Color(0xFF1E3A8A),
-          iconBg: const Color(0xFFEFF6FF),
+          iconColor: AppColors.primary,
+          iconBg: AppColors.primarySoft,
           title: 'Hỗ trợ',
           subtitle: 'Liên hệ hỗ trợ kỹ thuật',
           onTap: onSupport,

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:oppo_temp_jobs/core/theme/app_colors.dart';
+
 class CandidateMenuButton extends StatelessWidget {
   const CandidateMenuButton({super.key});
 
@@ -65,7 +67,7 @@ class CandidateMenuDrawer extends StatelessWidget {
                   ),
                   _MenuTile(
                     icon: Icons.work_outline_rounded,
-                    title: 'Việc của tôi',
+                    title: 'Công việc',
                     subtitle: 'Việc đang ứng tuyển, tuyển gấp, đã lưu',
                     onTap: onJobsTap,
                   ),
@@ -128,12 +130,12 @@ class _DrawerHeader extends StatelessWidget {
             width: 48,
             height: 48,
             decoration: const BoxDecoration(
-              color: Color(0xFFEFF6FF),
+              color: AppColors.primarySoft,
               shape: BoxShape.circle,
             ),
             child: const Icon(
               Icons.person_rounded,
-              color: Color(0xFF1E3A8A),
+              color: AppColors.primary,
               size: 26,
             ),
           ),
@@ -189,7 +191,7 @@ class _MenuTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = isDanger ? const Color(0xFFDC2626) : const Color(0xFF1E3A8A);
+    final color = isDanger ? const Color(0xFFDC2626) : AppColors.primary;
 
     return ListTile(
       leading: Icon(icon, color: color),

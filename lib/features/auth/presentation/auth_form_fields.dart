@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:oppo_temp_jobs/core/theme/app_colors.dart';
+
 const authInputTextStyle = TextStyle(color: Colors.black);
 
 InputDecoration authInputDecoration({
@@ -22,7 +24,7 @@ InputDecoration authInputDecoration({
     ),
     focusedBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(14),
-      borderSide: const BorderSide(color: Color(0xFF08798A), width: 1.6),
+      borderSide: const BorderSide(color: AppColors.secondary, width: 1.6),
     ),
     errorBorder: OutlineInputBorder(
       borderRadius: BorderRadius.circular(14),
@@ -34,6 +36,24 @@ InputDecoration authInputDecoration({
 String? requiredTextValidator(String? value, {String? message}) {
   if (value == null || value.trim().isEmpty) {
     return message ?? 'Không được để trống';
+  }
+  return null;
+}
+
+String? emailValidator(
+  String? value, {
+  String? requiredMessage,
+  String? invalidMessage,
+}) {
+  final requiredError = requiredTextValidator(value, message: requiredMessage);
+  if (requiredError != null) {
+    return requiredError;
+  }
+
+  final email = value!.trim();
+  final isValid = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email);
+  if (!isValid) {
+    return invalidMessage ?? 'Email không hợp lệ';
   }
   return null;
 }

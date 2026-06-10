@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import 'package:oppo_temp_jobs/core/theme/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../features/auth/application/auth_controller.dart';
@@ -6,6 +8,9 @@ import '../../../../features/candidate/application/jobs_providers.dart';
 import '../../../../features/candidate/data/aws_application_repository.dart';
 import '../../../../features/candidate/domain/job_post.dart';
 import '../../../../features/candidate/presentation/user_job_detail_screen.dart';
+import '../../../../features/employer_packages/application/featured_employer_package_providers.dart';
+import '../../../../features/employer_packages/presentation/widgets/featured_employer_banner.dart';
+import '../../../../features/employer_packages/presentation/widgets/featured_employer_section.dart';
 import '../../../../features/messaging/presentation/pages/messages_screen.dart';
 import '../../../../features/wallet/presentation/controllers/wallet_controller.dart';
 import '../widgets/candidate_menu_drawer.dart';
@@ -42,6 +47,7 @@ class _CandidateHomePageState extends ConsumerState<CandidateHomePage> {
   Future<void> _onRefresh() async {
     ref.invalidate(activeQuickJobsProvider);
     ref.invalidate(activeJobsProvider);
+    ref.invalidate(featuredEmployersProvider);
     ref.invalidate(walletControllerProvider);
     await Future<void>.delayed(const Duration(milliseconds: 600));
   }
@@ -138,9 +144,7 @@ class _CandidateHomePageState extends ConsumerState<CandidateHomePage> {
               child: const Text('Hủy'),
             ),
             FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF1E3A8A),
-              ),
+              style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
               onPressed: () {
                 Navigator.pop(ctx);
                 final chosen = cvs.firstWhere(
@@ -183,7 +187,7 @@ class _CandidateHomePageState extends ConsumerState<CandidateHomePage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Ứng tuyển thành công!'),
-          backgroundColor: Color(0xFF1E3A8A),
+          backgroundColor: AppColors.primary,
         ),
       );
     } catch (e) {
@@ -214,7 +218,7 @@ class _CandidateHomePageState extends ConsumerState<CandidateHomePage> {
         : 'Chưa có email';
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       drawer: CandidateMenuDrawer(
         displayName: displayName,
         email: email,
@@ -229,15 +233,25 @@ class _CandidateHomePageState extends ConsumerState<CandidateHomePage> {
       appBar: _HomeAppBar(onNotificationTap: widget.onNotificationTap),
       body: RefreshIndicator(
         onRefresh: _onRefresh,
-        color: const Color(0xFF1E3A8A),
+        color: AppColors.primary,
         child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
+            SliverToBoxAdapter(
+              child: FeaturedEmployerBanner(onViewJobs: widget.onSeeAllJobsTap),
+            ),
+
             // ── Hot Jobs ────────────────────────────────────────────────
             SliverToBoxAdapter(
               child: HomeHotJobsSection(
                 onSeeAll: widget.onSeeAllJobsTap,
                 onJobTap: _openJobDetail,
+              ),
+            ),
+
+            SliverToBoxAdapter(
+              child: FeaturedEmployerSection(
+                onViewJobs: widget.onSeeAllJobsTap,
               ),
             ),
 
@@ -281,28 +295,24 @@ class _HomeAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return AppBar(
-      backgroundColor: Colors.white,
+      backgroundColor: colorScheme.surface,
       elevation: 0,
       scrolledUnderElevation: 0,
       leading: const CandidateMenuButton(),
-      title: const Text(
+      title: Text(
         'Ốp Pờ',
         style: TextStyle(
           fontSize: 22,
           fontWeight: FontWeight.w900,
-          color: Color(0xFF1E3A8A),
-          letterSpacing: -0.3,
+          color: colorScheme.primary,
         ),
       ),
       actions: [
         IconButton(
           onPressed: onNotificationTap,
-          icon: const Icon(
-            Icons.notifications_none_rounded,
-            color: Color(0xFF1E293B),
-            size: 24,
-          ),
+          icon: const Icon(Icons.notifications_none_rounded, size: 24),
         ),
         const SizedBox(width: 4),
       ],
@@ -321,7 +331,7 @@ class _ChatFAB extends StatelessWidget {
   Widget build(BuildContext context) {
     return FloatingActionButton(
       onPressed: onTap,
-      backgroundColor: const Color(0xFF1E3A8A),
+      backgroundColor: AppColors.primary,
       shape: const CircleBorder(),
       tooltip: 'Nhắn tin với nhà tuyển dụng',
       child: const Icon(

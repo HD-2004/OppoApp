@@ -1,5 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+
+import 'package:oppo_temp_jobs/core/theme/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/services/location_service.dart';
@@ -63,11 +65,17 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
     return 0;
   }
 
-  double _calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+  double _calculateDistance(
+    double lat1,
+    double lon1,
+    double lat2,
+    double lon2,
+  ) {
     const r = 6371; // Earth's radius in km
     final dLat = (lat2 - lat1) * math.pi / 180;
     final dLon = (lon2 - lon1) * math.pi / 180;
-    final a = math.sin(dLat / 2) * math.sin(dLat / 2) +
+    final a =
+        math.sin(dLat / 2) * math.sin(dLat / 2) +
         math.cos(lat1 * math.pi / 180) *
             math.cos(lat2 * math.pi / 180) *
             math.sin(dLon / 2) *
@@ -91,9 +99,15 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
       if (coords != null) {
         await ref
             .read(authControllerProvider.notifier)
-            .updateAvailability(true, latitude: coords.$1, longitude: coords.$2);
+            .updateAvailability(
+              true,
+              latitude: coords.$1,
+              longitude: coords.$2,
+            );
       } else {
-        _showErrorDialog('Không thể lấy vị trí hiện tại. Vui lòng bật GPS và cấp quyền truy cập.');
+        _showErrorDialog(
+          'Không thể lấy vị trí hiện tại. Vui lòng bật GPS và cấp quyền truy cập.',
+        );
       }
     } catch (e) {
       if (!mounted) return;
@@ -115,12 +129,18 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
         if (status == 'SUBMITTED') {
           return Column(
             children: [
-              const Icon(Icons.access_time_filled_rounded, size: 48, color: Colors.amber),
+              const Icon(
+                Icons.access_time_filled_rounded,
+                size: 48,
+                color: Colors.amber,
+              ),
               const SizedBox(height: 12),
               Text(
                 'Yêu cầu đang chờ duyệt',
                 textAlign: TextAlign.center,
-                style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                style: textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 6),
               const Text(
@@ -137,7 +157,9 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
               Text(
                 'Chưa kích hoạt Tuyển gấp',
                 textAlign: TextAlign.center,
-                style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                style: textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 6),
               const Text(
@@ -154,7 +176,7 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
                   );
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF1E40AF),
+                  backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
@@ -175,7 +197,9 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
             Text(
               'Bật trạng thái làm việc và vị trí để tìm công việc',
               textAlign: TextAlign.center,
-              style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+              style: textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 6),
             const Text(
@@ -207,22 +231,14 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
     // Default for standard / saved empty tab
     return Column(
       children: [
-        const Icon(
-          Icons.work_off_outlined,
-          size: 48,
-          color: Colors.grey,
-        ),
+        const Icon(Icons.work_off_outlined, size: 48, color: Colors.grey),
         const SizedBox(height: 12),
         Text(
           'Không tìm thấy công việc nào phù hợp.',
-          style: textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
+          style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 6),
-        const Text(
-          'Hãy thử thay đổi từ khóa hoặc bộ lọc của bạn.',
-        ),
+        const Text('Hãy thử thay đổi từ khóa hoặc bộ lọc của bạn.'),
       ],
     );
   }
@@ -255,7 +271,12 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
           final double? jobLat = job.latitude;
           final double? jobLng = job.longitude;
           if (jobLat != null && jobLng != null) {
-            final distance = _calculateDistance(userLat, userLng, jobLat, jobLng);
+            final distance = _calculateDistance(
+              userLat,
+              userLng,
+              jobLat,
+              jobLng,
+            );
             if (distance <= 3.0) {
               _jobDistances[job.id] = distance;
               baseList.add(job);
@@ -468,7 +489,7 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
                 ),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1E40AF),
+                    backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
                   ),
                   onPressed: () {
@@ -630,7 +651,7 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
                         ),
                         decoration: const BoxDecoration(
                           gradient: LinearGradient(
-                            colors: [Color(0xFF1E40AF), Color(0xFF3B82F6)],
+                            colors: [AppColors.primary, Color(0xFF3B82F6)],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
@@ -645,7 +666,9 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
                                   child: Container(
                                     padding: const EdgeInsets.all(8),
                                     decoration: BoxDecoration(
-                                      color: Colors.white.withValues(alpha: 0.15),
+                                      color: Colors.white.withValues(
+                                        alpha: 0.15,
+                                      ),
                                       shape: BoxShape.circle,
                                     ),
                                     child: const Icon(
@@ -716,9 +739,7 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
                                     width: double.infinity,
                                     child: ElevatedButton(
                                       style: ElevatedButton.styleFrom(
-                                        backgroundColor: const Color(
-                                          0xFF1E40AF,
-                                        ),
+                                        backgroundColor: AppColors.primary,
                                         foregroundColor: Colors.white,
                                         padding: const EdgeInsets.symmetric(
                                           vertical: 14,
@@ -780,7 +801,11 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
                               const SizedBox(width: 10),
                               _TabItem(
                                 label: 'Công việc Tuyển gấp',
-                                count: (user?.verificationStatus == 'APPROVED' && user?.isActive == true) ? filteredJobs.length : 0,
+                                count:
+                                    (user?.verificationStatus == 'APPROVED' &&
+                                        user?.isActive == true)
+                                    ? filteredJobs.length
+                                    : 0,
                                 isActive: _activeTab == 1,
                                 icon: Icons.flash_on_outlined,
                                 onTap: () => setState(() => _activeTab = 1),
@@ -801,11 +826,14 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
                       if (_activeTab == 1) ...[
                         if (user?.verificationStatus != 'APPROVED')
                           Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
                             child: Container(
                               padding: const EdgeInsets.all(16),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF1E40AF),
+                                color: AppColors.primary,
                                 borderRadius: BorderRadius.circular(14),
                               ),
                               child: Row(
@@ -814,18 +842,26 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
                                     width: 36,
                                     height: 36,
                                     decoration: BoxDecoration(
-                                      color: Colors.white.withValues(alpha: 0.2),
+                                      color: Colors.white.withValues(
+                                        alpha: 0.2,
+                                      ),
                                       shape: BoxShape.circle,
                                     ),
-                                    child: const Icon(Icons.security, color: Colors.white, size: 18),
+                                    child: const Icon(
+                                      Icons.security,
+                                      color: Colors.white,
+                                      size: 18,
+                                    ),
                                   ),
                                   const SizedBox(width: 12),
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          user?.verificationStatus == 'SUBMITTED'
+                                          user?.verificationStatus ==
+                                                  'SUBMITTED'
                                               ? 'Yêu cầu đang chờ admin duyệt...'
                                               : 'Để sử dụng công việc tuyển gấp',
                                           style: const TextStyle(
@@ -836,11 +872,14 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
                                         ),
                                         const SizedBox(height: 2),
                                         Text(
-                                          user?.verificationStatus == 'SUBMITTED'
+                                          user?.verificationStatus ==
+                                                  'SUBMITTED'
                                               ? 'Thường mất 1–2 ngày làm việc.'
                                               : 'Nhấn vào đây để biết thêm chi tiết',
                                           style: TextStyle(
-                                            color: Colors.white.withValues(alpha: 0.8),
+                                            color: Colors.white.withValues(
+                                              alpha: 0.8,
+                                            ),
                                             fontSize: 12,
                                           ),
                                         ),
@@ -851,22 +890,31 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
                                     ElevatedButton(
                                       style: ElevatedButton.styleFrom(
                                         backgroundColor: Colors.white,
-                                        foregroundColor: const Color(0xFF1E40AF),
+                                        foregroundColor: AppColors.primary,
                                         shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(8),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
                                         ),
-                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 8,
+                                        ),
                                       ),
                                       onPressed: () {
                                         Navigator.of(context).push(
                                           MaterialPageRoute(
-                                            builder: (_) => const QuickJobIntroPage(),
+                                            builder: (_) =>
+                                                const QuickJobIntroPage(),
                                           ),
                                         );
                                       },
                                       child: const Text(
                                         'Tìm hiểu ngay →',
-                                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 12,
+                                        ),
                                       ),
                                     ),
                                 ],
@@ -875,14 +923,19 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
                           )
                         else
                           Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
                             child: AvailabilityCard(
                               isAvailable: user?.isActive == true,
                               onChanged: (val) {
                                 if (val) {
                                   _enableAvailability();
                                 } else {
-                                  ref.read(authControllerProvider.notifier).updateAvailability(false);
+                                  ref
+                                      .read(authControllerProvider.notifier)
+                                      .updateAvailability(false);
                                 }
                               },
                             ),
@@ -1161,7 +1214,7 @@ class _TabItem extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: isActive ? const Color(0xFF1E40AF) : theme.colorScheme.surface,
+          color: isActive ? AppColors.primary : theme.colorScheme.surface,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isActive
@@ -1171,7 +1224,7 @@ class _TabItem extends StatelessWidget {
           boxShadow: [
             if (isActive)
               BoxShadow(
-                color: const Color(0xFF1E40AF).withValues(alpha: 0.2),
+                color: AppColors.primary.withValues(alpha: 0.2),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),

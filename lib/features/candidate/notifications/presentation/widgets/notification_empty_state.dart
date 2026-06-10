@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:oppo_temp_jobs/core/theme/app_colors.dart';
+
 class NotificationEmptyState extends StatelessWidget {
   const NotificationEmptyState({required this.message, super.key});
 
@@ -17,13 +19,13 @@ class NotificationEmptyState extends StatelessWidget {
               width: 72,
               height: 72,
               decoration: const BoxDecoration(
-                color: Color(0xFFEFF6FF),
+                color: AppColors.primarySoft,
                 shape: BoxShape.circle,
               ),
               child: const Icon(
                 Icons.notifications_none_rounded,
                 size: 36,
-                color: Color(0xFF1E3A8A),
+                color: AppColors.primary,
               ),
             ),
             const SizedBox(height: 16),

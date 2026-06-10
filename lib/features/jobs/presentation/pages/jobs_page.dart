@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import 'package:oppo_temp_jobs/core/theme/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../auth/application/auth_controller.dart';
@@ -127,7 +129,7 @@ class _JobsPageState extends ConsumerState<JobsPage> {
             ),
             FilledButton(
               style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF0D9488),
+                backgroundColor: AppColors.secondary,
               ),
               onPressed: () {
                 Navigator.pop(ctx);
@@ -171,7 +173,7 @@ class _JobsPageState extends ConsumerState<JobsPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Hồ sơ ứng tuyển đã được gửi thành công!'),
-          backgroundColor: Color(0xFF0D9488),
+          backgroundColor: AppColors.secondary,
         ),
       );
     } catch (e) {
@@ -203,7 +205,7 @@ class _JobsPageState extends ConsumerState<JobsPage> {
           ? _buildSearchAppBar(controller)
           : JobsHeader(onSearchTap: _toggleSearch),
       body: RefreshIndicator(
-        color: const Color(0xFF0D9488),
+        color: AppColors.secondary,
         onRefresh: controller.refresh,
         child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(),

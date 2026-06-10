@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import 'package:oppo_temp_jobs/core/theme/app_colors.dart';
 import '../../domain/job_post.dart';
 
 class JobPostCard extends StatelessWidget {
@@ -343,7 +345,7 @@ class JobPostCard extends StatelessWidget {
                       ElevatedButton(
                         onPressed: onApplyPressed,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF1E40AF),
+                          backgroundColor: AppColors.primary,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(
                             horizontal: 14,

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:oppo_temp_jobs/core/theme/app_colors.dart';
+
 import '../controllers/jobs_controller.dart';
 
 /// 3 pill filter buttons: Khu vực | Mức lương | Ngành nghề
@@ -201,14 +203,14 @@ class JobFilterBar extends StatelessWidget {
                               ? FontWeight.w700
                               : FontWeight.w400,
                           color: isSelected
-                              ? const Color(0xFF0D9488)
+                              ? AppColors.secondary
                               : const Color(0xFF374151),
                         ),
                       ),
                       trailing: isSelected
                           ? const Icon(
                               Icons.check_rounded,
-                              color: Color(0xFF0D9488),
+                              color: AppColors.secondary,
                             )
                           : null,
                       onTap: () {
@@ -246,10 +248,10 @@ class _FilterPill extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: isActive ? const Color(0xFF0D9488) : Colors.white,
+          color: isActive ? AppColors.secondary : Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isActive ? const Color(0xFF0D9488) : const Color(0xFFD1D5DB),
+            color: isActive ? AppColors.secondary : const Color(0xFFD1D5DB),
           ),
         ),
         child: Row(

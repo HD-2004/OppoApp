@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import 'package:oppo_temp_jobs/core/theme/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../features/candidate/application/jobs_providers.dart';
@@ -136,7 +138,7 @@ class _RecommendedJobCard extends StatelessWidget {
                         style: const TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w800,
-                          color: Color(0xFF0D9488),
+                          color: AppColors.secondary,
                         ),
                       ),
                     ],
@@ -161,7 +163,7 @@ class _RecommendedJobCard extends StatelessWidget {
                       const Icon(
                         Icons.verified_rounded,
                         size: 13,
-                        color: Color(0xFF0D9488),
+                        color: AppColors.secondary,
                       ),
                     ],
                   ),
@@ -246,7 +248,7 @@ class _JobTypeBadge extends StatelessWidget {
           Icon(
             isUrgent ? Icons.local_fire_department_rounded : Icons.work_outline,
             size: 11,
-            color: isUrgent ? const Color(0xFFF97316) : const Color(0xFF0D9488),
+            color: isUrgent ? const Color(0xFFF97316) : AppColors.secondary,
           ),
           const SizedBox(width: 3),
           Text(
@@ -254,9 +256,7 @@ class _JobTypeBadge extends StatelessWidget {
             style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.w600,
-              color: isUrgent
-                  ? const Color(0xFFC2410C)
-                  : const Color(0xFF0D9488),
+              color: isUrgent ? const Color(0xFFC2410C) : AppColors.secondary,
             ),
           ),
         ],

@@ -6,6 +6,7 @@ void main() {
     const keys = {
       AppPreferenceKeys.appThemeMode,
       AppPreferenceKeys.appLocale,
+      AppPreferenceKeys.hasSeenIntro,
       AppPreferenceKeys.notificationJobRecommendations,
       AppPreferenceKeys.notificationEmployerMessages,
       AppPreferenceKeys.notificationApplicationUpdates,
@@ -16,7 +17,8 @@ void main() {
       AppPreferenceKeys.deleteAccountRequestSubmittedAt,
     };
 
-    expect(keys.length, 10);
+    expect(keys.length, 11);
+    expect(AppPreferenceKeys.hasSeenIntro, 'has_seen_intro');
     expect(AppPreferenceKeys.candidateAvailability, 'candidate_availability');
     expect(
       AppPreferenceKeys.deleteAccountRequestReason,

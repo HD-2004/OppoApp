@@ -3,6 +3,7 @@ class AppPreferenceKeys {
 
   static const appThemeMode = 'app_theme_mode';
   static const appLocale = 'app_locale';
+  static const hasSeenIntro = 'has_seen_intro';
   static const notificationJobRecommendations =
       'notification_job_recommendations';
   static const notificationEmployerMessages = 'notification_employer_messages';

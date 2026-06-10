@@ -62,6 +62,10 @@ class AuthRepository {
     await _service.signIn(email: email, password: password);
   }
 
+  Future<void> signInWithSocialProvider(AuthProvider provider) async {
+    await _service.signInWithSocialProvider(provider: provider);
+  }
+
   Future<void> signOut() => _service.signOut();
 
   Future<void> changePassword({
@@ -179,9 +183,7 @@ class AuthRepository {
     );
   }
 
-  Future<AuthUserProfile> submitVerificationRequest({
-    required String userId,
-  }) {
+  Future<AuthUserProfile> submitVerificationRequest({required String userId}) {
     return _userProfileRepository.submitVerificationRequest(userId: userId);
   }
 

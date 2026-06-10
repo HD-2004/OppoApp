@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import 'package:oppo_temp_jobs/core/theme/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -130,7 +132,7 @@ class _NotifAppBar extends StatelessWidget implements PreferredSizeWidget {
             child: const Text(
               'Đọc tất cả',
               style: TextStyle(
-                color: Color(0xFF1E3A8A),
+                color: AppColors.primary,
                 fontWeight: FontWeight.w700,
                 fontSize: 13,
               ),
@@ -199,7 +201,7 @@ class _FilterTab extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF1E3A8A) : const Color(0xFFF3F4F6),
+          color: isSelected ? AppColors.primary : const Color(0xFFF3F4F6),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Row(
@@ -255,7 +257,7 @@ class _NotificationListView extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     if (items.isEmpty) {
       return RefreshIndicator(
-        color: const Color(0xFF1E3A8A),
+        color: AppColors.primary,
         onRefresh: () => ref
             .read(candidateNotificationControllerProvider.notifier)
             .refreshNotifications(),
@@ -273,7 +275,7 @@ class _NotificationListView extends ConsumerWidget {
     }
 
     return RefreshIndicator(
-      color: const Color(0xFF1E3A8A),
+      color: AppColors.primary,
       onRefresh: () => ref
           .read(candidateNotificationControllerProvider.notifier)
           .refreshNotifications(),
@@ -347,7 +349,7 @@ class _ErrorState extends StatelessWidget {
             icon: const Icon(Icons.refresh_rounded, size: 18),
             label: const Text('Thử lại'),
             style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFF1E3A8A),
+              backgroundColor: AppColors.primary,
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),

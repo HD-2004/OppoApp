@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import 'package:oppo_temp_jobs/core/theme/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../features/candidate/application/jobs_providers.dart';
@@ -39,7 +41,7 @@ class UrgentJobsSection extends ConsumerWidget {
                   'Xem tất cả',
                   style: TextStyle(
                     fontSize: 13,
-                    color: Color(0xFF0D9488),
+                    color: AppColors.secondary,
                     fontWeight: FontWeight.w600,
                   ),
                 ),

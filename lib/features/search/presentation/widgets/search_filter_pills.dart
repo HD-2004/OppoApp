@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:oppo_temp_jobs/core/theme/app_colors.dart';
+
 import '../pages/search_page.dart';
 
 /// 3 filter pills theo ảnh: Khoảng cách | Bán thời gian | Toàn thời gian
@@ -65,10 +67,10 @@ class _Pill extends StatelessWidget {
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: isActive ? const Color(0xFF1E3A8A) : Colors.white,
+          color: isActive ? AppColors.primary : Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isActive ? const Color(0xFF1E3A8A) : const Color(0xFFD1D5DB),
+            color: isActive ? AppColors.primary : const Color(0xFFD1D5DB),
           ),
         ),
         child: Row(

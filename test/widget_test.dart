@@ -3,8 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:oppo_temp_jobs/app/app.dart';
 import 'package:oppo_temp_jobs/features/auth/presentation/introduction_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
+
   testWidgets('introduction uses bundled F&B image asset', (
     WidgetTester tester,
   ) async {
@@ -43,7 +48,10 @@ void main() {
     expect(find.text('Email'), findsOneWidget);
     expect(find.text('Mật khẩu'), findsOneWidget);
     expect(find.text('Quên mật khẩu'), findsOneWidget);
-    expect(find.text('Chưa có tài khoản? Đăng ký'), findsOneWidget);
+    expect(
+      find.textContaining('Đăng ký ngay', findRichText: true),
+      findsOneWidget,
+    );
   });
 
   testWidgets('opens forgot password screen', (WidgetTester tester) async {
@@ -60,11 +68,11 @@ void main() {
     await tester.tap(find.text('Quên mật khẩu'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Quên mật khẩu'), findsOneWidget);
-    expect(find.text('Gửi mã xác nhận'), findsOneWidget);
+    expect(find.text('Quên mật khẩu?'), findsOneWidget);
+    expect(find.text('Gửi mã OTP'), findsOneWidget);
   });
 
-  testWidgets('opens candidate-only register screen from login', (
+  testWidgets('opens candidate register screen from login', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const ProviderScope(child: TempJobsApp()));
@@ -75,18 +83,33 @@ void main() {
     await tester.tap(find.text('Bắt đầu ngay'));
     await tester.pumpAndSettle();
 
-    await tester.ensureVisible(find.text('Chưa có tài khoản? Đăng ký'));
+    await tester.ensureVisible(
+      find.textContaining('Đăng ký ngay', findRichText: true),
+    );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Chưa có tài khoản? Đăng ký'));
+    await tester.tap(find.textContaining('Đăng ký ngay', findRichText: true));
     await tester.pumpAndSettle();
 
-    expect(find.text('Đăng ký'), findsWidgets);
-    expect(find.text('Họ và tên'), findsOneWidget);
+    expect(find.text('Tạo tài khoản ứng viên'), findsOneWidget);
     expect(find.text('Nhà tuyển dụng'), findsNothing);
-    expect(find.text('Vai trò'), findsNothing);
+    expect(find.text('Tạo tài khoản'), findsWidgets);
+    expect(find.text('Họ và tên'), findsOneWidget);
+    expect(find.text('Tối thiểu 8 ký tự'), findsOneWidget);
+
+    await tester.ensureVisible(
+      find.textContaining('Đã có tài khoản?', findRichText: true),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.textContaining('Đã có tài khoản?', findRichText: true),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Đăng nhập'), findsWidgets);
+    expect(find.text('Quên mật khẩu'), findsOneWidget);
   });
 
-  testWidgets('auth input text is black on login and register', (
+  testWidgets('auth input text uses high-contrast auth color', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const ProviderScope(child: TempJobsApp()));
@@ -102,12 +125,14 @@ void main() {
     );
     expect(loginFields.length, 2);
     for (final field in loginFields) {
-      expect(field.style.color, Colors.black);
+      expect(field.style.color, const Color(0xFF0F172A));
     }
 
-    await tester.ensureVisible(find.text('Chưa có tài khoản? Đăng ký'));
+    await tester.ensureVisible(
+      find.textContaining('Đăng ký ngay', findRichText: true),
+    );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Chưa có tài khoản? Đăng ký'));
+    await tester.tap(find.textContaining('Đăng ký ngay', findRichText: true));
     await tester.pumpAndSettle();
 
     final registerFields = tester.widgetList<EditableText>(
@@ -115,7 +140,7 @@ void main() {
     );
     expect(registerFields.length, 4);
     for (final field in registerFields) {
-      expect(field.style.color, Colors.black);
+      expect(field.style.color, const Color(0xFF0F172A));
     }
   });
 }

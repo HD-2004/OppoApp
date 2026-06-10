@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import 'package:oppo_temp_jobs/core/theme/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../auth/application/auth_controller.dart';
@@ -19,7 +21,9 @@ class _QuickJobIntroPageState extends ConsumerState<QuickJobIntroPage> {
     });
 
     try {
-      await ref.read(authControllerProvider.notifier).submitVerificationRequest();
+      await ref
+          .read(authControllerProvider.notifier)
+          .submitVerificationRequest();
       if (!mounted) return;
 
       showDialog(
@@ -52,10 +56,7 @@ class _QuickJobIntroPageState extends ConsumerState<QuickJobIntroPage> {
               const SizedBox(height: 20),
               const Text(
                 'Đã gửi yêu cầu!',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                ),
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
               ),
               const SizedBox(height: 8),
               const Text(
@@ -137,7 +138,11 @@ class _QuickJobIntroPageState extends ConsumerState<QuickJobIntroPage> {
             // Custom Back button matching web React version
             TextButton.icon(
               onPressed: () => Navigator.of(context).pop(),
-              icon: const Icon(Icons.arrow_back, size: 16, color: Color(0xFF64748B)),
+              icon: const Icon(
+                Icons.arrow_back,
+                size: 16,
+                color: Color(0xFF64748B),
+              ),
               label: const Text(
                 'Quay lại',
                 style: TextStyle(
@@ -147,7 +152,10 @@ class _QuickJobIntroPageState extends ConsumerState<QuickJobIntroPage> {
                 ),
               ),
               style: TextButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -163,7 +171,7 @@ class _QuickJobIntroPageState extends ConsumerState<QuickJobIntroPage> {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(18),
                 gradient: const LinearGradient(
-                  colors: [Color(0xFF1E3A8A), Color(0xFF2563EB)],
+                  colors: [AppColors.primary, AppColors.secondary],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
@@ -224,12 +232,16 @@ class _QuickJobIntroPageState extends ConsumerState<QuickJobIntroPage> {
             // Features Section
             Text(
               'Công việc tuyển gấp là gì?',
-              style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+              style: textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
             ),
             const SizedBox(height: 4),
             Text(
               'Các ưu điểm vượt trội của tính năng tuyển gấp',
-              style: textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              style: textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ),
             const SizedBox(height: 16),
 
@@ -238,7 +250,8 @@ class _QuickJobIntroPageState extends ConsumerState<QuickJobIntroPage> {
               iconColor: const Color(0xFFDC2626),
               iconBgColor: const Color(0xFFFEE2E2),
               title: 'Nổi bật & Đẩy tin',
-              desc: 'Bài đăng sẽ có biểu tượng "Tuyển gấp" nổi bật và hiển thị ở vị trí ưu tiên trên trang chủ của ứng viên.',
+              desc:
+                  'Bài đăng sẽ có biểu tượng "Tuyển gấp" nổi bật và hiển thị ở vị trí ưu tiên trên trang chủ của ứng viên.',
             ),
             const SizedBox(height: 12),
             _buildFeatureTile(
@@ -246,64 +259,78 @@ class _QuickJobIntroPageState extends ConsumerState<QuickJobIntroPage> {
               iconColor: const Color(0xFF16A34A),
               iconBgColor: const Color(0xFFDCFCE7),
               title: 'Tiếp cận Real-time',
-              desc: 'Hệ thống tự động gửi thông báo đẩy đến điện thoại của ứng viên phù hợp trong phạm vi lân cận ngay khi tạo tin.',
+              desc:
+                  'Hệ thống tự động gửi thông báo đẩy đến điện thoại của ứng viên phù hợp trong phạm vi lân cận ngay khi tạo tin.',
             ),
             const SizedBox(height: 12),
             _buildFeatureTile(
               icon: Icons.account_balance_wallet_outlined,
-              iconColor: const Color(0xFF2563EB),
-              iconBgColor: const Color(0xFFEFF6FF),
+              iconColor: AppColors.secondary,
+              iconBgColor: AppColors.primarySoft,
               title: 'Ký quỹ an toàn',
-              desc: 'Lương được giữ an toàn qua tài khoản ký quỹ và tự động giải ngân sau khi hoàn thành ca làm.',
+              desc:
+                  'Lương được giữ an toàn qua tài khoản ký quỹ và tự động giải ngân sau khi hoàn thành ca làm.',
             ),
             const SizedBox(height: 32),
 
             // Steps Section
             Text(
               'Cách thức hoạt động',
-              style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+              style: textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
             ),
             const SizedBox(height: 4),
             Text(
               'Quy trình tuyển dụng tinh gọn và nhanh chóng qua 4 bước',
-              style: textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              style: textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ),
             const SizedBox(height: 16),
 
             _buildStepTile(
               stepNumber: '1',
               title: 'Gửi yêu cầu kích hoạt',
-              desc: 'Đăng ký sử dụng tính năng và chờ hệ thống kiểm duyệt hồ sơ của bạn.',
+              desc:
+                  'Đăng ký sử dụng tính năng và chờ hệ thống kiểm duyệt hồ sơ của bạn.',
             ),
             const SizedBox(height: 12),
             _buildStepTile(
               stepNumber: '2',
               title: 'Ký quỹ tin đăng',
-              desc: 'Nạp tiền lương tương ứng vào ví điện tử Ốp Pờ. Hệ thống sẽ ký quỹ để đảm bảo quyền lợi ứng viên.',
+              desc:
+                  'Nạp tiền lương tương ứng vào ví điện tử Ốp Pờ. Hệ thống sẽ ký quỹ để đảm bảo quyền lợi ứng viên.',
             ),
             const SizedBox(height: 12),
             _buildStepTile(
               stepNumber: '3',
               title: 'Chat Real-time',
-              desc: 'Ứng viên sẽ nhận việc tức thì. Bạn có thể chat realtime để trao đổi và hướng dẫn công việc.',
+              desc:
+                  'Ứng viên sẽ nhận việc tức thì. Bạn có thể chat realtime để trao đổi và hướng dẫn công việc.',
             ),
             const SizedBox(height: 12),
             _buildStepTile(
               stepNumber: '4',
               title: 'Xác nhận & Thanh toán',
-              desc: 'Xác nhận công việc hoàn thành. Hệ thống sẽ tự động chuyển khoản từ tài khoản ký quỹ vào ví của ứng viên.',
+              desc:
+                  'Xác nhận công việc hoàn thành. Hệ thống sẽ tự động chuyển khoản từ tài khoản ký quỹ vào ví của ứng viên.',
             ),
             const SizedBox(height: 32),
 
             // FAQ Section
             Text(
               'Các thông tin quan trọng',
-              style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+              style: textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
             ),
             const SizedBox(height: 4),
             Text(
               'Quy định và chính sách hoạt động của công việc tuyển gấp',
-              style: textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              style: textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ),
             const SizedBox(height: 16),
 
@@ -349,19 +376,26 @@ class _QuickJobIntroPageState extends ConsumerState<QuickJobIntroPage> {
                 children: [
                   Text(
                     'Bắt đầu sử dụng Công việc tuyển gấp',
-                    style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+                    style: textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     'Kích hoạt tính năng ngay hôm nay để lấp đầy ca làm việc của bạn trong lịch trình bận rộn.',
                     textAlign: TextAlign.center,
-                    style: textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                    style: textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
                   ),
                   const SizedBox(height: 20),
 
                   if (status == 'APPROVED')
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
                       decoration: BoxDecoration(
                         color: const Color(0xFFDCFCE7),
                         border: Border.all(color: const Color(0xFF86EFAC)),
@@ -370,7 +404,11 @@ class _QuickJobIntroPageState extends ConsumerState<QuickJobIntroPage> {
                       child: const Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.check_circle, color: Color(0xFF15803D), size: 16),
+                          Icon(
+                            Icons.check_circle,
+                            color: Color(0xFF15803D),
+                            size: 16,
+                          ),
                           SizedBox(width: 8),
                           Text(
                             'Tài khoản đã được kích hoạt tuyển gấp!',
@@ -385,7 +423,10 @@ class _QuickJobIntroPageState extends ConsumerState<QuickJobIntroPage> {
                     )
                   else if (status == 'SUBMITTED')
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
                       decoration: BoxDecoration(
                         color: const Color(0xFFFEF3C7),
                         border: Border.all(color: const Color(0xFFFCD34D)),
@@ -394,7 +435,11 @@ class _QuickJobIntroPageState extends ConsumerState<QuickJobIntroPage> {
                       child: const Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.access_time_filled, color: Color(0xFF92400E), size: 16),
+                          Icon(
+                            Icons.access_time_filled,
+                            color: Color(0xFF92400E),
+                            size: 16,
+                          ),
                           SizedBox(width: 8),
                           Text(
                             'Đang chờ admin duyệt...',
@@ -412,7 +457,7 @@ class _QuickJobIntroPageState extends ConsumerState<QuickJobIntroPage> {
                       width: double.infinity,
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF1E40AF),
+                          backgroundColor: AppColors.primary,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(
@@ -436,7 +481,9 @@ class _QuickJobIntroPageState extends ConsumerState<QuickJobIntroPage> {
                                   SizedBox(width: 8),
                                   Text(
                                     'Đang gửi...',
-                                    style: TextStyle(fontWeight: FontWeight.w800),
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w800,
+                                    ),
                                   ),
                                 ],
                               )
@@ -447,7 +494,9 @@ class _QuickJobIntroPageState extends ConsumerState<QuickJobIntroPage> {
                                   SizedBox(width: 8),
                                   Text(
                                     'Gửi yêu cầu kích hoạt Công việc tuyển gấp',
-                                    style: TextStyle(fontWeight: FontWeight.w800),
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w800,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -497,7 +546,10 @@ class _QuickJobIntroPageState extends ConsumerState<QuickJobIntroPage> {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -529,7 +581,7 @@ class _QuickJobIntroPageState extends ConsumerState<QuickJobIntroPage> {
           width: 32,
           height: 32,
           decoration: const BoxDecoration(
-            color: Color(0xFF1E40AF),
+            color: AppColors.primary,
             shape: BoxShape.circle,
           ),
           alignment: Alignment.center,
@@ -549,7 +601,10 @@ class _QuickJobIntroPageState extends ConsumerState<QuickJobIntroPage> {
             children: [
               Text(
                 title,
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13.5,
+                ),
               ),
               const SizedBox(height: 4),
               Text(
@@ -578,7 +633,7 @@ class _QuickJobIntroPageState extends ConsumerState<QuickJobIntroPage> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: const Color(0xFF1E40AF), size: 18),
+          Icon(icon, color: AppColors.primary, size: 18),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -586,7 +641,10 @@ class _QuickJobIntroPageState extends ConsumerState<QuickJobIntroPage> {
               children: [
                 Text(
                   q,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(

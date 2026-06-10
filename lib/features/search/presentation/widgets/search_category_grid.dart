@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:oppo_temp_jobs/core/theme/app_colors.dart';
+
 /// "Danh mục phổ biến" — dạng Instagram Stories:
 /// Hàng ngang scroll, mỗi item là circle có viền gradient + ảnh khi có
 /// + label + count bên dưới.
@@ -164,9 +166,7 @@ class _StoryItem extends StatelessWidget {
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-                color: isSelected
-                    ? const Color(0xFF1E3A8A)
-                    : const Color(0xFF111827),
+                color: isSelected ? AppColors.primary : const Color(0xFF111827),
               ),
               textAlign: TextAlign.center,
               maxLines: 1,

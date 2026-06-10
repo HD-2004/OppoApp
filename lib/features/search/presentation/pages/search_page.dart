@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import 'package:oppo_temp_jobs/core/theme/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../features/auth/application/auth_controller.dart';
@@ -210,9 +212,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
               child: const Text('Hủy'),
             ),
             FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF1E3A8A),
-              ),
+              style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
               onPressed: () {
                 Navigator.pop(ctx);
                 final chosen = cvs.firstWhere(
@@ -255,7 +255,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Ứng tuyển thành công!'),
-          backgroundColor: Color(0xFF1E3A8A),
+          backgroundColor: AppColors.primary,
         ),
       );
     } catch (e) {
@@ -337,7 +337,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                 final filtered = _filtered(all);
 
                 return RefreshIndicator(
-                  color: const Color(0xFF1E3A8A),
+                  color: AppColors.primary,
                   onRefresh: () async {
                     ref.invalidate(activeJobsProvider);
                     ref.invalidate(activeQuickJobsProvider);
@@ -445,7 +445,7 @@ class _SearchAppBar extends ConsumerWidget implements PreferredSizeWidget {
         style: TextStyle(
           fontSize: 22,
           fontWeight: FontWeight.w900,
-          color: Color(0xFF1E3A8A),
+          color: AppColors.primary,
           letterSpacing: -0.3,
         ),
       ),
@@ -570,7 +570,7 @@ class _SearchInputBar extends StatelessWidget {
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1E3A8A),
+                  color: AppColors.primary,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(
@@ -633,7 +633,7 @@ class _ShiftsHeader extends StatelessWidget {
               'Tìm thấy $count',
               style: const TextStyle(
                 fontSize: 13,
-                color: Color(0xFF1E3A8A),
+                color: AppColors.primary,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -692,9 +692,7 @@ class _ErrorBody extends StatelessWidget {
             onPressed: onRetry,
             icon: const Icon(Icons.refresh_rounded, size: 18),
             label: const Text('Thử lại'),
-            style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFF1E3A8A),
-            ),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
           ),
         ],
       ),

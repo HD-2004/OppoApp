@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import 'package:oppo_temp_jobs/core/theme/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/localization/app_localizations.dart';
@@ -50,14 +52,14 @@ class CandidateDashboardTab extends ConsumerWidget {
             Container(
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
-                  colors: [Color(0xFF1E40AF), Color(0xFF3B82F6)],
+                  colors: [AppColors.primary, Color(0xFF3B82F6)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF1E40AF).withValues(alpha: 0.3),
+                    color: AppColors.primary.withValues(alpha: 0.3),
                     blurRadius: 12,
                     offset: const Offset(0, 6),
                   ),
@@ -113,7 +115,7 @@ class CandidateDashboardTab extends ConsumerWidget {
                             ElevatedButton.icon(
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.white,
-                                foregroundColor: const Color(0xFF1E40AF),
+                                foregroundColor: AppColors.primary,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(8),
                                 ),
@@ -188,11 +190,11 @@ class CandidateDashboardTab extends ConsumerWidget {
                       value: '9',
                       badgeText: '+1 ${l10n.recentLabel}',
                       icon: Icons.description_outlined,
-                      cardColor: const Color(0xFFEFF6FF),
-                      iconBgColor: const Color(0xFF1E40AF),
-                      textColor: const Color(0xFF1E40AF),
+                      cardColor: AppColors.primarySoft,
+                      iconBgColor: AppColors.primary,
+                      textColor: AppColors.primary,
                       badgeColor: const Color(0xFFDCDFEA),
-                      badgeTextColor: const Color(0xFF1E40AF),
+                      badgeTextColor: AppColors.primary,
                     ),
                     _buildStatCard(
                       context,

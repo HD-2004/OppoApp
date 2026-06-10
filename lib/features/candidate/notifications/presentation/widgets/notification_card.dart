@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:oppo_temp_jobs/core/theme/app_colors.dart';
+
 import '../../domain/candidate_notification.dart';
 import '../../domain/notification_type.dart';
 
@@ -65,7 +67,7 @@ class CandidateNotificationCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
               color: isUnread
-                  ? const Color(0xFF1E3A8A).withValues(alpha: 0.15)
+                  ? AppColors.primary.withValues(alpha: 0.15)
                   : const Color(0xFFE5E7EB),
             ),
             boxShadow: [
@@ -157,7 +159,7 @@ class CandidateNotificationCard extends StatelessWidget {
                       width: 8,
                       height: 8,
                       decoration: const BoxDecoration(
-                        color: Color(0xFF1E3A8A),
+                        color: AppColors.primary,
                         shape: BoxShape.circle,
                       ),
                     ),
@@ -191,8 +193,8 @@ _NotifColors _colorFor(CandidateNotificationType type) {
       Color(0xFFF0FDF4),
     ),
     CandidateNotificationType.newMessage => const _NotifColors(
-      Color(0xFF1E3A8A),
-      Color(0xFFEFF6FF),
+      AppColors.primary,
+      AppColors.primarySoft,
     ),
     CandidateNotificationType.cvRejected ||
     CandidateNotificationType.paymentFailed ||
@@ -207,8 +209,8 @@ _NotifColors _colorFor(CandidateNotificationType type) {
     CandidateNotificationType.profileViewed ||
     CandidateNotificationType.jobRecommended ||
     CandidateNotificationType.system => const _NotifColors(
-      Color(0xFF1E3A8A),
-      Color(0xFFEFF6FF),
+      AppColors.primary,
+      AppColors.primarySoft,
     ),
   };
 }

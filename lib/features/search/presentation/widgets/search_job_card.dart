@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:oppo_temp_jobs/core/theme/app_colors.dart';
+
 import '../../../../features/candidate/domain/job_post.dart';
 
 /// Card job theo ảnh tham khảo:
@@ -96,7 +98,7 @@ class SearchJobCard extends StatelessWidget {
                           const Icon(
                             Icons.verified_rounded,
                             size: 13,
-                            color: Color(0xFF1E3A8A),
+                            color: AppColors.primary,
                           ),
                         ],
                       ),
@@ -188,7 +190,7 @@ class SearchJobCard extends StatelessWidget {
                 ElevatedButton(
                   onPressed: onApply,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1E3A8A),
+                    backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
                     elevation: 0,
                     padding: const EdgeInsets.symmetric(
@@ -231,7 +233,7 @@ class SearchJobCard extends StatelessWidget {
     final now = DateTime.now();
     final diff = now.difference(job.postedAt);
     // "MỚI" if posted within 24h
-    if (diff.inHours < 24) return ('MỚI', const Color(0xFF1E3A8A));
+    if (diff.inHours < 24) return ('MỚI', AppColors.primary);
     // "CẦN GẤP" for urgent/quick jobs
     if (job.isQuickJob || job.jobType == JobPostType.urgent) {
       return ('CẦN GẤP', const Color(0xFFDC2626));
@@ -305,12 +307,12 @@ class _JobIcon extends StatelessWidget {
       return const Color(0xFF92400E);
     }
     if (joined.contains('phục vụ') || joined.contains('nhà hàng')) {
-      return const Color(0xFF1E3A8A);
+      return AppColors.primary;
     }
     if (joined.contains('bếp')) return const Color(0xFF065F46);
     if (joined.contains('bar')) return const Color(0xFF6D28D9);
     if (isQuick) return const Color(0xFFDC2626);
-    return const Color(0xFF1E3A8A);
+    return AppColors.primary;
   }
 }
 

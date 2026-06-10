@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:oppo_temp_jobs/core/theme/app_colors.dart';
+
 import '../../../../features/candidate/domain/job_post.dart';
 
 /// "Nhà tuyển dụng nổi bật" — dạng Instagram Stories.
@@ -201,9 +203,7 @@ class _SpotItem extends StatelessWidget {
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-                color: isSelected
-                    ? const Color(0xFF1E3A8A)
-                    : const Color(0xFF111827),
+                color: isSelected ? AppColors.primary : const Color(0xFF111827),
               ),
               textAlign: TextAlign.center,
               maxLines: 1,
@@ -243,7 +243,7 @@ class _AvatarContent extends StatelessWidget {
       Color(0xFFFCE7F3),
       Color(0xFFFEF3C7),
       Color(0xFFD1FAE5),
-      Color(0xFFDBEAFE),
+      AppColors.secondarySoft,
       Color(0xFFFEE2E2),
     ];
     return colors[employerId.hashCode.abs() % colors.length];
@@ -255,7 +255,7 @@ class _AvatarContent extends StatelessWidget {
       Color(0xFFDB2777),
       Color(0xFFD97706),
       Color(0xFF059669),
-      Color(0xFF2563EB),
+      AppColors.secondary,
       Color(0xFFDC2626),
     ];
     return colors[employerId.hashCode.abs() % colors.length];

@@ -101,6 +101,9 @@ class AwsJobRepository implements JobRepository {
               applicants:
                   int.tryParse(job['applicants']?.toString() ?? '0') ?? 0,
               views: int.tryParse(job['views']?.toString() ?? '0') ?? 0,
+              visibilityScore:
+                  double.tryParse(job['visibilityScore']?.toString() ?? '0') ??
+                  0,
               workHours: job['workHours'] as String?,
               workDays: job['workDays'] as String?,
               responsibilities: job['responsibilities'] as String?,
@@ -187,6 +190,9 @@ class AwsJobRepository implements JobRepository {
               applicants:
                   int.tryParse(job['applicants']?.toString() ?? '0') ?? 0,
               views: int.tryParse(job['views']?.toString() ?? '0') ?? 0,
+              visibilityScore:
+                  double.tryParse(job['visibilityScore']?.toString() ?? '0') ??
+                  0,
               workDate: job['workDate'] as String?,
               companyName: job['companyName'] as String?,
               hourlyRate: hourlyRate,

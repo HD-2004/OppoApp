@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import 'package:oppo_temp_jobs/core/theme/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../candidate/application/jobs_providers.dart';
@@ -89,7 +91,7 @@ class _CompanyAppBar extends StatelessWidget implements PreferredSizeWidget {
         style: TextStyle(
           fontSize: 20,
           fontWeight: FontWeight.w900,
-          color: Color(0xFF1E3A8A),
+          color: AppColors.primary,
         ),
       ),
       actions: [
@@ -297,13 +299,13 @@ class _StatChip extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 14, color: const Color(0xFF1E3A8A)),
+        Icon(icon, size: 14, color: AppColors.primary),
         const SizedBox(width: 4),
         Text(
           label,
           style: const TextStyle(
             fontSize: 12,
-            color: Color(0xFF1E3A8A),
+            color: AppColors.primary,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -374,10 +376,10 @@ class _HighlightItem extends StatelessWidget {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: const Color(0xFFEFF6FF),
+              color: AppColors.primarySoft,
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, size: 18, color: const Color(0xFF1E3A8A)),
+            child: Icon(icon, size: 18, color: AppColors.primary),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -408,7 +410,7 @@ class _HighlightItem extends StatelessWidget {
                   child: LinearProgressIndicator(
                     value: 0.85,
                     backgroundColor: const Color(0xFFE5E7EB),
-                    color: const Color(0xFF1E3A8A),
+                    color: AppColors.primary,
                     minHeight: 3,
                   ),
                 ),
@@ -494,7 +496,7 @@ class _ReviewsSection extends StatelessWidget {
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [Color(0xFF1E3A8A), Color(0xFF2563EB)],
+                colors: [AppColors.primary, AppColors.secondary],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -533,7 +535,7 @@ class _ReviewsSection extends StatelessWidget {
                       );
                     },
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFF1E3A8A),
+                      foregroundColor: AppColors.primary,
                       backgroundColor: Colors.white,
                       side: BorderSide.none,
                       padding: const EdgeInsets.symmetric(vertical: 13),
@@ -570,7 +572,7 @@ class _ReviewFilterTab extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: isActive ? const Color(0xFF1E3A8A) : const Color(0xFFF3F4F6),
+        color: isActive ? AppColors.primary : const Color(0xFFF3F4F6),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
@@ -652,7 +654,7 @@ class _RatingBar extends StatelessWidget {
               child: LinearProgressIndicator(
                 value: ratio,
                 backgroundColor: const Color(0xFFE5E7EB),
-                color: const Color(0xFF1E3A8A),
+                color: AppColors.primary,
                 minHeight: 6,
               ),
             ),
@@ -762,14 +764,14 @@ class _OpenJobsSection extends StatelessWidget {
                   vertical: 4,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFEFF6FF),
+                  color: AppColors.primarySoft,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
                   '${jobs.length} vị trí',
                   style: const TextStyle(
                     fontSize: 12,
-                    color: Color(0xFF1E3A8A),
+                    color: AppColors.primary,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -786,7 +788,7 @@ class _OpenJobsSection extends StatelessWidget {
                 child: Text(
                   'Xem thêm ${jobs.length - 5} vị trí',
                   style: const TextStyle(
-                    color: Color(0xFF1E3A8A),
+                    color: AppColors.primary,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -841,7 +843,7 @@ class _OpenJobTile extends StatelessWidget {
                     job.salary.isNotEmpty ? job.salary : 'Thỏa thuận',
                     style: const TextStyle(
                       fontSize: 13,
-                      color: Color(0xFF1E3A8A),
+                      color: AppColors.primary,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -906,7 +908,7 @@ class _LogoFallback extends StatelessWidget {
     return const Icon(
       Icons.business_rounded,
       size: 40,
-      color: Color(0xFF1E3A8A),
+      color: AppColors.primary,
     );
   }
 }
@@ -939,9 +941,7 @@ class _ErrorBody extends StatelessWidget {
             onPressed: onRetry,
             icon: const Icon(Icons.refresh_rounded, size: 18),
             label: const Text('Thử lại'),
-            style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFF1E3A8A),
-            ),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
           ),
         ],
       ),

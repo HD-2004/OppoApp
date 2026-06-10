@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import 'package:oppo_temp_jobs/core/theme/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -248,7 +250,7 @@ class _NavItem extends StatelessWidget {
   final String label;
   final ValueChanged<int> onTap;
 
-  static const _activeColor = Color(0xFF1E3A8A);
+  static const _activeColor = AppColors.primary;
   static const _inactiveColor = Color(0xFF6B7280);
 
   @override

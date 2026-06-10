@@ -1,5 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+
+import 'package:oppo_temp_jobs/core/theme/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../features/auth/application/auth_controller.dart';
@@ -17,11 +19,17 @@ class HomeHotJobsSection extends ConsumerWidget {
   final VoidCallback onSeeAll;
   final ValueChanged<JobPost> onJobTap;
 
-  double _calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+  double _calculateDistance(
+    double lat1,
+    double lon1,
+    double lat2,
+    double lon2,
+  ) {
     const r = 6371; // Earth's radius in km
     final dLat = (lat2 - lat1) * math.pi / 180;
     final dLon = (lon2 - lon1) * math.pi / 180;
-    final a = math.sin(dLat / 2) * math.sin(dLat / 2) +
+    final a =
+        math.sin(dLat / 2) * math.sin(dLat / 2) +
         math.cos(lat1 * math.pi / 180) *
             math.cos(lat2 * math.pi / 180) *
             math.sin(dLon / 2) *
@@ -53,7 +61,7 @@ class HomeHotJobsSection extends ConsumerWidget {
               'Xem tất cả',
               style: TextStyle(
                 fontSize: 13,
-                color: Color(0xFF1E3A8A),
+                color: AppColors.primary,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -96,7 +104,12 @@ class HomeHotJobsSection extends ConsumerWidget {
           final jobLat = job.latitude;
           final jobLng = job.longitude;
           if (jobLat != null && jobLng != null) {
-            final distance = _calculateDistance(userLat, userLng, jobLat, jobLng);
+            final distance = _calculateDistance(
+              userLat,
+              userLng,
+              jobLat,
+              jobLng,
+            );
             return distance <= 3.0;
           }
           return false;
@@ -108,8 +121,18 @@ class HomeHotJobsSection extends ConsumerWidget {
 
         // Sort closest first
         nearbyJobs.sort((a, b) {
-          final distA = _calculateDistance(userLat, userLng, a.latitude!, a.longitude!);
-          final distB = _calculateDistance(userLat, userLng, b.latitude!, b.longitude!);
+          final distA = _calculateDistance(
+            userLat,
+            userLng,
+            a.latitude!,
+            a.longitude!,
+          );
+          final distB = _calculateDistance(
+            userLat,
+            userLng,
+            b.latitude!,
+            b.longitude!,
+          );
           return distA.compareTo(distB);
         });
 
@@ -124,8 +147,10 @@ class HomeHotJobsSection extends ConsumerWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 itemCount: nearbyJobs.length,
                 separatorBuilder: (_, _) => const SizedBox(width: 12),
-                itemBuilder: (_, i) =>
-                    _HotJobCard(job: nearbyJobs[i], onTap: () => onJobTap(nearbyJobs[i])),
+                itemBuilder: (_, i) => _HotJobCard(
+                  job: nearbyJobs[i],
+                  onTap: () => onJobTap(nearbyJobs[i]),
+                ),
               ),
             ),
             const SizedBox(height: 8),
@@ -252,7 +277,7 @@ class _HotJobCard extends StatelessWidget {
                 child: ElevatedButton(
                   onPressed: onTap,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1E3A8A),
+                    backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
                     elevation: 0,
                     padding: const EdgeInsets.symmetric(vertical: 10),
@@ -285,7 +310,7 @@ class _TagChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: isBlue ? const Color(0xFFEFF6FF) : const Color(0xFFF3F4F6),
+        color: isBlue ? AppColors.primarySoft : const Color(0xFFF3F4F6),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
@@ -293,7 +318,7 @@ class _TagChip extends StatelessWidget {
         style: TextStyle(
           fontSize: 11,
           fontWeight: FontWeight.w600,
-          color: isBlue ? const Color(0xFF1E40AF) : const Color(0xFF4B5563),
+          color: isBlue ? AppColors.primary : const Color(0xFF4B5563),
         ),
       ),
     );

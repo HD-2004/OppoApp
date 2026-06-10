@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import 'package:oppo_temp_jobs/core/theme/app_colors.dart';
 import 'package:flutter/services.dart';
 
 import '../../employer/presentation/company_profile_screen.dart';
@@ -30,7 +32,7 @@ class UserJobDetailScreen extends StatelessWidget {
               SliverAppBar(
                 expandedHeight: 260,
                 pinned: true,
-                backgroundColor: const Color(0xFF1E3A8A),
+                backgroundColor: AppColors.primary,
                 systemOverlayStyle: SystemUiOverlayStyle.light,
                 leading: _CircleIconBtn(
                   icon: Icons.arrow_back_rounded,
@@ -212,7 +214,7 @@ class _HeroBanner extends StatelessWidget {
     return switch (type) {
       JobPostType.urgent => const Color(0xFFF97316),
       JobPostType.partTime => const Color(0xFF7C3AED),
-      JobPostType.fullTime => const Color(0xFF1E3A8A),
+      JobPostType.fullTime => AppColors.primary,
     };
   }
 
@@ -233,7 +235,7 @@ class _DefaultHeroBg extends StatelessWidget {
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          colors: [Color(0xFF1E3A8A), Color(0xFF1E40AF)],
+          colors: [AppColors.primary, AppColors.primary],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -291,8 +293,8 @@ class _QuickInfoSection extends StatelessWidget {
           if (job.salary.isNotEmpty)
             _InfoTile(
               icon: Icons.payments_outlined,
-              iconBg: const Color(0xFFEFF6FF),
-              iconColor: const Color(0xFF1E3A8A),
+              iconBg: AppColors.primarySoft,
+              iconColor: AppColors.primary,
               label: 'MỨC LƯƠNG',
               value: job.salary,
               valueStyle: const TextStyle(
@@ -305,8 +307,8 @@ class _QuickInfoSection extends StatelessWidget {
             const SizedBox(height: 10),
             _InfoTile(
               icon: Icons.location_on_outlined,
-              iconBg: const Color(0xFFEFF6FF),
-              iconColor: const Color(0xFF1E3A8A),
+              iconBg: AppColors.primarySoft,
+              iconColor: AppColors.primary,
               label: 'ĐỊA ĐIỂM',
               value: job.location,
             ),
@@ -315,8 +317,8 @@ class _QuickInfoSection extends StatelessWidget {
             const SizedBox(height: 10),
             _InfoTile(
               icon: Icons.access_time_rounded,
-              iconBg: const Color(0xFFEFF6FF),
-              iconColor: const Color(0xFF1E3A8A),
+              iconBg: AppColors.primarySoft,
+              iconColor: AppColors.primary,
               label: 'THỜI GIAN',
               value: shiftTime,
             ),
@@ -439,7 +441,7 @@ class _SectionTitle extends StatelessWidget {
             width: 4,
             height: 20,
             decoration: BoxDecoration(
-              color: const Color(0xFF1E3A8A),
+              color: AppColors.primary,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -449,7 +451,7 @@ class _SectionTitle extends StatelessWidget {
             style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w800,
-              color: Color(0xFF1E3A8A),
+              color: AppColors.primary,
             ),
           ),
         ],
@@ -558,7 +560,7 @@ class _RequirementCard extends StatelessWidget {
             Container(
               width: 3,
               decoration: BoxDecoration(
-                color: const Color(0xFF1E3A8A),
+                color: AppColors.primary,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -689,7 +691,7 @@ class _ContentLine extends StatelessWidget {
               padding: EdgeInsets.only(top: 6),
               child: CircleAvatar(
                 radius: 3,
-                backgroundColor: Color(0xFF1E3A8A),
+                backgroundColor: AppColors.primary,
               ),
             ),
             const SizedBox(width: 10),
@@ -763,7 +765,7 @@ class _EmployerInfoCard extends StatelessWidget {
                   width: 52,
                   height: 52,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFEFF6FF),
+                    color: AppColors.primarySoft,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: avatarUrl != null && avatarUrl.isNotEmpty
@@ -788,7 +790,7 @@ class _EmployerInfoCard extends StatelessWidget {
                         style: const TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w800,
-                          color: Color(0xFF1E3A8A),
+                          color: AppColors.primary,
                         ),
                       ),
                       // applicants count nếu có
@@ -851,8 +853,8 @@ class _EmployerInfoCard extends StatelessWidget {
                   );
                 },
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFF1E3A8A),
-                  side: const BorderSide(color: Color(0xFF1E3A8A), width: 1.5),
+                  foregroundColor: AppColors.primary,
+                  side: const BorderSide(color: AppColors.primary, width: 1.5),
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
@@ -878,7 +880,7 @@ class _CompanyIconFallback extends StatelessWidget {
   Widget build(BuildContext context) {
     return const Icon(
       Icons.business_rounded,
-      color: Color(0xFF1E3A8A),
+      color: AppColors.primary,
       size: 26,
     );
   }
@@ -931,7 +933,7 @@ class _SimilarPositions extends StatelessWidget {
                     'Xem thêm việc làm tại ${job.location.split(',').first.trim()}',
                     style: const TextStyle(
                       fontSize: 13,
-                      color: Color(0xFF1E3A8A),
+                      color: AppColors.primary,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -982,7 +984,7 @@ class _StickyApplyBar extends StatelessWidget {
         child: ElevatedButton(
           onPressed: onApply,
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF1E3A8A),
+            backgroundColor: AppColors.primary,
             foregroundColor: Colors.white,
             elevation: 0,
             shape: RoundedRectangleBorder(

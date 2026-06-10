@@ -29,6 +29,11 @@ class EkycRepository {
     };
   }
 
+  String _encodeBody(Map<String, dynamic> body) {
+    body.removeWhere((_, value) => value == null);
+    return jsonEncode(body);
+  }
+
   /// OCR ID Card Front & optional Back images
   /// both should be base64 data URLs: "data:image/jpeg;base64,..."
   Future<Map<String, dynamic>> ocrCCCD({
@@ -39,17 +44,16 @@ class EkycRepository {
     final response = await http.post(
       Uri.parse('$_apiBaseUrl/ekyc/ocr'),
       headers: _buildHeaders(token),
-      body: jsonEncode({
-        'imageFront': imageFront,
-        if (imageBack != null) 'imageBack': imageBack,
-      }),
+      body: _encodeBody({'imageFront': imageFront, 'imageBack': imageBack}),
     );
 
     final body = jsonDecode(response.body);
     if (response.statusCode == 200) {
       return body;
     } else {
-      throw Exception(body['errorMsg'] ?? 'OCR failed (${response.statusCode})');
+      throw Exception(
+        body['errorMsg'] ?? 'OCR failed (${response.statusCode})',
+      );
     }
   }
 
@@ -63,10 +67,10 @@ class EkycRepository {
     final response = await http.post(
       Uri.parse('$_apiBaseUrl/ekyc/verify-face'),
       headers: _buildHeaders(token),
-      body: jsonEncode({
+      body: _encodeBody({
         'faceImage': faceImage,
-        if (frontHash != null) 'front_hash': frontHash,
-        if (frontToken != null) 'front_token': frontToken,
+        'front_hash': frontHash,
+        'front_token': frontToken,
       }),
     );
 
@@ -74,7 +78,9 @@ class EkycRepository {
     if (response.statusCode == 200) {
       return body;
     } else {
-      throw Exception(body['errorMsg'] ?? 'Face verification failed (${response.statusCode})');
+      throw Exception(
+        body['errorMsg'] ?? 'Face verification failed (${response.statusCode})',
+      );
     }
   }
 
@@ -90,7 +96,9 @@ class EkycRepository {
     if (response.statusCode == 200) {
       return body;
     } else {
-      throw Exception(body['errorMsg'] ?? 'Failed to get KYC status (${response.statusCode})');
+      throw Exception(
+        body['errorMsg'] ?? 'Failed to get KYC status (${response.statusCode})',
+      );
     }
   }
 }
