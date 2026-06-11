@@ -3,11 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:oppo_temp_jobs/core/theme/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../features/auth/application/auth_controller.dart';
 import '../../../../features/candidate/notifications/application/notification_controller.dart';
-import '../../../../core/preferences/app_preferences.dart';
 
 class HomeHeader extends ConsumerWidget {
   const HomeHeader({super.key, required this.onNotificationTap});
@@ -172,39 +170,51 @@ class _DefaultAvatarIcon extends StatelessWidget {
   }
 }
 
-/// Toggle "Sẵn sàng" được lưu app-local để người dùng giữ trạng thái giữa các phiên.
-class _AvailabilityToggle extends StatefulWidget {
+class _AvailabilityToggle extends ConsumerStatefulWidget {
   const _AvailabilityToggle({this.user});
   final dynamic user;
 
   @override
-  State<_AvailabilityToggle> createState() => _AvailabilityToggleState();
+  ConsumerState<_AvailabilityToggle> createState() =>
+      _AvailabilityToggleState();
 }
 
-class _AvailabilityToggleState extends State<_AvailabilityToggle> {
-  bool _available = true;
+class _AvailabilityToggleState extends ConsumerState<_AvailabilityToggle> {
+  late bool _available;
+  bool _saving = false;
 
   @override
   void initState() {
     super.initState();
-    _loadAvailability();
+    _available = widget.user?.isActive == true;
   }
 
-  Future<void> _loadAvailability() async {
-    final preferences = await SharedPreferences.getInstance();
-    if (!mounted) {
-      return;
+  @override
+  void didUpdateWidget(covariant _AvailabilityToggle oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!_saving && oldWidget.user?.isActive != widget.user?.isActive) {
+      _available = widget.user?.isActive == true;
     }
-    setState(() {
-      _available =
-          preferences.getBool(AppPreferenceKeys.candidateAvailability) ?? true;
-    });
   }
 
   Future<void> _setAvailability(bool value) async {
-    setState(() => _available = value);
-    final preferences = await SharedPreferences.getInstance();
-    await preferences.setBool(AppPreferenceKeys.candidateAvailability, value);
+    if (_saving) return;
+    final previous = _available;
+    setState(() {
+      _available = value;
+      _saving = true;
+    });
+    try {
+      await ref.read(authControllerProvider.notifier).updateAvailability(value);
+    } catch (_) {
+      if (mounted) {
+        setState(() => _available = previous);
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _saving = false);
+      }
+    }
   }
 
   @override
@@ -225,7 +235,7 @@ class _AvailabilityToggleState extends State<_AvailabilityToggle> {
           scale: 0.75,
           child: Switch(
             value: _available,
-            onChanged: _setAvailability,
+            onChanged: _saving ? null : _setAvailability,
             activeThumbColor: AppColors.secondary,
             materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
           ),

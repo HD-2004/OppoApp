@@ -1,12 +1,14 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../data/empty_featured_employer_package_repository.dart';
+import '../data/api_featured_employer_package_repository.dart';
 import '../domain/employer_package.dart';
 import '../domain/featured_employer_package_repository.dart';
 
 final featuredEmployerPackageRepositoryProvider =
     Provider<FeaturedEmployerPackageRepository>((ref) {
-      return EmptyFeaturedEmployerPackageRepository();
+      final repository = ApiFeaturedEmployerPackageRepository();
+      ref.onDispose(repository.close);
+      return repository;
     });
 
 final featuredEmployersProvider =

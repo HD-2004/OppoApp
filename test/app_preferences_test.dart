@@ -12,14 +12,12 @@ void main() {
       AppPreferenceKeys.notificationApplicationUpdates,
       AppPreferenceKeys.notificationPaymentUpdates,
       AppPreferenceKeys.notificationSystemAnnouncements,
-      AppPreferenceKeys.candidateAvailability,
       AppPreferenceKeys.deleteAccountRequestReason,
       AppPreferenceKeys.deleteAccountRequestSubmittedAt,
     };
 
-    expect(keys.length, 11);
+    expect(keys.length, 10);
     expect(AppPreferenceKeys.hasSeenIntro, 'has_seen_intro');
-    expect(AppPreferenceKeys.candidateAvailability, 'candidate_availability');
     expect(
       AppPreferenceKeys.deleteAccountRequestReason,
       'delete_account_request_reason',

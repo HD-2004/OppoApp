@@ -11,7 +11,23 @@ import '../../domain/entities/withdrawal_request.dart';
 import '../../domain/repositories/wallet_repository.dart';
 
 class ApiWalletRepository implements WalletRepository {
-  ApiWalletRepository();
+  ApiWalletRepository({
+    http.Client? client,
+    Future<String?> Function()? tokenProvider,
+    Future<String?> Function()? userIdProvider,
+    String profileBaseUrl = _profileBaseUrl,
+    String applicationsBaseUrl = _applicationsBaseUrl,
+    String quickJobsBaseUrl = _quickJobsBaseUrl,
+    String notificationsBaseUrl = _notificationsBaseUrl,
+  }) : _client = client ?? http.Client(),
+       // ignore: prefer_initializing_formals
+       _tokenProvider = tokenProvider,
+       // ignore: prefer_initializing_formals
+       _userIdProvider = userIdProvider,
+       _resolvedProfileBaseUrl = profileBaseUrl,
+       _resolvedApplicationsBaseUrl = applicationsBaseUrl,
+       _resolvedQuickJobsBaseUrl = quickJobsBaseUrl,
+       _resolvedNotificationsBaseUrl = notificationsBaseUrl;
 
   static const _profileBaseUrl =
       'https://sd7ds72m8g.execute-api.ap-southeast-1.amazonaws.com/prod';
@@ -22,6 +38,14 @@ class ApiWalletRepository implements WalletRepository {
   static const _notificationsBaseUrl =
       'https://iuo7ofruu6.execute-api.ap-southeast-1.amazonaws.com';
 
+  final http.Client _client;
+  final Future<String?> Function()? _tokenProvider;
+  final Future<String?> Function()? _userIdProvider;
+  final String _resolvedProfileBaseUrl;
+  final String _resolvedApplicationsBaseUrl;
+  final String _resolvedQuickJobsBaseUrl;
+  final String _resolvedNotificationsBaseUrl;
+
   // In-memory cache to prevent duplicate HTTP requests in parallel _load calls
   Map<String, dynamic>? _cachedProfile;
   List<dynamic>? _cachedApps;
@@ -31,6 +55,9 @@ class ApiWalletRepository implements WalletRepository {
   static const _cacheDuration = Duration(seconds: 5);
 
   Future<String?> _getAuthToken() async {
+    if (_tokenProvider != null) {
+      return _tokenProvider();
+    }
     try {
       final cognitoPlugin = Amplify.Auth.getPlugin(
         AmplifyAuthCognito.pluginKey,
@@ -45,6 +72,9 @@ class ApiWalletRepository implements WalletRepository {
   }
 
   Future<String?> _getUserId() async {
+    if (_userIdProvider != null) {
+      return _userIdProvider();
+    }
     try {
       final cognitoPlugin = Amplify.Auth.getPlugin(
         AmplifyAuthCognito.pluginKey,
@@ -70,8 +100,8 @@ class ApiWalletRepository implements WalletRepository {
     String? token,
   ) async {
     try {
-      final response = await http.get(
-        Uri.parse('$_profileBaseUrl/profile/$userId'),
+      final response = await _client.get(
+        Uri.parse('$_resolvedProfileBaseUrl/profile/$userId'),
         headers: _buildHeaders(token),
       );
       if (response.statusCode == 200) {
@@ -80,16 +110,18 @@ class ApiWalletRepository implements WalletRepository {
           return body['data'] as Map<String, dynamic>;
         }
       }
-    } catch (e) {
-      safePrint('Error fetching profile: $e');
+    } catch (_) {
+      rethrow;
     }
     return null;
   }
 
   Future<List<dynamic>> _fetchApplications(String userId, String? token) async {
     try {
-      final response = await http.get(
-        Uri.parse('$_applicationsBaseUrl/applications/candidate/$userId'),
+      final response = await _client.get(
+        Uri.parse(
+          '$_resolvedApplicationsBaseUrl/applications/candidate/$userId',
+        ),
         headers: _buildHeaders(token),
       );
       if (response.statusCode == 200) {
@@ -98,17 +130,17 @@ class ApiWalletRepository implements WalletRepository {
           return body['applications'] as List<dynamic>;
         }
       }
-    } catch (e) {
-      safePrint('Error fetching applications: $e');
+    } catch (_) {
+      rethrow;
     }
     return [];
   }
 
-  Future<List<dynamic>> _fetchQuickJobs(String? token) async {
+  Future<List<dynamic>> _fetchQuickJobs() async {
     try {
-      final response = await http.get(
-        Uri.parse('$_quickJobsBaseUrl/quick-jobs'),
-        headers: _buildHeaders(token),
+      final response = await _client.get(
+        Uri.parse('$_resolvedQuickJobsBaseUrl/quick-jobs'),
+        headers: const {'Accept': 'application/json'},
       );
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body);
@@ -116,15 +148,15 @@ class ApiWalletRepository implements WalletRepository {
           return body['data'] as List<dynamic>;
         }
       }
-    } catch (e) {
-      safePrint('Error fetching quick jobs from base URL: $e');
+    } catch (_) {
+      // The shared Lambda also exposes the active route below.
     }
 
     // Fallback to active quick jobs
     try {
-      final response = await http.get(
-        Uri.parse('$_quickJobsBaseUrl/quick-jobs/active'),
-        headers: _buildHeaders(token),
+      final response = await _client.get(
+        Uri.parse('$_resolvedQuickJobsBaseUrl/quick-jobs/active'),
+        headers: const {'Accept': 'application/json'},
       );
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body);
@@ -132,10 +164,32 @@ class ApiWalletRepository implements WalletRepository {
           return body['data'] as List<dynamic>;
         }
       }
-    } catch (e) {
-      safePrint('Error fetching active quick jobs: $e');
+    } catch (_) {
+      rethrow;
     }
     return [];
+  }
+
+  Future<Map<String, dynamic>?> _fetchQuickJob(String jobId) async {
+    try {
+      final response = await _client.get(
+        Uri.parse(
+          '$_resolvedQuickJobsBaseUrl/quick-jobs/${Uri.encodeComponent(jobId)}',
+        ),
+        headers: const {'Accept': 'application/json'},
+      );
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body);
+        if (body is Map<String, dynamic> &&
+            body['success'] == true &&
+            body['data'] is Map) {
+          return Map<String, dynamic>.from(body['data'] as Map);
+        }
+      }
+    } catch (error) {
+      safePrint('Error fetching completed quick job $jobId: $error');
+    }
+    return null;
   }
 
   Future<void> _updateProfileFields(
@@ -143,8 +197,8 @@ class ApiWalletRepository implements WalletRepository {
     String? token,
     Map<String, dynamic> updates,
   ) async {
-    final response = await http.put(
-      Uri.parse('$_profileBaseUrl/profile/$userId'),
+    final response = await _client.put(
+      Uri.parse('$_resolvedProfileBaseUrl/profile/$userId'),
       headers: _buildHeaders(token),
       body: jsonEncode(updates),
     );
@@ -157,8 +211,8 @@ class ApiWalletRepository implements WalletRepository {
 
   Future<void> _sendNotificationToAdmin(Map<String, dynamic> payload) async {
     try {
-      final response = await http.post(
-        Uri.parse('$_notificationsBaseUrl/notifications'),
+      final response = await _client.post(
+        Uri.parse('$_resolvedNotificationsBaseUrl/notifications'),
         headers: {
           'Content-Type': 'application/json; charset=utf-8',
           'Accept': 'application/json',
@@ -186,13 +240,39 @@ class ApiWalletRepository implements WalletRepository {
     final results = await Future.wait([
       _fetchProfile(userId, token),
       _fetchApplications(userId, token),
-      _fetchQuickJobs(token),
+      _fetchQuickJobs(),
     ]);
 
     _cachedProfile = results[0] as Map<String, dynamic>?;
     _cachedApps = results[1] as List<dynamic>;
     _cachedJobs = results[2] as List<dynamic>;
+
+    final knownJobIds = _cachedJobs!
+        .whereType<Map>()
+        .map(_jobIdFrom)
+        .where((id) => id.isNotEmpty)
+        .toSet();
+    final missingCompletedJobIds = _cachedApps!
+        .whereType<Map>()
+        .where((app) => app['status']?.toString().toLowerCase() == 'completed')
+        .map((app) => app['jobId']?.toString() ?? '')
+        .where((id) => id.isNotEmpty && !knownJobIds.contains(id))
+        .toSet();
+
+    if (missingCompletedJobIds.isNotEmpty) {
+      final missingJobs = await Future.wait(
+        missingCompletedJobIds.map(_fetchQuickJob),
+      );
+      _cachedJobs!.addAll(missingJobs.whereType<Map<String, dynamic>>());
+    }
     _lastCacheTime = now;
+  }
+
+  String _jobIdFrom(Map<dynamic, dynamic> job) {
+    return job['idJob']?.toString() ??
+        job['id']?.toString() ??
+        job['jobID']?.toString() ??
+        '';
   }
 
   void _invalidateCache() {
@@ -238,14 +318,11 @@ class ApiWalletRepository implements WalletRepository {
     // 1. Calculate dynamic income transactions from completed applications in database
     final List<WalletTransaction> incomeTransactions = [];
     for (final app in apps) {
-      if (app['status'] == 'completed') {
+      if (app['status']?.toString().toLowerCase() == 'completed') {
         final jobId = app['jobId']?.toString();
         // Find matching job
         final job = quickJobs.firstWhere(
-          (j) =>
-              j['idJob']?.toString() == jobId ||
-              j['id']?.toString() == jobId ||
-              j['jobID']?.toString() == jobId,
+          (j) => j is Map && _jobIdFrom(j) == jobId,
           orElse: () => null,
         );
 

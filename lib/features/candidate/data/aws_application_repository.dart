@@ -91,9 +91,8 @@ class AwsApplicationRepository implements ApplicationRepository {
         }
       }
       return [];
-    } catch (e) {
-      safePrint('Error fetching CV info: $e');
-      return [];
+    } catch (_) {
+      rethrow;
     }
   }
 
