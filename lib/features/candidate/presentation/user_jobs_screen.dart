@@ -253,10 +253,26 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
     List<String> savedJobIds,
     AuthUserProfile? user,
   ) {
+    return _getFilteredJobsForTab(
+      _activeTab,
+      allStandard,
+      allQuick,
+      savedJobIds,
+      user,
+    );
+  }
+
+  List<JobPost> _getFilteredJobsForTab(
+    int tab,
+    List<JobPost> allStandard,
+    List<JobPost> allQuick,
+    List<String> savedJobIds,
+    AuthUserProfile? user,
+  ) {
     List<JobPost> baseList;
-    if (_activeTab == 0) {
+    if (tab == 0) {
       baseList = allStandard;
-    } else if (_activeTab == 1) {
+    } else if (tab == 1) {
       final status = user?.verificationStatus ?? 'PENDING';
       final isApproved = status == 'APPROVED';
       final isActive = user?.isActive == true;
@@ -653,6 +669,13 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
                   savedJobIds,
                   user,
                 );
+                final urgentJobsCount = _getFilteredJobsForTab(
+                  1,
+                  standardJobs,
+                  quickJobs,
+                  savedJobIds,
+                  user,
+                ).length;
 
                 return SingleChildScrollView(
                   child: Column(
@@ -818,11 +841,7 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
                               const SizedBox(width: 10),
                               _TabItem(
                                 label: 'Công việc Tuyển gấp',
-                                count:
-                                    (user?.verificationStatus == 'APPROVED' &&
-                                        user?.isActive == true)
-                                    ? filteredJobs.length
-                                    : 0,
+                                count: urgentJobsCount,
                                 isActive: _activeTab == 1,
                                 icon: Icons.flash_on_outlined,
                                 onTap: () => setState(() => _activeTab = 1),

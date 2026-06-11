@@ -46,17 +46,11 @@ void main() {
     );
   });
 
-  testWidgets('login social buttons are enabled for hosted UI sign in', (
+  testWidgets('login only shows Google hosted UI sign in', (
     tester,
   ) async {
     await pumpAuthScreen(tester, const LoginScreen());
 
-    final facebookButton = tester.widget<OutlinedButton>(
-      find.ancestor(
-        of: find.text('Facebook'),
-        matching: find.byType(OutlinedButton),
-      ),
-    );
     final googleButton = tester.widget<OutlinedButton>(
       find.ancestor(
         of: find.text('Google'),
@@ -64,7 +58,7 @@ void main() {
       ),
     );
 
-    expect(facebookButton.onPressed, isNotNull);
+    expect(find.text('Facebook'), findsNothing);
     expect(googleButton.onPressed, isNotNull);
   });
 
@@ -80,17 +74,11 @@ void main() {
     expect(find.text('Có ký tự đặc biệt'), findsOneWidget);
   });
 
-  testWidgets('register social buttons are enabled for hosted UI sign up', (
+  testWidgets('register only shows Google hosted UI sign up', (
     tester,
   ) async {
     await pumpAuthScreen(tester, const RegisterScreen());
 
-    final facebookButton = tester.widget<OutlinedButton>(
-      find.ancestor(
-        of: find.text('Facebook'),
-        matching: find.byType(OutlinedButton),
-      ),
-    );
     final googleButton = tester.widget<OutlinedButton>(
       find.ancestor(
         of: find.text('Google'),
@@ -98,7 +86,7 @@ void main() {
       ),
     );
 
-    expect(facebookButton.onPressed, isNotNull);
+    expect(find.text('Facebook'), findsNothing);
     expect(googleButton.onPressed, isNotNull);
   });
 

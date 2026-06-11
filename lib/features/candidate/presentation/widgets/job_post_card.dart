@@ -44,6 +44,7 @@ class JobPostCard extends StatelessWidget {
     final textTheme = theme.textTheme;
     final companyName = _companyName(job);
     final postedTime = _postedTimeLabel(job.postedAt);
+    final requirements = _requirements(job);
     final shiftTime = _shiftTime(job);
     final location = _location(job, distance);
     final salary = _salary(job);
@@ -112,6 +113,12 @@ class JobPostCard extends StatelessWidget {
               const SizedBox(height: 14),
               _JobInfoColumn(
                 rows: [
+                  if (requirements.isNotEmpty)
+                    _JobInfoRowData(
+                      label: 'Yêu cầu',
+                      value: requirements,
+                      icon: Icons.fact_check_outlined,
+                    ),
                   if (location.isNotEmpty)
                     _JobInfoRowData(
                       label: 'Địa chỉ',
@@ -313,6 +320,10 @@ String _location(JobPost job, double? distance) {
     return location;
   }
   return '$location · cách ${distance.toStringAsFixed(1)} km';
+}
+
+String _requirements(JobPost job) {
+  return job.requirements?.trim() ?? '';
 }
 
 String _shiftTime(JobPost job) {

@@ -288,36 +288,14 @@ class _RegisterFormStep extends StatelessWidget {
                 const SizedBox(height: 18),
                 const AuthSectionDivider(label: 'Hoặc'),
                 const SizedBox(height: 14),
-                Row(
-                  children: [
-                    Expanded(
-                      child: AuthSocialButton(
-                        label: 'Google',
-                        iconText: 'G',
-                        accentColor: const Color(0xFFE04F3D),
-                        isLoading:
-                            socialProviderSubmitting == AuthProvider.google,
-                        onPressed:
-                            socialProviderSubmitting == null && !isSubmitting
-                            ? () => onSubmitSocial(AuthProvider.google)
-                            : null,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: AuthSocialButton(
-                        label: 'Facebook',
-                        iconText: 'f',
-                        accentColor: const Color(0xFF3167B7),
-                        isLoading:
-                            socialProviderSubmitting == AuthProvider.facebook,
-                        onPressed:
-                            socialProviderSubmitting == null && !isSubmitting
-                            ? () => onSubmitSocial(AuthProvider.facebook)
-                            : null,
-                      ),
-                    ),
-                  ],
+                AuthSocialButton(
+                  label: 'Google',
+                  iconText: 'G',
+                  accentColor: const Color(0xFFE04F3D),
+                  isLoading: socialProviderSubmitting == AuthProvider.google,
+                  onPressed: socialProviderSubmitting == null && !isSubmitting
+                      ? () => onSubmitSocial(AuthProvider.google)
+                      : null,
                 ),
               ],
             ),

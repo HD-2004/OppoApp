@@ -21,10 +21,16 @@ void main() {
 
     expect(find.text('Katinat Quận Cam'), findsOneWidget);
     expect(find.text('Nhân viên phục vụ'), findsOneWidget);
+    expect(find.text('Yêu cầu'), findsOneWidget);
+    expect(find.text('Có kinh nghiệm phục vụ'), findsOneWidget);
     expect(find.textContaining('Nhà Văn hóa Sinh Viên'), findsOneWidget);
     expect(find.text('18:00 - 22:00'), findsOneWidget);
     expect(find.text('425.000 VND / ca'), findsOneWidget);
     expect(find.text('Ứng tuyển ngay'), findsOneWidget);
+
+    final requirementsTop = tester.getTopLeft(find.text('Yêu cầu')).dy;
+    final addressTop = tester.getTopLeft(find.text('Địa chỉ')).dy;
+    expect(requirementsTop, lessThan(addressTop));
 
     expect(find.text('Lưu'), findsNothing);
     expect(find.text('Chi tiết'), findsNothing);
@@ -44,6 +50,7 @@ final _job = JobPost(
   salary: '425.000 VND / ca',
   shiftTime: '18:00 - 22:00',
   description: 'Phục vụ khách hàng tại quầy.',
+  requirements: 'Có kinh nghiệm phục vụ',
   tags: const ['F&B'],
   postedAt: DateTime(2026, 6, 10, 18),
 );

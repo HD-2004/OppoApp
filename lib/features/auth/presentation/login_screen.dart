@@ -196,39 +196,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   const SizedBox(height: 18),
                   const AuthSectionDivider(label: 'Hoặc đăng nhập với'),
                   const SizedBox(height: 14),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: AuthSocialButton(
-                          label: 'Google',
-                          iconText: 'G',
-                          accentColor: const Color(0xFFE04F3D),
-                          isLoading:
-                              _socialProviderSubmitting == AuthProvider.google,
-                          onPressed:
-                              _socialProviderSubmitting == null &&
-                                  !_isSubmitting
-                              ? () => _submitSocial(AuthProvider.google)
-                              : null,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: AuthSocialButton(
-                          label: 'Facebook',
-                          iconText: 'f',
-                          accentColor: const Color(0xFF3167B7),
-                          isLoading:
-                              _socialProviderSubmitting ==
-                              AuthProvider.facebook,
-                          onPressed:
-                              _socialProviderSubmitting == null &&
-                                  !_isSubmitting
-                              ? () => _submitSocial(AuthProvider.facebook)
-                              : null,
-                        ),
-                      ),
-                    ],
+                  AuthSocialButton(
+                    label: 'Google',
+                    iconText: 'G',
+                    accentColor: const Color(0xFFE04F3D),
+                    isLoading:
+                        _socialProviderSubmitting == AuthProvider.google,
+                    onPressed: _socialProviderSubmitting == null &&
+                            !_isSubmitting
+                        ? () => _submitSocial(AuthProvider.google)
+                        : null,
                   ),
                 ],
               ),
