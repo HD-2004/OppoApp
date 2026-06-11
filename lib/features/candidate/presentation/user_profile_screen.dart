@@ -1,11 +1,11 @@
 import 'dart:convert';
 
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/localization/app_localizations.dart';
+import '../../../shared/platform/cv_file_picker.dart';
 import '../../auth/application/auth_controller.dart';
 import '../../auth/domain/auth_user_profile.dart';
 import '../data/aws_application_repository.dart';
@@ -194,15 +194,6 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
               child: _SkillsSection(
                 skills: user?.skills ?? [],
                 kycCompleted: user?.kycCompleted ?? false,
-                onAdd: () => _push(const UpdateProfileScreen()),
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // ── Education ───────────────────────────────────────────
-            _ProfileSection(
-              child: _EducationSection(
-                onAdd: () => _push(const UpdateProfileScreen()),
               ),
             ),
             const SizedBox(height: 12),
@@ -1041,18 +1032,11 @@ class _CvSectionState extends ConsumerState<_CvSection> {
       return;
     }
 
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowMultiple: false,
-      withData: true,
-      allowedExtensions: const ['pdf', 'doc', 'docx'],
-    );
+    final file = await _pickCvFileSafely();
+    if (file == null) return;
 
-    if (result == null || result.files.isEmpty) return;
-
-    final file = result.files.single;
     final bytes = file.bytes;
-    if (bytes == null || bytes.isEmpty) {
+    if (bytes.isEmpty) {
       setState(() {
         _error = 'Không thể đọc dữ liệu file.';
         _success = null;
@@ -1103,6 +1087,20 @@ class _CvSectionState extends ConsumerState<_CvSection> {
         _uploading = false;
         _error = e.toString().replaceFirst('Exception: ', '');
       });
+    }
+  }
+
+  Future<CvFileSelection?> _pickCvFileSafely() async {
+    try {
+      return await pickCvFile();
+    } catch (error) {
+      if (!mounted) return null;
+      setState(() {
+        _error =
+            'Không thể mở trình chọn file. Vui lòng tải lại trang hoặc thử lại.';
+        _success = null;
+      });
+      return null;
     }
   }
 
@@ -1584,19 +1582,173 @@ String _formatDate(String value) {
 
 // ── Skills section ────────────────────────────────────────────────────────────
 
-class _SkillsSection extends StatelessWidget {
-  const _SkillsSection({
-    required this.skills,
-    required this.kycCompleted,
-    required this.onAdd,
-  });
+class _SkillsSection extends ConsumerStatefulWidget {
+  const _SkillsSection({required this.skills, required this.kycCompleted});
 
   final List<String> skills;
   final bool kycCompleted;
-  final VoidCallback onAdd;
+
+  @override
+  ConsumerState<_SkillsSection> createState() => _SkillsSectionState();
+}
+
+class _SkillsSectionState extends ConsumerState<_SkillsSection> {
+  static const _suggestedSkills = [
+    'Pha chế',
+    'Barista',
+    'Phục vụ',
+    'Thu ngân',
+    'Bếp phụ',
+    'Bếp chính',
+    'POS',
+    'Giao tiếp',
+    'Làm việc nhóm',
+    'Chăm sóc khách hàng',
+    'Quản lý ca',
+    'Tiếng Anh cơ bản',
+    'An toàn thực phẩm',
+    'Sắp xếp kho',
+    'Giao hàng',
+  ];
+
+  final _skillController = TextEditingController();
+  bool _isAdding = false;
+  bool _isSaving = false;
+  String? _message;
+  late List<String> _skills;
+
+  @override
+  void initState() {
+    super.initState();
+    _skills = _normalizedSkills(widget.skills);
+  }
+
+  @override
+  void didUpdateWidget(covariant _SkillsSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!_sameSkills(oldWidget.skills, widget.skills)) {
+      _skills = _normalizedSkills(widget.skills);
+    }
+  }
+
+  @override
+  void dispose() {
+    _skillController.dispose();
+    super.dispose();
+  }
+
+  List<String> _normalizedSkills(List<String> values) {
+    final seen = <String>{};
+    final result = <String>[];
+    for (final value in values) {
+      final skill = value.trim();
+      final key = skill.toLowerCase();
+      if (skill.isNotEmpty && seen.add(key)) {
+        result.add(skill);
+      }
+    }
+    return result;
+  }
+
+  bool _sameSkills(List<String> first, List<String> second) {
+    final a = _normalizedSkills(first);
+    final b = _normalizedSkills(second);
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
+
+  bool _hasSkill(String value) {
+    final key = value.trim().toLowerCase();
+    return _skills.any((skill) => skill.trim().toLowerCase() == key);
+  }
+
+  List<String> get _filteredSuggestions {
+    final query = _skillController.text.trim().toLowerCase();
+    final matches = _suggestedSkills
+        .where((skill) {
+          if (_hasSkill(skill)) return false;
+          if (query.isEmpty) return true;
+          return skill.toLowerCase().contains(query);
+        })
+        .take(8);
+    return matches.toList();
+  }
+
+  Future<void> _addSkill(String value) async {
+    final skill = value.trim();
+    if (skill.isEmpty) return;
+    if (_hasSkill(skill)) {
+      setState(() => _message = 'Kỹ năng này đã có trong hồ sơ.');
+      return;
+    }
+
+    final nextSkills = [..._skills, skill];
+    await _saveSkills(nextSkills);
+    if (!mounted) return;
+    _skillController.clear();
+    setState(() {
+      _isAdding = false;
+      _message = null;
+    });
+  }
+
+  Future<void> _removeSkill(String value) async {
+    final key = value.trim().toLowerCase();
+    final nextSkills = _skills
+        .where((skill) => skill.trim().toLowerCase() != key)
+        .toList();
+    await _saveSkills(nextSkills);
+  }
+
+  Future<void> _saveSkills(List<String> nextSkills) async {
+    final previousSkills = _skills;
+    setState(() {
+      _skills = nextSkills;
+      _isSaving = true;
+      _message = null;
+    });
+
+    try {
+      await ref
+          .read(authControllerProvider.notifier)
+          .completeProfile(skills: nextSkills);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _skills = previousSkills;
+        _message = 'Không thể lưu kỹ năng. Vui lòng thử lại.';
+      });
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
+    }
+  }
+
+  void _openComposer() {
+    setState(() {
+      _isAdding = true;
+      _message = null;
+    });
+  }
+
+  void _closeComposer() {
+    _skillController.clear();
+    setState(() {
+      _isAdding = false;
+      _message = null;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
+    final query = _skillController.text.trim();
+    final canCreate = query.isNotEmpty && !_hasSkill(query);
+    final suggestions = _filteredSuggestions;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1604,14 +1756,18 @@ class _SkillsSection extends StatelessWidget {
           children: [
             const Expanded(child: _SectionHeader(title: 'Kỹ năng')),
             GestureDetector(
-              onTap: onAdd,
-              child: const Row(
+              onTap: _isAdding ? _closeComposer : _openComposer,
+              child: Row(
                 children: [
-                  Icon(Icons.add_rounded, size: 16, color: Color(0xFF1E3A8A)),
-                  SizedBox(width: 3),
+                  Icon(
+                    _isAdding ? Icons.close_rounded : Icons.add_rounded,
+                    size: 16,
+                    color: const Color(0xFF1E3A8A),
+                  ),
+                  const SizedBox(width: 3),
                   Text(
-                    'Thêm',
-                    style: TextStyle(
+                    _isAdding ? 'Đóng' : 'Thêm',
+                    style: const TextStyle(
                       fontSize: 13,
                       color: Color(0xFF1E3A8A),
                       fontWeight: FontWeight.w600,
@@ -1623,15 +1779,110 @@ class _SkillsSection extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 12),
-        if (skills.isEmpty)
-          _EmptyEntryState(message: 'Thêm kỹ năng của bạn', onAdd: onAdd)
-        else
+        if (_isAdding) ...[
+          TextField(
+            controller: _skillController,
+            enabled: !_isSaving,
+            textInputAction: TextInputAction.done,
+            onChanged: (_) => setState(() {}),
+            onSubmitted: _isSaving ? null : _addSkill,
+            decoration: InputDecoration(
+              labelText: 'Tìm hoặc tạo kỹ năng',
+              hintText: 'Ví dụ: Pha chế, POS, Giao tiếp',
+              prefixIcon: const Icon(Icons.search_rounded),
+              suffixIcon: canCreate
+                  ? IconButton(
+                      tooltip: 'Thêm kỹ năng',
+                      icon: const Icon(Icons.add_circle_rounded),
+                      color: const Color(0xFF1E3A8A),
+                      onPressed: _isSaving ? null : () => _addSkill(query),
+                    )
+                  : null,
+              filled: true,
+              fillColor: const Color(0xFFF9FAFB),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: Color(0xFF1E3A8A)),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          if (suggestions.isNotEmpty)
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: suggestions
+                  .map(
+                    (skill) => ActionChip(
+                      label: Text(skill),
+                      avatar: const Icon(Icons.add_rounded, size: 16),
+                      onPressed: _isSaving ? null : () => _addSkill(skill),
+                      backgroundColor: const Color(0xFFEFF6FF),
+                      labelStyle: const TextStyle(
+                        color: Color(0xFF1E3A8A),
+                        fontWeight: FontWeight.w600,
+                      ),
+                      side: const BorderSide(color: Color(0xFFBFDBFE)),
+                    ),
+                  )
+                  .toList(),
+            ),
+          if (canCreate) ...[
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _isSaving ? null : () => _addSkill(query),
+                icon: const Icon(Icons.add_rounded),
+                label: Text('Thêm "$query"'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF1E3A8A),
+                  side: const BorderSide(color: Color(0xFFBFDBFE)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+            ),
+          ],
+          if (_isSaving) ...[
+            const SizedBox(height: 10),
+            const LinearProgressIndicator(minHeight: 2),
+          ],
+          if (_message != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              _message!,
+              style: const TextStyle(fontSize: 12, color: Color(0xFFDC2626)),
+            ),
+          ],
+          if (_skills.isNotEmpty) const SizedBox(height: 12),
+        ],
+        if (_skills.isEmpty && !_isAdding)
+          _EmptyEntryState(
+            message: 'Thêm kỹ năng của bạn',
+            onAdd: _openComposer,
+          )
+        else if (_skills.isNotEmpty)
           Wrap(
             spacing: 8,
             runSpacing: 8,
-            children: skills.map((skill) {
-              final isVerified = kycCompleted && skills.indexOf(skill) < 2;
-              return _SkillChip(skill: skill, isVerified: isVerified);
+            children: _skills.map((skill) {
+              final isVerified =
+                  widget.kycCompleted && _skills.indexOf(skill) < 2;
+              return _SkillChip(
+                skill: skill,
+                isVerified: isVerified,
+                onRemove: _isSaving ? null : () => _removeSkill(skill),
+              );
             }).toList(),
           ),
       ],
@@ -1640,15 +1891,25 @@ class _SkillsSection extends StatelessWidget {
 }
 
 class _SkillChip extends StatelessWidget {
-  const _SkillChip({required this.skill, required this.isVerified});
+  const _SkillChip({
+    required this.skill,
+    required this.isVerified,
+    required this.onRemove,
+  });
 
   final String skill;
   final bool isVerified;
+  final VoidCallback? onRemove;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+      padding: EdgeInsets.only(
+        left: 14,
+        right: onRemove == null ? 14 : 6,
+        top: 7,
+        bottom: 7,
+      ),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(10),
@@ -1673,48 +1934,23 @@ class _SkillChip extends StatelessWidget {
               color: Color(0xFF1E3A8A),
             ),
           ],
-        ],
-      ),
-    );
-  }
-}
-
-// ── Education section ─────────────────────────────────────────────────────────
-
-class _EducationSection extends StatelessWidget {
-  const _EducationSection({required this.onAdd});
-  final VoidCallback onAdd;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            const Expanded(child: _SectionHeader(title: 'Học vấn')),
-            GestureDetector(
-              onTap: onAdd,
-              child: const Row(
-                children: [
-                  Icon(Icons.add_rounded, size: 16, color: Color(0xFF1E3A8A)),
-                  SizedBox(width: 3),
-                  Text(
-                    'Thêm',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Color(0xFF1E3A8A),
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
+          if (onRemove != null) ...[
+            const SizedBox(width: 4),
+            InkWell(
+              onTap: onRemove,
+              borderRadius: BorderRadius.circular(14),
+              child: const Padding(
+                padding: EdgeInsets.all(3),
+                child: Icon(
+                  Icons.close_rounded,
+                  size: 16,
+                  color: Color(0xFF9CA3AF),
+                ),
               ),
             ),
           ],
-        ),
-        const SizedBox(height: 12),
-        _EmptyEntryState(message: 'Thêm học vấn của bạn', onAdd: onAdd),
-      ],
+        ],
+      ),
     );
   }
 }

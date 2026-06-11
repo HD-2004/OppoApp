@@ -287,7 +287,6 @@ class _UserHomeFeedScreenState extends ConsumerState<UserHomeFeedScreen> {
         : l10n.text('candidate').toLowerCase();
 
     final jobsAsync = ref.watch(activeJobsProvider);
-    final savedJobIds = user?.savedJobs ?? [];
 
     final filters = [
       l10n.text('nearby'),
@@ -367,10 +366,6 @@ class _UserHomeFeedScreenState extends ConsumerState<UserHomeFeedScreen> {
                 final job = jobs[index - 3];
                 return JobPostCard(
                   job: job,
-                  isSaved: savedJobIds.contains(job.id),
-                  onSaveToggle: () => ref
-                      .read(authControllerProvider.notifier)
-                      .toggleSavedJob(job.id),
                   onDetailsPressed: () => _openDetails(job),
                   onApplyPressed: () => _handleApply(job, user),
                 );

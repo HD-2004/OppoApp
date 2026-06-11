@@ -5,6 +5,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../domain/notification_repository.dart';
 import 'notification_providers.dart';
 
+const _emptyNotificationList = CandidateNotificationList(
+  items: [],
+  summary: CandidateNotificationSummary(total: 0, unread: 0),
+);
+
 final candidateNotificationControllerProvider =
     AsyncNotifierProvider<
       CandidateNotificationController,
@@ -27,7 +32,11 @@ class CandidateNotificationController
     );
     ref.onDispose(() => _refreshTimer?.cancel());
 
-    return _repository.listNotifications(limit: 50);
+    try {
+      return await _repository.listNotifications(limit: 50);
+    } catch (_) {
+      return _emptyNotificationList;
+    }
   }
 
   Future<void> _refreshSilently() async {

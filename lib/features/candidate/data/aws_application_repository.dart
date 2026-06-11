@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:amplify_auth_cognito/amplify_auth_cognito.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 
+import '../../../shared/platform/network_status.dart';
 import '../domain/application_repository.dart';
 
 final applicationRepositoryProvider = Provider<ApplicationRepository>((ref) {
@@ -279,12 +281,18 @@ class AwsApplicationRepository implements ApplicationRepository {
   Future<List<Map<String, dynamic>>> getCandidateApplications(
     String userId,
   ) async {
+    if (!isNetworkOnline) {
+      return [];
+    }
+
     try {
       final token = await _getAuthToken();
-      final response = await http.get(
-        Uri.parse('$_applicationsBaseUrl/applications/candidate/$userId'),
-        headers: _buildHeaders(token),
-      );
+      final response = await http
+          .get(
+            Uri.parse('$_applicationsBaseUrl/applications/candidate/$userId'),
+            headers: _buildHeaders(token),
+          )
+          .timeout(const Duration(seconds: 12));
 
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body);
@@ -295,6 +303,10 @@ class AwsApplicationRepository implements ApplicationRepository {
               .toList();
         }
       }
+      return [];
+    } on TimeoutException {
+      return [];
+    } on http.ClientException {
       return [];
     } catch (e) {
       safePrint('Error fetching candidate applications: $e');

@@ -1059,56 +1059,81 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
                           horizontal: 16,
                           vertical: 8,
                         ),
-                        child: Row(
-                          children: [
-                            Text(
+                        child: LayoutBuilder(
+                          builder: (context, constraints) {
+                            final resultLabel = Text(
                               'Tìm thấy ${filteredJobs.length} công việc phù hợp',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                               style: textTheme.bodyMedium?.copyWith(
                                 fontWeight: FontWeight.bold,
                                 color: theme.colorScheme.onSurfaceVariant,
                               ),
-                            ),
-                            const Spacer(),
-                            DropdownButton<String>(
-                              value: _sortBy,
-                              underline: const SizedBox(),
-                              items: const [
-                                DropdownMenuItem(
-                                  value: 'newest',
-                                  child: Text('Mới nhất'),
+                            );
+                            final controls = Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                DropdownButton<String>(
+                                  value: _sortBy,
+                                  underline: const SizedBox(),
+                                  items: const [
+                                    DropdownMenuItem(
+                                      value: 'newest',
+                                      child: Text('Mới nhất'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'salary_desc',
+                                      child: Text('Lương cao nhất'),
+                                    ),
+                                  ],
+                                  onChanged: (val) {
+                                    if (val != null) {
+                                      setState(() => _sortBy = val);
+                                    }
+                                  },
                                 ),
-                                DropdownMenuItem(
-                                  value: 'salary_desc',
-                                  child: Text('Lương cao nhất'),
+                                IconButton(
+                                  icon: Icon(
+                                    Icons.view_list,
+                                    color: _viewMode == 'list'
+                                        ? theme.colorScheme.primary
+                                        : null,
+                                  ),
+                                  onPressed: () =>
+                                      setState(() => _viewMode = 'list'),
+                                ),
+                                IconButton(
+                                  icon: Icon(
+                                    Icons.grid_view,
+                                    color: _viewMode == 'grid'
+                                        ? theme.colorScheme.primary
+                                        : null,
+                                  ),
+                                  onPressed: () =>
+                                      setState(() => _viewMode = 'grid'),
                                 ),
                               ],
-                              onChanged: (val) {
-                                if (val != null) {
-                                  setState(() => _sortBy = val);
-                                }
-                              },
-                            ),
-                            IconButton(
-                              icon: Icon(
-                                Icons.view_list,
-                                color: _viewMode == 'list'
-                                    ? theme.colorScheme.primary
-                                    : null,
-                              ),
-                              onPressed: () =>
-                                  setState(() => _viewMode = 'list'),
-                            ),
-                            IconButton(
-                              icon: Icon(
-                                Icons.grid_view,
-                                color: _viewMode == 'grid'
-                                    ? theme.colorScheme.primary
-                                    : null,
-                              ),
-                              onPressed: () =>
-                                  setState(() => _viewMode = 'grid'),
-                            ),
-                          ],
+                            );
+
+                            if (constraints.maxWidth < 420) {
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  resultLabel,
+                                  const SizedBox(height: 4),
+                                  controls,
+                                ],
+                              );
+                            }
+
+                            return Row(
+                              children: [
+                                Expanded(child: resultLabel),
+                                const SizedBox(width: 12),
+                                controls,
+                              ],
+                            );
+                          },
                         ),
                       ),
 
@@ -1132,11 +1157,7 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
                                   final job = filteredJobs[index];
                                   return JobPostCard(
                                     job: job,
-                                    isSaved: savedJobIds.contains(job.id),
                                     distance: _jobDistances[job.id],
-                                    onSaveToggle: () => ref
-                                        .read(authControllerProvider.notifier)
-                                        .toggleSavedJob(job.id),
                                     onDetailsPressed: () => _openDetails(job),
                                     onApplyPressed: () =>
                                         _handleApply(job, user),
@@ -1158,11 +1179,7 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
                                   final job = filteredJobs[index];
                                   return JobPostCard(
                                     job: job,
-                                    isSaved: savedJobIds.contains(job.id),
                                     distance: _jobDistances[job.id],
-                                    onSaveToggle: () => ref
-                                        .read(authControllerProvider.notifier)
-                                        .toggleSavedJob(job.id),
                                     onDetailsPressed: () => _openDetails(job),
                                     onApplyPressed: () =>
                                         _handleApply(job, user),

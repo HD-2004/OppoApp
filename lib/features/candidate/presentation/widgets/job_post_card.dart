@@ -1,30 +1,36 @@
 import 'package:flutter/material.dart';
 
 import 'package:oppo_temp_jobs/core/theme/app_colors.dart';
+
 import '../../domain/job_post.dart';
 
 class JobPostCard extends StatelessWidget {
   const JobPostCard({
     super.key,
     required this.job,
-    required this.isSaved,
-    required this.onSaveToggle,
     required this.onDetailsPressed,
     required this.onApplyPressed,
     this.distance,
+    this.isApplying = false,
   });
 
   final JobPost job;
-  final bool isSaved;
-  final VoidCallback onSaveToggle;
   final VoidCallback onDetailsPressed;
-  final VoidCallback onApplyPressed;
+  final VoidCallback? onApplyPressed;
   final double? distance;
+  final bool isApplying;
 
   String _postedTimeLabel(DateTime postedAt) {
+    if (postedAt.millisecondsSinceEpoch == 0) {
+      return '';
+    }
+
     final diff = DateTime.now().difference(postedAt);
+    if (diff.isNegative || diff.inMinutes < 1) {
+      return 'Vừa đăng';
+    }
     if (diff.inMinutes < 60) {
-      return '${diff.inMinutes.clamp(1, 59)} phút trước';
+      return '${diff.inMinutes} phút trước';
     }
     if (diff.inHours < 24) {
       return '${diff.inHours} giờ trước';
@@ -36,336 +42,133 @@ class JobPostCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final textTheme = theme.textTheme;
+    final companyName = _companyName(job);
+    final postedTime = _postedTimeLabel(job.postedAt);
+    final shiftTime = _shiftTime(job);
+    final location = _location(job, distance);
+    final salary = _salary(job);
 
-    final showHotDeal = job.isQuickJob || job.jobType == JobPostType.urgent;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: showHotDeal
-            ? const Color(0xFFFDF8F5)
-            : theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: showHotDeal
-              ? const Color(0xFFFFE3D5)
-              : theme.colorScheme.outlineVariant.withValues(alpha: 0.5),
-          width: showHotDeal ? 1.5 : 1,
+    return Card(
+      margin: EdgeInsets.zero,
+      color: theme.colorScheme.surface,
+      elevation: 0,
+      shadowColor: theme.colorScheme.shadow.withValues(alpha: 0.08),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(
+          color: theme.colorScheme.outlineVariant.withValues(alpha: 0.72),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: onDetailsPressed,
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+      child: InkWell(
+        onTap: onDetailsPressed,
+        borderRadius: BorderRadius.circular(20),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // Top row: Avatar & Company & Tag
-                  Row(
-                    children: [
-                      Container(
-                        width: 46,
-                        height: 46,
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.primaryContainer.withValues(
-                            alpha: 0.3,
-                          ),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: theme.colorScheme.outlineVariant,
-                          ),
-                        ),
-                        child: Center(
-                          child: Text(
-                            job.employerName.isNotEmpty
-                                ? job.employerName.substring(0, 1).toUpperCase()
-                                : 'C',
-                            style: TextStyle(
-                              color: theme.colorScheme.primary,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 18,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              job.employerName,
-                              style: textTheme.titleSmall?.copyWith(
-                                fontWeight: FontWeight.w800,
-                                color: theme.colorScheme.onSurface,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              _postedTimeLabel(job.postedAt),
-                              style: textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant
-                                    .withValues(alpha: 0.8),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (showHotDeal)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFFECE5),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: const Color(
-                                0xFFFFC5B0,
-                              ).withValues(alpha: 0.5),
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                Icons.local_fire_department,
-                                color: Color(0xFFFF5722),
-                                size: 14,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                'Hot deal',
-                                style: textTheme.bodySmall?.copyWith(
-                                  color: const Color(0xFFFF5722),
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ],
-                          ),
-                        )
-                      else
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.surfaceContainerHighest,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            job.jobType == JobPostType.partTime
-                                ? 'Bán thời gian'
-                                : 'Toàn thời gian',
-                            style: textTheme.bodySmall?.copyWith(
-                              fontWeight: FontWeight.w700,
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-
-                  // Job Title
-                  Text(
-                    job.title,
-                    style: textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: theme.colorScheme.onSurface,
-                      height: 1.3,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 10),
-
-                  // Location
-                  _InfoRow(
-                    icon: Icons.location_on_outlined,
-                    text: distance != null
-                        ? '${job.location} • cách ${distance!.toStringAsFixed(1)} km'
-                        : job.location,
-                  ),
-                  const SizedBox(height: 8),
-
-                  // Salary container (matches the web green layout)
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE8F5E9),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: const Color(0xFFC8E6C9).withValues(alpha: 0.5),
-                      ),
-                    ),
-                    child: Row(
+                  _CompanyMark(companyName: companyName),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(
-                          Icons.payments_outlined,
-                          color: Color(0xFF2E7D32),
-                          size: 18,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            job.salary,
-                            style: textTheme.bodyMedium?.copyWith(
-                              color: const Color(0xFF2E7D32),
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Tags
-                  if (job.tags.isNotEmpty)
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        for (final tag in job.tags)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: theme.colorScheme.surfaceContainerHighest
-                                  .withValues(alpha: 0.4),
-                              borderRadius: BorderRadius.circular(6),
-                              border: Border.all(
-                                color: theme.colorScheme.outlineVariant
-                                    .withValues(alpha: 0.3),
-                              ),
-                            ),
-                            child: Text(
-                              tag,
-                              style: textTheme.bodySmall?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 11,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  const SizedBox(height: 14),
-
-                  const Divider(height: 1, thickness: 0.5),
-                  const SizedBox(height: 10),
-
-                  // Actions row
-                  Row(
-                    children: [
-                      // Save button
-                      Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          onTap: onSaveToggle,
-                          borderRadius: BorderRadius.circular(8),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 8,
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  isSaved
-                                      ? Icons.bookmark
-                                      : Icons.bookmark_border,
-                                  color: isSaved
-                                      ? const Color(0xFFFFB300)
-                                      : theme.colorScheme.onSurfaceVariant,
-                                  size: 20,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  isSaved ? 'Đã lưu' : 'Lưu',
-                                  style: textTheme.bodyMedium?.copyWith(
-                                    color: isSaved
-                                        ? const Color(0xFFFFB300)
-                                        : theme.colorScheme.onSurfaceVariant,
-                                    fontWeight: isSaved
-                                        ? FontWeight.w800
-                                        : FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                      const Spacer(),
-                      // Details Button
-                      OutlinedButton(
-                        onPressed: onDetailsPressed,
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 8,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          side: BorderSide(color: theme.colorScheme.outline),
-                        ),
-                        child: Text(
-                          'Chi tiết',
+                        Text(
+                          companyName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: textTheme.labelLarge?.copyWith(
-                            fontWeight: FontWeight.w700,
                             color: theme.colorScheme.onSurface,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      // Apply Button
-                      ElevatedButton(
-                        onPressed: onApplyPressed,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 8,
+                        if (postedTime.isNotEmpty) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            postedTime,
+                            style: textTheme.bodySmall?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          elevation: 0,
-                        ),
-                        child: const Text(
-                          'Ứng tuyển',
-                          style: TextStyle(fontWeight: FontWeight.w700),
-                        ),
-                      ),
-                    ],
+                        ],
+                      ],
+                    ),
                   ),
                 ],
               ),
-            ),
+              const SizedBox(height: 16),
+              Text(
+                job.title.trim(),
+                style: textTheme.titleMedium?.copyWith(
+                  color: theme.colorScheme.onSurface,
+                  fontWeight: FontWeight.w800,
+                  height: 1.25,
+                ),
+              ),
+              const SizedBox(height: 14),
+              _JobInfoColumn(
+                rows: [
+                  if (location.isNotEmpty)
+                    _JobInfoRowData(
+                      label: 'Địa chỉ',
+                      value: location,
+                      icon: Icons.location_on_outlined,
+                    ),
+                  if (shiftTime.isNotEmpty)
+                    _JobInfoRowData(
+                      label: 'Thời gian',
+                      value: shiftTime,
+                      icon: Icons.schedule_rounded,
+                    ),
+                  if (salary.isNotEmpty)
+                    _JobInfoRowData(
+                      label: 'Lương',
+                      value: salary,
+                      icon: Icons.payments_outlined,
+                      emphasized: true,
+                    ),
+                  _JobInfoRowData(
+                    label: 'Hình thức',
+                    value: job.jobType.label,
+                    icon: Icons.work_outline_rounded,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: FilledButton(
+                  onPressed: isApplying ? null : onApplyPressed,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    disabledBackgroundColor: theme.colorScheme.outlineVariant,
+                    disabledForegroundColor: theme.colorScheme.onSurfaceVariant,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: isApplying
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text(
+                          'Ứng tuyển ngay',
+                          style: TextStyle(fontWeight: FontWeight.w800),
+                        ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -373,35 +176,185 @@ class JobPostCard extends StatelessWidget {
   }
 }
 
-class _InfoRow extends StatelessWidget {
-  const _InfoRow({required this.icon, required this.text});
+class _CompanyMark extends StatelessWidget {
+  const _CompanyMark({required this.companyName});
 
-  final IconData icon;
-  final String text;
+  final String companyName;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final initial = companyName.characters.first.toUpperCase();
+
+    return Container(
+      width: 44,
+      height: 44,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest,
+        shape: BoxShape.circle,
+        border: Border.all(color: theme.colorScheme.outlineVariant),
+      ),
+      child: Text(
+        initial,
+        style: theme.textTheme.titleMedium?.copyWith(
+          color: theme.colorScheme.onSurface,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+}
+
+class _JobInfoColumn extends StatelessWidget {
+  const _JobInfoColumn({required this.rows});
+
+  final List<_JobInfoRowData> rows;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        for (var index = 0; index < rows.length; index++) ...[
+          _JobInfoRow(data: rows[index]),
+          if (index < rows.length - 1) const SizedBox(height: 10),
+        ],
+      ],
+    );
+  }
+}
+
+class _JobInfoRow extends StatelessWidget {
+  const _JobInfoRow({required this.data});
+
+  final _JobInfoRowData data;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Icon(
-          icon,
-          size: 16,
-          color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+          data.icon,
+          size: 18,
+          color: data.emphasized
+              ? AppColors.primary
+              : theme.colorScheme.onSurfaceVariant,
         ),
-        const SizedBox(width: 6),
+        const SizedBox(width: 10),
         Expanded(
-          child: Text(
-            text,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                data.label,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                data.value,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: data.emphasized
+                      ? AppColors.primary
+                      : theme.colorScheme.onSurface,
+                  fontWeight: data.emphasized
+                      ? FontWeight.w800
+                      : FontWeight.w600,
+                  height: 1.3,
+                ),
+              ),
+            ],
           ),
         ),
       ],
     );
   }
+}
+
+class _JobInfoRowData {
+  const _JobInfoRowData({
+    required this.label,
+    required this.value,
+    required this.icon,
+    this.emphasized = false,
+  });
+
+  final String label;
+  final String value;
+  final IconData icon;
+  final bool emphasized;
+}
+
+String _companyName(JobPost job) {
+  final companyName = job.companyName?.trim();
+  if (companyName != null && companyName.isNotEmpty) {
+    return companyName;
+  }
+
+  final employerName = job.employerName.trim();
+  if (employerName.isNotEmpty) {
+    return employerName;
+  }
+
+  return 'Nhà tuyển dụng';
+}
+
+String _location(JobPost job, double? distance) {
+  final location = job.location.trim();
+  if (location.isEmpty) {
+    return '';
+  }
+  if (distance == null) {
+    return location;
+  }
+  return '$location · cách ${distance.toStringAsFixed(1)} km';
+}
+
+String _shiftTime(JobPost job) {
+  final startTime = job.startTime?.trim();
+  final endTime = job.endTime?.trim();
+  if (startTime != null &&
+      startTime.isNotEmpty &&
+      endTime != null &&
+      endTime.isNotEmpty) {
+    return '$startTime - $endTime';
+  }
+
+  final shiftTime = job.shiftTime.trim();
+  if (shiftTime.isNotEmpty) {
+    return shiftTime;
+  }
+
+  return '';
+}
+
+String _salary(JobPost job) {
+  if (job.totalSalary != null && job.totalSalary! > 0) {
+    return '${_formatMoney(job.totalSalary!)} VND / ca';
+  }
+
+  final salary = job.salary.trim();
+  if (salary.isNotEmpty) {
+    return salary;
+  }
+
+  return '';
+}
+
+String _formatMoney(int value) {
+  final raw = value.toString();
+  final buffer = StringBuffer();
+  for (var i = 0; i < raw.length; i++) {
+    final remaining = raw.length - i;
+    buffer.write(raw[i]);
+    if (remaining > 1 && remaining % 3 == 1) {
+      buffer.write('.');
+    }
+  }
+  return buffer.toString();
 }
