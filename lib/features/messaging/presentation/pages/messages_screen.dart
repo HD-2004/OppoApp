@@ -22,7 +22,6 @@ class MessagesScreen extends ConsumerStatefulWidget {
 class _MessagesScreenState extends ConsumerState<MessagesScreen> {
   final _searchController = TextEditingController();
   String _keyword = '';
-  int _selectedTabIndex = 0;
 
   @override
   void dispose() {
@@ -35,11 +34,6 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
     final chatsAsync = ref.watch(candidateChatsProvider);
     final standardAsync = ref.watch(activeJobsProvider);
     final quickAsync = ref.watch(activeQuickJobsProvider);
-    final unreadTotal = chatsAsync.value == null
-        ? 0
-        : ref
-              .read(candidateChatsProvider.notifier)
-              .totalUnreadCount(chatsAsync.value!);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FC),
@@ -60,13 +54,6 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
               _searchController.clear();
               _keyword = '';
             }),
-          ),
-
-          // ── Filter tabs ────────────────────────────────────────────
-          _FilterTabs(
-            selectedIndex: _selectedTabIndex,
-            unreadCount: unreadTotal,
-            onTabSelected: (idx) => setState(() => _selectedTabIndex = idx),
           ),
 
           // ── List ───────────────────────────────────────────────────
@@ -119,19 +106,6 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
           .toList();
     }
 
-    if (_selectedTabIndex == 1) {
-      conversations = conversations
-          .where(
-            (item) =>
-                ref.read(candidateChatsProvider.notifier).isUnread(item.chat),
-          )
-          .toList();
-    } else if (_selectedTabIndex == 2) {
-      conversations = conversations
-          .where((item) => item.chat.status == 'completed')
-          .toList();
-    }
-
     if (conversations.isEmpty) {
       return const _EmptyState(
         icon: Icons.chat_bubble_outline_rounded,
@@ -160,7 +134,7 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
             ? (lastMsg.sender == 'them' ? 'Bạn: ${lastMsg.text}' : lastMsg.text)
             : 'Bắt đầu cuộc trò chuyện...';
 
-        final status = chat.status == 'completed'
+        final status = chat.status == 'completed_pending_candidate'
             ? ConversationStatus.hired
             : ConversationStatus.none;
 
@@ -273,6 +247,7 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
       tags: const [],
       postedAt: chat.appliedAt,
       isQuickJob: isQuick,
+      employerAvatarUrl: chat.employerAvatarUrl,
     );
   }
 }
@@ -389,81 +364,7 @@ class _SearchBar extends StatelessWidget {
   }
 }
 
-// ── Filter tabs ───────────────────────────────────────────────────────────────
 
-class _FilterTabs extends StatelessWidget {
-  const _FilterTabs({
-    required this.selectedIndex,
-    required this.unreadCount,
-    required this.onTabSelected,
-  });
-
-  final int selectedIndex;
-  final int unreadCount;
-  final ValueChanged<int> onTabSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
-      child: Row(
-        children: [
-          _Tab(
-            label: 'Tất cả',
-            isActive: selectedIndex == 0,
-            onTap: () => onTabSelected(0),
-          ),
-          const SizedBox(width: 8),
-          _Tab(
-            label: unreadCount > 0 ? 'Chưa đọc ($unreadCount)' : 'Chưa đọc',
-            isActive: selectedIndex == 1,
-            onTap: () => onTabSelected(1),
-          ),
-          const SizedBox(width: 8),
-          _Tab(
-            label: 'Đã nhận việc',
-            isActive: selectedIndex == 2,
-            onTap: () => onTabSelected(2),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Tab extends StatelessWidget {
-  const _Tab({required this.label, required this.onTap, this.isActive = false});
-
-  final String label;
-  final VoidCallback onTap;
-  final bool isActive;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-        decoration: BoxDecoration(
-          color: isActive ? AppColors.primary : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isActive ? AppColors.primary : const Color(0xFFE5E7EB),
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: isActive ? Colors.white : const Color(0xFF374151),
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 // ── Empty state ───────────────────────────────────────────────────────────────
 

@@ -1428,7 +1428,10 @@ class _WorkHistorySection extends ConsumerWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(
+                            Wrap(
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              spacing: 8,
+                              runSpacing: 4,
                               children: [
                                 const Text(
                                   'Đánh giá của nhà tuyển dụng:',
@@ -1438,24 +1441,28 @@ class _WorkHistorySection extends ConsumerWidget {
                                     color: Color(0xFFB45309),
                                   ),
                                 ),
-                                const SizedBox(width: 8),
-                                ...List.generate(5, (index) {
-                                  return Icon(
-                                    index < item.overallRating!.round()
-                                        ? Icons.star_rounded
-                                        : Icons.star_border_rounded,
-                                    size: 14,
-                                    color: const Color(0xFFF59E0B),
-                                  );
-                                }),
-                                const SizedBox(width: 6),
-                                Text(
-                                  '${item.overallRating!.toStringAsFixed(1)}/5',
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w700,
-                                    color: Color(0xFFB45309),
-                                  ),
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    ...List.generate(5, (index) {
+                                      return Icon(
+                                        index < item.overallRating!.round()
+                                            ? Icons.star_rounded
+                                            : Icons.star_border_rounded,
+                                        size: 14,
+                                        color: const Color(0xFFF59E0B),
+                                      );
+                                    }),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      '${item.overallRating!.toStringAsFixed(1)}/5',
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xFFB45309),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),

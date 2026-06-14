@@ -4,9 +4,16 @@ import 'package:amplify_flutter/amplify_flutter.dart';
 class LocationService {
   const LocationService._();
 
+  /// Static hook to mock geolocation in tests.
+  static Future<(double, double)?> Function()? mockLocationProvider;
+
   /// Requests permission and gets current device coordinates.
   /// Returns a record of (latitude, longitude) if successful, or throws an exception if failed/denied.
   static Future<(double, double)?> getCurrentLocation() async {
+    if (mockLocationProvider != null) {
+      return mockLocationProvider!();
+    }
+
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {

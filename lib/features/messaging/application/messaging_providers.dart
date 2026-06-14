@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../auth/application/auth_controller.dart';
@@ -30,6 +32,9 @@ bool canDeleteConversation(String status) {
 
 class CandidateChatsNotifier extends AsyncNotifier<List<CandidateApplication>> {
   static const _deletedChatsKey = 'deleted_chats';
+  static const _standardJobsUrl = 'https://dlidp35x33.execute-api.ap-southeast-1.amazonaws.com/prod';
+  static const _quickJobsUrl = 'https://6zw89pkuxb.execute-api.ap-southeast-1.amazonaws.com/prod';
+  static final Map<String, Map<String, dynamic>?> _jobDetailsCache = {};
 
   Timer? _timer;
   Map<String, int> _lastReadIds = {};
@@ -86,22 +91,136 @@ class CandidateChatsNotifier extends AsyncNotifier<List<CandidateApplication>> {
     ApplicationRepository repo,
   ) async {
     final rawApps = await repo.getCandidateApplications(userId);
-    // Filter accepted or completed apps
-    final validApps = rawApps.where((app) {
+
+    // Clean up preferences for completed apps
+    try {
+      final completedApps = rawApps.where((app) {
+        return app['status']?.toString().trim().toLowerCase() == 'completed';
+      });
+      if (completedApps.isNotEmpty) {
+        final prefs = await SharedPreferences.getInstance();
+        for (final app in completedApps) {
+          final appId = app['applicationId']?.toString() ?? '';
+          if (appId.isNotEmpty) {
+            await prefs.remove('chat_read_$appId');
+          }
+        }
+      }
+    } catch (_) {}
+
+    // Filter accepted or completed_pending_candidate apps
+    final validRawApps = rawApps.where((app) {
       final status = app['status']?.toString().trim().toLowerCase() ?? '';
       final applicationId = app['applicationId']?.toString() ?? '';
-      return (status == 'accepted' || status == 'completed') &&
+      return (status == 'accepted' ||
+              status == 'completed_pending_candidate') &&
           !_deletedChatIds.contains(applicationId);
     }).toList();
 
+    final List<Map<String, dynamic>> enrichedApps = [];
+
+    for (final app in validRawApps) {
+      final jobId = app['jobId']?.toString() ?? app['idJob']?.toString() ?? app['jobID']?.toString() ?? '';
+      if (jobId.isEmpty) {
+        enrichedApps.add(app);
+        continue;
+      }
+
+      Map<String, dynamic>? jobData;
+      if (_jobDetailsCache.containsKey(jobId)) {
+        jobData = _jobDetailsCache[jobId];
+      } else {
+        final isQuick = jobId.startsWith('QJOB-');
+        final url = isQuick
+            ? '$_quickJobsUrl/quick-jobs/$jobId'
+            : '$_standardJobsUrl/jobs/$jobId';
+        try {
+          final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 5));
+          if (response.statusCode == 200) {
+            final decoded = jsonDecode(response.body);
+            if (decoded is Map<String, dynamic> && decoded['success'] == true) {
+              final data = decoded['data'];
+              if (data is Map<String, dynamic>) {
+                jobData = data;
+                _jobDetailsCache[jobId] = data;
+              } else {
+                _jobDetailsCache[jobId] = null;
+              }
+            } else {
+              _jobDetailsCache[jobId] = null;
+            }
+          } else if (response.statusCode == 404) {
+            _jobDetailsCache[jobId] = null;
+          }
+        } catch (_) {
+          // Temporarily skip on network errors to avoid caching null permanently,
+          // but do not add to current tick so we don't display a broken tile.
+        }
+      }
+
+      // If the job is confirmed deleted (cached as null), filter out
+      if (_jobDetailsCache.containsKey(jobId) && _jobDetailsCache[jobId] == null) {
+        continue;
+      }
+
+      final enrichedApp = Map<String, dynamic>.from(app);
+      if (jobData != null) {
+        final companyName = jobData['employerName'] ?? jobData['companyName'] ?? jobData['employerEmail'] ?? '';
+        final title = jobData['title'] ?? '';
+        String? logo = jobData['companyLogo'] ?? jobData['employerAvatarUrl'] ?? jobData['logoUrl'] ?? jobData['avatarUrl'] ?? jobData['profileImage'];
+        if (logo == null || logo.trim().isEmpty) {
+          logo = 'https://opporeview-cv-storage.s3.ap-southeast-1.amazonaws.com/system/katinatlogo.jpg';
+        }
+
+        if (companyName.toString().trim().isNotEmpty && companyName.toString().trim().toLowerCase() != 'none') {
+          enrichedApp['employerName'] = companyName.toString().trim();
+        }
+        if (title.toString().trim().isNotEmpty) {
+          enrichedApp['jobTitle'] = title.toString().trim();
+        }
+        enrichedApp['employerAvatarUrl'] = logo;
+      }
+
+      // Handle fallback and clean up "None" values in employerName
+      final currentEmpName = enrichedApp['employerName']?.toString() ?? '';
+      if (currentEmpName.isEmpty || currentEmpName.toLowerCase() == 'none') {
+        final email = enrichedApp['employerEmail']?.toString() ?? '';
+        if (email.toLowerCase().contains('hr.oppo')) {
+          enrichedApp['employerName'] = 'Công ty cổ phần cafe Katinat';
+        } else if (email.toLowerCase().contains('quangnhm')) {
+          enrichedApp['employerName'] = 'Katinat Quận Cam';
+        } else if (email.toLowerCase().contains('hieudh')) {
+          enrichedApp['employerName'] = 'Công ty cổ phần cafe August';
+        } else if (email.toLowerCase().contains('hd.sg.0011')) {
+          enrichedApp['employerName'] = 'Highlands Coffee';
+        } else {
+          enrichedApp['employerName'] = 'Nhà tuyển dụng';
+        }
+      }
+
+      if (enrichedApp['employerAvatarUrl'] == null) {
+        final empName = enrichedApp['employerName']?.toString().toLowerCase() ?? '';
+        if (empName.contains('katinat')) {
+          enrichedApp['employerAvatarUrl'] = 'https://opporeview-cv-storage.s3.ap-southeast-1.amazonaws.com/system/katinatlogo.jpg';
+        } else if (empName.contains('august')) {
+          enrichedApp['employerAvatarUrl'] = 'https://opporeview-cv-storage.s3.ap-southeast-1.amazonaws.com/system/bamos.png';
+        } else if (empName.contains('highlands')) {
+          enrichedApp['employerAvatarUrl'] = 'https://opporeview-cv-storage.s3.ap-southeast-1.amazonaws.com/system/highlands.jpg';
+        } else {
+          enrichedApp['employerAvatarUrl'] = 'https://opporeview-cv-storage.s3.ap-southeast-1.amazonaws.com/system/katinatlogo.jpg';
+        }
+      }
+      enrichedApps.add(enrichedApp);
+    }
+
     // Sort by updatedAt or appliedAt desc
-    validApps.sort((a, b) {
+    enrichedApps.sort((a, b) {
       final bTime = b['updatedAt'] ?? b['appliedAt'] ?? '';
       final aTime = a['updatedAt'] ?? a['appliedAt'] ?? '';
       return bTime.toString().compareTo(aTime.toString());
     });
 
-    return validApps
+    return enrichedApps
         .map((json) => CandidateApplication.fromJson(json))
         .toList();
   }

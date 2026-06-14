@@ -47,6 +47,7 @@ class CandidateApplication {
   final String employerId;
   final String employerEmail;
   final String employerName;
+  final String? employerAvatarUrl;
   final String status;
   final DateTime appliedAt;
   final DateTime updatedAt;
@@ -62,6 +63,7 @@ class CandidateApplication {
     required this.employerId,
     required this.employerEmail,
     required this.employerName,
+    this.employerAvatarUrl,
     required this.status,
     required this.appliedAt,
     required this.updatedAt,
@@ -82,6 +84,7 @@ class CandidateApplication {
       employerEmail: (json['employerEmail'] ?? '').toString(),
       employerName: (json['employerName'] ?? json['companyName'] ?? '')
           .toString(),
+      employerAvatarUrl: (json['employerAvatarUrl'] ?? json['companyLogo'] ?? json['logoUrl'] ?? json['avatarUrl'] ?? json['profileImage'])?.toString(),
       status: (json['status'] ?? '').toString().toLowerCase(),
       appliedAt: _dateFrom(json['appliedAt'] ?? json['createdAt']),
       updatedAt: _dateFrom(
