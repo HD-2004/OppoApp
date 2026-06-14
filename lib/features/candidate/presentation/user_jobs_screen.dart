@@ -100,12 +100,31 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
       Navigator.of(context).pop(); // Dismiss loading
 
       if (coords != null) {
+        final user = ref.read(authControllerProvider).asData?.value.user;
+        final currentLat = user?.latitude;
+        final currentLng = user?.longitude;
+
+        bool shouldUpdateLocation = true;
+        if (currentLat != null && currentLng != null) {
+          final distance = _calculateDistance(
+            currentLat,
+            currentLng,
+            coords.$1,
+            coords.$2,
+          );
+          // If the candidate is within 100m (0.1 km) of their saved location,
+          // do not update coordinates in DB to avoid triggering duplicate recommendation emails.
+          if (distance < 0.1) {
+            shouldUpdateLocation = false;
+          }
+        }
+
         await ref
             .read(authControllerProvider.notifier)
             .updateAvailability(
               true,
-              latitude: coords.$1,
-              longitude: coords.$2,
+              latitude: shouldUpdateLocation ? coords.$1 : null,
+              longitude: shouldUpdateLocation ? coords.$2 : null,
             );
       } else {
         _showErrorDialog(

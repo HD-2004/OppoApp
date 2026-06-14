@@ -22,7 +22,6 @@ class MessagesScreen extends ConsumerStatefulWidget {
 class _MessagesScreenState extends ConsumerState<MessagesScreen> {
   final _searchController = TextEditingController();
   String _keyword = '';
-  int _selectedTabIndex = 0;
 
   @override
   void dispose() {
@@ -35,11 +34,6 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
     final chatsAsync = ref.watch(candidateChatsProvider);
     final standardAsync = ref.watch(activeJobsProvider);
     final quickAsync = ref.watch(activeQuickJobsProvider);
-    final unreadTotal = chatsAsync.value == null
-        ? 0
-        : ref
-              .read(candidateChatsProvider.notifier)
-              .totalUnreadCount(chatsAsync.value!);
 
     return Scaffold(
       backgroundColor: AppColors.background(context),
@@ -60,13 +54,6 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
               _searchController.clear();
               _keyword = '';
             }),
-          ),
-
-          // ── Filter tabs ────────────────────────────────────────────
-          _FilterTabs(
-            selectedIndex: _selectedTabIndex,
-            unreadCount: unreadTotal,
-            onTabSelected: (idx) => setState(() => _selectedTabIndex = idx),
           ),
 
           // ── List ───────────────────────────────────────────────────
@@ -123,6 +110,7 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
           .toList();
     }
 
+<<<<<<< HEAD
     if (_selectedTabIndex == 1) {
       conversations = conversations
           .where(
@@ -132,6 +120,8 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
           .toList();
     }
 
+=======
+>>>>>>> 685db4d9d0a26c8008d886951313f806b6b51bea
     if (conversations.isEmpty) {
       return const _EmptyState(
         icon: Icons.chat_bubble_outline_rounded,
@@ -160,7 +150,7 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
             ? (lastMsg.sender == 'them' ? 'Bạn: ${lastMsg.text}' : lastMsg.text)
             : 'Bắt đầu cuộc trò chuyện...';
 
-        final status = chat.status == 'completed'
+        final status = chat.status == 'completed_pending_candidate'
             ? ConversationStatus.hired
             : ConversationStatus.none;
 
@@ -271,6 +261,7 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
       tags: const [],
       postedAt: chat.appliedAt,
       isQuickJob: isQuick,
+      employerAvatarUrl: chat.employerAvatarUrl,
     );
   }
 }
@@ -393,8 +384,8 @@ class _SearchBar extends StatelessWidget {
   }
 }
 
-// ── Filter tabs ───────────────────────────────────────────────────────────────
 
+<<<<<<< HEAD
 class _FilterTabs extends StatelessWidget {
   const _FilterTabs({
     required this.selectedIndex,
@@ -465,6 +456,8 @@ class _Tab extends StatelessWidget {
     );
   }
 }
+=======
+>>>>>>> 685db4d9d0a26c8008d886951313f806b6b51bea
 
 // ── Empty state ───────────────────────────────────────────────────────────────
 
