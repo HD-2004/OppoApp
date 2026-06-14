@@ -42,7 +42,7 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
               .totalUnreadCount(chatsAsync.value!);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FC),
+      backgroundColor: AppColors.background(context),
       appBar: _MessagesAppBar(
         onCompose: () => ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -73,10 +73,14 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
           Expanded(
             child: chatsAsync.when(
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (err, _) => const _EmptyState(
-                icon: Icons.wifi_off_rounded,
-                message: 'Không tải được danh sách tin nhắn.',
-                showRetryHint: true,
+              error: (err, _) => _EmptyState(
+                icon: err is ChatAccessException
+                    ? Icons.lock_outline_rounded
+                    : Icons.wifi_off_rounded,
+                message: err is ChatAccessException
+                    ? err.toString()
+                    : 'Không tải được danh sách tin nhắn.',
+                showRetryHint: err is! ChatAccessException,
               ),
               data: (chats) => _buildList(
                 context,
@@ -126,10 +130,6 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
                 ref.read(candidateChatsProvider.notifier).isUnread(item.chat),
           )
           .toList();
-    } else if (_selectedTabIndex == 2) {
-      conversations = conversations
-          .where((item) => item.chat.status == 'completed')
-          .toList();
     }
 
     if (conversations.isEmpty) {
@@ -174,8 +174,8 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
           lastMessageTime: lastMsg != null
               ? DateTime.fromMillisecondsSinceEpoch(lastMsg.id)
               : chat.updatedAt,
-          canDelete: canDeleteConversation(chat.status),
-          onDelete: () => _requestDeleteConversation(chat),
+          canDelete: canArchiveConversation(chat.status),
+          onDelete: () => _requestArchiveConversation(chat),
           onTap: () => Navigator.of(context).push(
             MaterialPageRoute(
               builder: (_) => ChatRoomScreen(
@@ -189,12 +189,12 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
     );
   }
 
-  Future<void> _requestDeleteConversation(CandidateApplication chat) async {
-    if (!canDeleteConversation(chat.status)) {
+  Future<void> _requestArchiveConversation(CandidateApplication chat) async {
+    if (!canArchiveConversation(chat.status)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Cuộc trò chuyện đang được sử dụng. Bạn chỉ có thể xóa sau khi công việc hoàn thành.',
+            'Cuộc trò chuyện đang được sử dụng. Bạn chỉ có thể lưu trữ sau khi công việc hoàn thành.',
           ),
         ),
       );
@@ -205,13 +205,13 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         icon: const Icon(
-          Icons.delete_outline_rounded,
-          color: Color(0xFFDC2626),
+          Icons.archive_outlined,
+          color: AppColors.danger,
           size: 32,
         ),
-        title: const Text('Xóa cuộc trò chuyện'),
+        title: const Text('Lưu trữ cuộc trò chuyện'),
         content: const Text(
-          'Bạn có chắc chắn muốn xóa cuộc trò chuyện này khỏi danh sách không?',
+          'Cuộc trò chuyện sẽ được ẩn khỏi danh sách mặc định nhưng vẫn giữ dữ liệu cho audit/hỗ trợ khi cần.',
         ),
         actions: [
           TextButton(
@@ -220,10 +220,8 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
           ),
           FilledButton(
             onPressed: () => Navigator.pop(dialogContext, true),
-            style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFFDC2626),
-            ),
-            child: const Text('Xóa'),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
+            child: const Text('Lưu trữ'),
           ),
         ],
       ),
@@ -232,7 +230,7 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
     if (confirmed != true || !mounted) return;
 
     try {
-      await ref.read(candidateChatsProvider.notifier).deleteConversation(chat);
+      await ref.read(candidateChatsProvider.notifier).archiveConversation(chat);
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -300,15 +298,15 @@ class _MessagesAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     return AppBar(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.surface(context),
       elevation: 0,
       scrolledUnderElevation: 1,
-      title: const Text(
+      title: Text(
         'Tin nhắn',
         style: TextStyle(
           fontSize: 20,
           fontWeight: FontWeight.w900,
-          color: Color(0xFF111827),
+          color: AppColors.textPrimaryFor(context),
         ),
       ),
       actions: [
@@ -343,15 +341,15 @@ class _SearchBar extends StatelessWidget {
       child: Container(
         height: 44,
         decoration: BoxDecoration(
-          color: const Color(0xFFF3F4F6),
+          color: AppColors.fieldFill(context),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
           children: [
             const SizedBox(width: 12),
-            const Icon(
+            Icon(
               Icons.search_rounded,
-              color: Color(0xFF9CA3AF),
+              color: AppColors.disabledFor(context),
               size: 18,
             ),
             const SizedBox(width: 8),
@@ -359,25 +357,31 @@ class _SearchBar extends StatelessWidget {
               child: TextField(
                 controller: controller,
                 onChanged: onChanged,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   hintText: 'Tìm kiếm cuộc trò chuyện...',
-                  hintStyle: TextStyle(color: Color(0xFF9CA3AF), fontSize: 14),
+                  hintStyle: TextStyle(
+                    color: AppColors.disabledFor(context),
+                    fontSize: 14,
+                  ),
                   border: InputBorder.none,
                   isDense: true,
                   contentPadding: EdgeInsets.zero,
                 ),
-                style: const TextStyle(fontSize: 14, color: Color(0xFF111827)),
+                style: TextStyle(
+                  fontSize: 14,
+                  color: AppColors.textPrimaryFor(context),
+                ),
               ),
             ),
             if (controller.text.isNotEmpty)
               GestureDetector(
                 onTap: onClear,
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 10),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
                   child: Icon(
                     Icons.close_rounded,
                     size: 16,
-                    color: Color(0xFF9CA3AF),
+                    color: AppColors.disabledFor(context),
                   ),
                 ),
               ),
@@ -421,11 +425,6 @@ class _FilterTabs extends StatelessWidget {
             onTap: () => onTabSelected(1),
           ),
           const SizedBox(width: 8),
-          _Tab(
-            label: 'Đã nhận việc',
-            isActive: selectedIndex == 2,
-            onTap: () => onTabSelected(2),
-          ),
         ],
       ),
     );
@@ -446,10 +445,12 @@ class _Tab extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
-          color: isActive ? AppColors.primary : Colors.white,
+          color: isActive
+              ? AppColors.primary
+              : AppColors.cardBackground(context),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: isActive ? AppColors.primary : const Color(0xFFE5E7EB),
+            color: isActive ? AppColors.primary : AppColors.borderFor(context),
           ),
         ),
         child: Text(
@@ -457,7 +458,7 @@ class _Tab extends StatelessWidget {
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
-            color: isActive ? Colors.white : const Color(0xFF374151),
+            color: isActive ? Colors.white : AppColors.textPrimaryFor(context),
           ),
         ),
       ),
@@ -499,9 +500,9 @@ class _EmptyState extends StatelessWidget {
             Text(
               message,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
-                color: Color(0xFF6B7280),
+                color: AppColors.textSecondaryFor(context),
                 height: 1.5,
               ),
             ),

@@ -175,7 +175,7 @@ class _HomeBottomNav extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface(context),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.08),
@@ -241,12 +241,11 @@ class _NavItem extends StatelessWidget {
   final String label;
   final ValueChanged<int> onTap;
 
-  static const _activeColor = AppColors.primary;
-  static const _inactiveColor = Color(0xFF6B7280);
-
   @override
   Widget build(BuildContext context) {
     final isSelected = selectedIndex == index;
+    final activeColor = Theme.of(context).colorScheme.primary;
+    final inactiveColor = AppColors.textSecondaryFor(context);
 
     return Expanded(
       child: GestureDetector(
@@ -259,13 +258,13 @@ class _NavItem extends StatelessWidget {
               duration: const Duration(milliseconds: 200),
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
               decoration: BoxDecoration(
-                color: isSelected ? _activeColor : Colors.transparent,
+                color: isSelected ? activeColor : Colors.transparent,
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Icon(
                 icon,
                 size: 22,
-                color: isSelected ? Colors.white : _inactiveColor,
+                color: isSelected ? AppColors.textOnPrimary : inactiveColor,
               ),
             ),
             const SizedBox(height: 3),
@@ -274,7 +273,7 @@ class _NavItem extends StatelessWidget {
               style: TextStyle(
                 fontSize: 10,
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                color: isSelected ? _activeColor : _inactiveColor,
+                color: isSelected ? activeColor : inactiveColor,
               ),
             ),
           ],

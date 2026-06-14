@@ -31,19 +31,23 @@ class CandidateNotificationCard extends StatelessWidget {
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 20),
         decoration: BoxDecoration(
-          color: const Color(0xFF6B7280).withValues(alpha: 0.1),
+          color: AppColors.textMutedFor(context).withValues(alpha: 0.12),
           borderRadius: BorderRadius.circular(14),
         ),
-        child: const Column(
+        child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.archive_outlined, color: Color(0xFF6B7280), size: 22),
-            SizedBox(height: 4),
+            Icon(
+              Icons.archive_outlined,
+              color: AppColors.textMutedFor(context),
+              size: 22,
+            ),
+            const SizedBox(height: 4),
             Text(
               'Lưu trữ',
               style: TextStyle(
                 fontSize: 11,
-                color: Color(0xFF6B7280),
+                color: AppColors.textMutedFor(context),
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -62,13 +66,13 @@ class CandidateNotificationCard extends StatelessWidget {
         child: Container(
           decoration: BoxDecoration(
             color: isUnread
-                ? const Color(0xFFF0F4FF) // nền nhạt xanh khi chưa đọc
-                : Colors.white,
+                ? AppColors.softPrimaryFor(context)
+                : AppColors.cardBackground(context),
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
               color: isUnread
                   ? AppColors.primary.withValues(alpha: 0.15)
-                  : const Color(0xFFE5E7EB),
+                  : AppColors.borderFor(context),
             ),
             boxShadow: [
               BoxShadow(
@@ -116,7 +120,7 @@ class CandidateNotificationCard extends StatelessWidget {
                                 fontWeight: isUnread
                                     ? FontWeight.w800
                                     : FontWeight.w600,
-                                color: const Color(0xFF111827),
+                                color: AppColors.textPrimaryFor(context),
                                 height: 1.3,
                               ),
                             ),
@@ -124,9 +128,9 @@ class CandidateNotificationCard extends StatelessWidget {
                           const SizedBox(width: 8),
                           Text(
                             _relativeTime(notification.createdAt),
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 11,
-                              color: Color(0xFF9CA3AF),
+                              color: AppColors.textMutedFor(context),
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -140,8 +144,8 @@ class CandidateNotificationCard extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 13,
                           color: isUnread
-                              ? const Color(0xFF374151)
-                              : const Color(0xFF6B7280),
+                              ? AppColors.textSecondaryFor(context)
+                              : AppColors.textMutedFor(context),
                           height: 1.45,
                         ),
                         maxLines: 3,

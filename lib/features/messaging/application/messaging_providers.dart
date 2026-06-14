@@ -5,7 +5,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../auth/application/auth_controller.dart';
 import '../../candidate/data/aws_application_repository.dart';
 import '../../candidate/domain/application_repository.dart';
+import '../../../shared/domain/app_role.dart';
 import '../domain/candidate_application.dart';
+
+const candidateChatAvailabilityMessage =
+    'Bạn cần bật trạng thái Sẵn sàng làm việc để sử dụng Chatting.';
+const chatCompletedMessage =
+    'Cuộc trò chuyện đã kết thúc vì ca làm đã hoàn thành.';
 
 int countUnreadEmployerMessages(List<ChatMessage> messages, {int? lastReadId}) {
   final lastReadIndex = lastReadId == null
@@ -24,22 +30,82 @@ bool _isEmployerMessage(ChatMessage message) {
       sender == 'company';
 }
 
-bool canDeleteConversation(String status) {
+bool canArchiveConversation(String status) {
   return status.trim().toLowerCase() == 'completed';
 }
 
-class CandidateChatsNotifier extends AsyncNotifier<List<CandidateApplication>> {
-  static const _deletedChatsKey = 'deleted_chats';
+bool canDeleteConversation(String status) => canArchiveConversation(status);
 
+String? candidateChatAccessMessage({
+  required bool isSignedIn,
+  bool isCandidate = true,
+  bool isActive = true,
+}) {
+  if (!isSignedIn) return 'login_required';
+  if (!isCandidate) return 'role_forbidden';
+  if (!isActive) return 'availability_off';
+  return null;
+}
+
+String chatAccessUiMessage(String code) {
+  return switch (code) {
+    'login_required' => 'Vui lòng đăng nhập để sử dụng Chatting.',
+    'role_forbidden' => 'Tài khoản này không có quyền sử dụng Chatting.',
+    'availability_off' => candidateChatAvailabilityMessage,
+    'chat_completed' => chatCompletedMessage,
+    _ => 'Không thể mở cuộc trò chuyện này.',
+  };
+}
+
+bool isVisibleInCandidateChatList(Map<String, dynamic> app) {
+  final status = app['status']?.toString().trim().toLowerCase() ?? '';
+  if (status != 'accepted') return false;
+  return !_isClosedChatRecord(app);
+}
+
+bool _isClosedChatRecord(Map<String, dynamic> app) {
+  final status = app['status']?.toString().trim().toLowerCase() ?? '';
+  final chatStatus = app['chatStatus']?.toString().trim().toLowerCase() ?? '';
+  const closedStatuses = {'completed', 'archived', 'deleted'};
+  return closedStatuses.contains(status) ||
+      closedStatuses.contains(chatStatus) ||
+      _hasValue(app['archivedAt']) ||
+      _hasValue(app['chatArchivedAt']) ||
+      _hasValue(app['closedAt']) ||
+      _hasValue(app['chatClosedAt']) ||
+      _hasValue(app['deletedAt']);
+}
+
+bool _hasValue(Object? value) => value?.toString().trim().isNotEmpty == true;
+
+class ChatAccessException implements Exception {
+  const ChatAccessException(this.code);
+
+  final String code;
+
+  @override
+  String toString() => chatAccessUiMessage(code);
+}
+
+class CandidateChatsNotifier extends AsyncNotifier<List<CandidateApplication>> {
   Timer? _timer;
   Map<String, int> _lastReadIds = {};
-  Set<String> _deletedChatIds = {};
 
   @override
   FutureOr<List<CandidateApplication>> build() async {
     final authState = ref.watch(authControllerProvider).value;
-    final userId = authState?.user?.userId;
-    if (userId == null) return [];
+    final user = authState?.user;
+    final accessCode = candidateChatAccessMessage(
+      isSignedIn: user != null,
+      isCandidate: user?.role == AppRole.candidate,
+      isActive: user?.isActive == true,
+    );
+    if (accessCode == 'login_required') return [];
+    if (accessCode != null) {
+      throw ChatAccessException(accessCode);
+    }
+
+    final userId = user!.userId;
 
     final repository = ref.watch(applicationRepositoryProvider);
 
@@ -56,7 +122,6 @@ class CandidateChatsNotifier extends AsyncNotifier<List<CandidateApplication>> {
           }
         }
       }
-      _deletedChatIds = prefs.getStringList(_deletedChatsKey)?.toSet() ?? {};
     } catch (_) {}
 
     _startPolling(userId);
@@ -86,13 +151,7 @@ class CandidateChatsNotifier extends AsyncNotifier<List<CandidateApplication>> {
     ApplicationRepository repo,
   ) async {
     final rawApps = await repo.getCandidateApplications(userId);
-    // Filter accepted or completed apps
-    final validApps = rawApps.where((app) {
-      final status = app['status']?.toString().trim().toLowerCase() ?? '';
-      final applicationId = app['applicationId']?.toString() ?? '';
-      return (status == 'accepted' || status == 'completed') &&
-          !_deletedChatIds.contains(applicationId);
-    }).toList();
+    final validApps = rawApps.where(isVisibleInCandidateChatList).toList();
 
     // Sort by updatedAt or appliedAt desc
     validApps.sort((a, b) {
@@ -136,21 +195,22 @@ class CandidateChatsNotifier extends AsyncNotifier<List<CandidateApplication>> {
     return chats.fold<int>(0, (total, chat) => total + unreadCount(chat));
   }
 
-  Future<void> deleteConversation(CandidateApplication chat) async {
-    if (!canDeleteConversation(chat.status)) {
+  Future<void> archiveConversation(CandidateApplication chat) async {
+    if (!canArchiveConversation(chat.status)) {
       throw StateError(
-        'Chỉ có thể xóa cuộc trò chuyện sau khi công việc đã hoàn thành.',
+        'Chỉ có thể lưu trữ cuộc trò chuyện sau khi công việc đã hoàn thành.',
       );
     }
 
-    _deletedChatIds.add(chat.applicationId);
+    final repository = ref.read(applicationRepositoryProvider);
+    await repository.archiveApplicationChat(
+      applicationId: chat.applicationId,
+      archivedAt: DateTime.now(),
+    );
+
     _lastReadIds.remove(chat.applicationId);
 
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList(
-      _deletedChatsKey,
-      _deletedChatIds.toList()..sort(),
-    );
     await prefs.remove('chat_read_${chat.applicationId}');
 
     final current = state.value;
@@ -163,10 +223,25 @@ class CandidateChatsNotifier extends AsyncNotifier<List<CandidateApplication>> {
     }
   }
 
+  Future<void> deleteConversation(CandidateApplication chat) {
+    return archiveConversation(chat);
+  }
+
   Future<void> refresh() async {
     final authState = ref.read(authControllerProvider).value;
-    final userId = authState?.user?.userId;
-    if (userId == null) return;
+    final user = authState?.user;
+    final accessCode = candidateChatAccessMessage(
+      isSignedIn: user != null,
+      isCandidate: user?.role == AppRole.candidate,
+      isActive: user?.isActive == true,
+    );
+    if (accessCode == 'login_required') return;
+    if (accessCode != null) {
+      state = AsyncError(ChatAccessException(accessCode), StackTrace.current);
+      return;
+    }
+
+    final userId = user!.userId;
     state = const AsyncLoading();
     try {
       final repository = ref.read(applicationRepositoryProvider);
@@ -194,10 +269,19 @@ class ActiveChatNotifier extends AsyncNotifier<List<ChatMessage>> {
   FutureOr<List<ChatMessage>> build() async {
     final repository = ref.watch(applicationRepositoryProvider);
     final authState = ref.watch(authControllerProvider).value;
-    final userId = authState?.user?.userId;
+    final user = authState?.user;
+    final accessCode = candidateChatAccessMessage(
+      isSignedIn: user != null,
+      isCandidate: user?.role == AppRole.candidate,
+      isActive: user?.isActive == true,
+    );
 
-    if (userId == null) return [];
+    if (accessCode == 'login_required') return [];
+    if (accessCode != null) {
+      throw ChatAccessException(accessCode);
+    }
 
+    final userId = user!.userId;
     _startPolling(userId);
 
     ref.onDispose(() {
@@ -242,12 +326,26 @@ class ActiveChatNotifier extends AsyncNotifier<List<ChatMessage>> {
       (a) => a['applicationId']?.toString() == applicationId,
       orElse: () => throw Exception('Không tìm thấy cuộc trò chuyện'),
     );
+    if (_isClosedChatRecord(app)) {
+      throw const ChatAccessException('chat_completed');
+    }
 
     return CandidateApplication.fromJson(app).chatMessages;
   }
 
   Future<void> sendMessage(String text) async {
     if (text.trim().isEmpty) return;
+
+    final authState = ref.read(authControllerProvider).value;
+    final user = authState?.user;
+    final accessCode = candidateChatAccessMessage(
+      isSignedIn: user != null,
+      isCandidate: user?.role == AppRole.candidate,
+      isActive: user?.isActive == true,
+    );
+    if (accessCode != null) {
+      throw ChatAccessException(accessCode);
+    }
 
     final currentMessages = state.value ?? [];
     final timestamp = DateTime.now().millisecondsSinceEpoch;
@@ -275,12 +373,7 @@ class ActiveChatNotifier extends AsyncNotifier<List<ChatMessage>> {
     state = AsyncData(updated);
 
     final repository = ref.read(applicationRepositoryProvider);
-    final authState = ref.read(authControllerProvider).value;
-    final userId = authState?.user?.userId;
-    if (userId == null) {
-      state = AsyncData(currentMessages);
-      throw Exception('Vui lòng đăng nhập để gửi tin nhắn.');
-    }
+    final userId = user!.userId;
 
     try {
       // Fetch full application to preserve the current workflow status.
@@ -289,6 +382,9 @@ class ActiveChatNotifier extends AsyncNotifier<List<ChatMessage>> {
         (a) => a['applicationId']?.toString() == applicationId,
         orElse: () => throw Exception('Không tìm thấy cuộc trò chuyện.'),
       );
+      if (_isClosedChatRecord(app)) {
+        throw const ChatAccessException('chat_completed');
+      }
       final status = app['status']?.toString() ?? 'accepted';
 
       await repository.updateApplicationChat(

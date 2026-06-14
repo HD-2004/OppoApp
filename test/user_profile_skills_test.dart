@@ -118,6 +118,12 @@ class _FakeApplicationRepository implements ApplicationRepository {
   }) async {}
 
   @override
+  Future<void> archiveApplicationChat({
+    required String applicationId,
+    required DateTime archivedAt,
+  }) async {}
+
+  @override
   Future<Map<String, dynamic>> uploadCandidateCV({
     required String userId,
     required List<int> fileBytes,

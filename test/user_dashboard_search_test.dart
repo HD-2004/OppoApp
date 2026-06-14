@@ -85,7 +85,7 @@ void main() {
     expect(find.byIcon(Icons.arrow_back), findsNothing);
 
     final homeNavLabel = tester.widget<Text>(find.text('Trang chủ'));
-    expect(homeNavLabel.style?.color, const Color(0xFF6B7280));
+    expect(homeNavLabel.style?.color, AppColors.textSecondary);
 
     final searchNavLabel = tester.widget<Text>(find.text('Công việc'));
     expect(searchNavLabel.style?.color, AppColors.primary);

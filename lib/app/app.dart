@@ -14,11 +14,15 @@ class TempJobsApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(appRouterProvider);
-    final themeMode =
-        ref.watch(appThemeControllerProvider).asData?.value ?? ThemeMode.light;
+    final themeModeAsync = ref.watch(appThemeControllerProvider);
     final locale =
         ref.watch(appLanguageControllerProvider).asData?.value ??
         const Locale('vi');
+
+    final themeMode = themeModeAsync.asData?.value;
+    if (themeMode == null) {
+      return const SizedBox.shrink();
+    }
 
     return MaterialApp.router(
       title: 'Ốp Pờ',

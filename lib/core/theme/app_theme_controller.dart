@@ -28,6 +28,7 @@ class AppThemeController extends AsyncNotifier<ThemeMode> {
     return switch (value) {
       'light' => ThemeMode.light,
       'dark' => ThemeMode.dark,
+      'system' => ThemeMode.system,
       _ => ThemeMode.light,
     };
   }

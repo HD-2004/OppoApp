@@ -16,9 +16,9 @@ class CandidateMenuButton extends StatelessWidget {
       child: IconButton(
         tooltip: 'Mở menu',
         onPressed: () => Scaffold.of(context).openDrawer(),
-        icon: const Icon(
+        icon: Icon(
           Icons.menu_rounded,
-          color: Color(0xFF1E293B),
+          color: AppColors.textPrimaryFor(context),
           size: 24,
         ),
       ),
@@ -55,7 +55,7 @@ class CandidateMenuDrawer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Drawer(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.surface(context),
       child: SafeArea(
         child: Column(
           children: [
@@ -152,8 +152,8 @@ class _DrawerHeader extends StatelessWidget {
                   displayName,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Color(0xFF111827),
+                  style: TextStyle(
+                    color: AppColors.textPrimaryFor(context),
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
                   ),
@@ -163,8 +163,8 @@ class _DrawerHeader extends StatelessWidget {
                   email,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Color(0xFF6B7280),
+                  style: TextStyle(
+                    color: AppColors.textSecondaryFor(context),
                     fontSize: 12,
                   ),
                 ),
@@ -221,9 +221,9 @@ class _DrawerAvatar extends StatelessWidget {
       height: 48,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: const Color(0xFFEFF6FF),
+        color: AppColors.softPrimaryFor(context),
         shape: BoxShape.circle,
-        border: Border.all(color: const Color(0xFFBFDBFE)),
+        border: Border.all(color: AppColors.borderFor(context)),
       ),
       child: content,
     );
@@ -235,7 +235,7 @@ class _DrawerAvatarFallback extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Icon(Icons.person_rounded, color: Color(0xFF1E3A8A), size: 26);
+    return const Icon(Icons.person_rounded, color: AppColors.primary, size: 26);
   }
 }
 
@@ -256,14 +256,14 @@ class _MenuTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = isDanger ? const Color(0xFFDC2626) : AppColors.primary;
+    final color = isDanger ? AppColors.danger : AppColors.primary;
 
     return ListTile(
       leading: Icon(icon, color: color),
       title: Text(
         title,
         style: TextStyle(
-          color: isDanger ? color : const Color(0xFF111827),
+          color: isDanger ? color : AppColors.textPrimaryFor(context),
           fontWeight: FontWeight.w700,
         ),
       ),
@@ -271,7 +271,10 @@ class _MenuTile extends StatelessWidget {
         subtitle,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: const TextStyle(color: Color(0xFF6B7280), fontSize: 12),
+        style: TextStyle(
+          color: AppColors.textSecondaryFor(context),
+          fontSize: 12,
+        ),
       ),
       onTap: onTap,
     );

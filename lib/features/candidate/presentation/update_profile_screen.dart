@@ -34,10 +34,6 @@ class _UpdateProfileScreenState extends ConsumerState<UpdateProfileScreen> {
   final _bioController = TextEditingController();
   final _skillsController = TextEditingController();
   final _emailController = TextEditingController();
-  final _facebookController = TextEditingController();
-  final _instagramController = TextEditingController();
-  final _zaloController = TextEditingController();
-  final _websiteController = TextEditingController();
 
   bool _isSubmitting = false;
   String? _profileImage;
@@ -57,11 +53,6 @@ class _UpdateProfileScreenState extends ConsumerState<UpdateProfileScreen> {
       _skillsController.text = user.skills?.join(', ') ?? '';
       _emailController.text = user.email;
       _profileImage = user.profileImage;
-      final social = user.socialLinks;
-      _facebookController.text = social?['facebook'] ?? '';
-      _instagramController.text = social?['instagram'] ?? '';
-      _zaloController.text = social?['zalo'] ?? '';
-      _websiteController.text = social?['website'] ?? '';
     }
   }
 
@@ -76,10 +67,6 @@ class _UpdateProfileScreenState extends ConsumerState<UpdateProfileScreen> {
     _bioController.dispose();
     _skillsController.dispose();
     _emailController.dispose();
-    _facebookController.dispose();
-    _instagramController.dispose();
-    _zaloController.dispose();
-    _websiteController.dispose();
     super.dispose();
   }
 
@@ -150,17 +137,6 @@ class _UpdateProfileScreenState extends ConsumerState<UpdateProfileScreen> {
         .where((s) => s.isNotEmpty)
         .toList();
 
-    final socialLinks = <String, String>{
-      if (_facebookController.text.trim().isNotEmpty)
-        'facebook': _facebookController.text.trim(),
-      if (_instagramController.text.trim().isNotEmpty)
-        'instagram': _instagramController.text.trim(),
-      if (_zaloController.text.trim().isNotEmpty)
-        'zalo': _zaloController.text.trim(),
-      if (_websiteController.text.trim().isNotEmpty)
-        'website': _websiteController.text.trim(),
-    };
-
     try {
       await ref
           .read(authControllerProvider.notifier)
@@ -174,7 +150,6 @@ class _UpdateProfileScreenState extends ConsumerState<UpdateProfileScreen> {
             bio: _bioController.text.trim(),
             skills: skills,
             profileImage: _profileImage,
-            socialLinks: socialLinks,
           );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -286,37 +261,6 @@ class _UpdateProfileScreenState extends ConsumerState<UpdateProfileScreen> {
                     helperText: 'Ví dụ: Pha chế, Phục vụ, Tiếng Anh',
                   ),
                   _BioField(controller: _bioController),
-                ],
-              ),
-              const SizedBox(height: 24),
-
-              _SectionCard(
-                title: 'Liên kết mạng xã hội',
-                children: [
-                  _Field(
-                    controller: _facebookController,
-                    label: 'Facebook URL',
-                    icon: Icons.facebook_rounded,
-                    keyboardType: TextInputType.url,
-                  ),
-                  _Field(
-                    controller: _instagramController,
-                    label: 'Instagram URL',
-                    icon: Icons.camera_alt_outlined,
-                    keyboardType: TextInputType.url,
-                  ),
-                  _Field(
-                    controller: _zaloController,
-                    label: 'Zalo',
-                    icon: Icons.chat_bubble_outline_rounded,
-                    keyboardType: TextInputType.text,
-                  ),
-                  _Field(
-                    controller: _websiteController,
-                    label: 'Website URL',
-                    icon: Icons.language_outlined,
-                    keyboardType: TextInputType.url,
-                  ),
                 ],
               ),
               const SizedBox(height: 24),

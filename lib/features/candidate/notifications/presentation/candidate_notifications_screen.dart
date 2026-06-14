@@ -31,7 +31,7 @@ class _CandidateNotificationsScreenState
     final unreadCount = state.asData?.value.summary.unread ?? 0;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.background(context),
       appBar: _NotifAppBar(
         unreadCount: unreadCount,
         onMarkAllRead: unreadCount > 0
@@ -48,7 +48,7 @@ class _CandidateNotificationsScreenState
             unreadCount: unreadCount,
             onChanged: (i) => setState(() => _filterTab = i),
           ),
-          const Divider(height: 1, color: Color(0xFFF3F4F6)),
+          Divider(height: 1, color: AppColors.borderFor(context)),
 
           // ── Content ───────────────────────────────────────────────────
           Expanded(
@@ -91,18 +91,18 @@ class _NotifAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     return AppBar(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.surface(context),
       elevation: 0,
       scrolledUnderElevation: 1,
-      leading: const BackButton(color: Color(0xFF1E293B)),
+      leading: BackButton(color: AppColors.textPrimaryFor(context)),
       title: Row(
         children: [
-          const Text(
+          Text(
             'Thông báo',
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w800,
-              color: Color(0xFF111827),
+              color: AppColors.textPrimaryFor(context),
             ),
           ),
           if (unreadCount > 0) ...[
@@ -110,7 +110,7 @@ class _NotifAppBar extends StatelessWidget implements PreferredSizeWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
-                color: const Color(0xFFEF4444),
+                color: AppColors.danger,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
@@ -201,7 +201,7 @@ class _FilterTab extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary : const Color(0xFFF3F4F6),
+          color: isSelected ? AppColors.primary : AppColors.fieldFill(context),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Row(
@@ -212,7 +212,9 @@ class _FilterTab extends StatelessWidget {
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
-                color: isSelected ? Colors.white : const Color(0xFF374151),
+                color: isSelected
+                    ? Colors.white
+                    : AppColors.textSecondaryFor(context),
               ),
             ),
             if (badge != null) ...[
@@ -222,7 +224,7 @@ class _FilterTab extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: isSelected
                       ? Colors.white.withValues(alpha: 0.25)
-                      : const Color(0xFFEF4444),
+                      : AppColors.danger,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
@@ -324,24 +326,27 @@ class _ErrorState extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(
+          Icon(
             Icons.wifi_off_rounded,
             size: 52,
-            color: Color(0xFFD1D5DB),
+            color: AppColors.disabledFor(context),
           ),
           const SizedBox(height: 16),
-          const Text(
+          Text(
             'Không thể tải thông báo',
             style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w600,
-              color: Color(0xFF374151),
+              color: AppColors.textSecondaryFor(context),
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'Kiểm tra kết nối và thử lại.',
-            style: TextStyle(fontSize: 13, color: Color(0xFF9CA3AF)),
+            style: TextStyle(
+              fontSize: 13,
+              color: AppColors.textMutedFor(context),
+            ),
           ),
           const SizedBox(height: 20),
           FilledButton.icon(

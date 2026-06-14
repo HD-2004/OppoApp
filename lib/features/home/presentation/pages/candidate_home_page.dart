@@ -1,24 +1,23 @@
 import 'package:flutter/material.dart';
-
-import 'package:oppo_temp_jobs/core/theme/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../../features/auth/application/auth_controller.dart';
-import '../../../../features/candidate/application/jobs_providers.dart';
-import '../../../../features/candidate/data/aws_application_repository.dart';
-import '../../../../features/candidate/domain/application_repository.dart';
-import '../../../../features/candidate/domain/job_post.dart';
-import '../../../../features/candidate/presentation/user_job_detail_screen.dart';
-import '../../../../features/candidate/presentation/widgets/candidate_intent_input.dart';
-import '../../../../features/candidate/presentation/widgets/featured_jobs_section.dart';
-import '../../../../features/candidate/presentation/widgets/job_post_card.dart';
-import '../../../../features/employer_packages/application/featured_employer_package_providers.dart';
-import '../../../../features/messaging/presentation/pages/messages_screen.dart';
-import '../../../../features/wallet/presentation/controllers/wallet_controller.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../../../auth/application/auth_controller.dart';
+import '../../../auth/domain/auth_user_profile.dart';
+import '../../../candidate/application/jobs_providers.dart';
+import '../../../candidate/data/aws_application_repository.dart';
+import '../../../candidate/domain/application_repository.dart';
+import '../../../candidate/domain/job_post.dart';
+import '../../../candidate/notifications/application/notification_controller.dart';
+import '../../../candidate/presentation/user_job_detail_screen.dart';
+import '../../../employer_packages/application/featured_employer_package_providers.dart';
+import '../../../employer_packages/domain/employer_package.dart';
+import '../../../messaging/application/messaging_providers.dart';
+import '../../../messaging/presentation/pages/messages_screen.dart';
+import '../../../recommendations/application/job_recommendation_providers.dart';
+import '../../../recommendations/domain/job_recommendation.dart';
+import '../widgets/candidate_home_marketplace_sections.dart';
 import '../widgets/candidate_menu_drawer.dart';
-import '../widgets/home_s3_banner_carousel.dart';
-import '../widgets/home_current_job_section.dart';
-import '../widgets/oppo_home_header.dart';
 
 class CandidateHomePage extends ConsumerStatefulWidget {
   const CandidateHomePage({
@@ -47,18 +46,40 @@ class CandidateHomePage extends ConsumerStatefulWidget {
 }
 
 class _CandidateHomePageState extends ConsumerState<CandidateHomePage> {
+  final _searchController = TextEditingController();
+  String _keyword = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   Future<void> _onRefresh() async {
     ref.invalidate(activeQuickJobsProvider);
     ref.invalidate(activeJobsProvider);
     ref.invalidate(featuredEmployersProvider);
-    ref.invalidate(walletControllerProvider);
+    ref.invalidate(personalizedJobRecommendationsProvider);
+
     final userId = ref.read(authControllerProvider).asData?.value.user?.userId;
     if (userId != null) {
-      ref.invalidate(candidateHomeApplicationsProvider(userId));
+      ref.invalidate(candidateChatsProvider);
+      ref
+          .read(candidateNotificationControllerProvider.notifier)
+          .refreshNotifications();
     }
+
     await Future.wait([
-      ref.read(activeQuickJobsProvider.future),
-      ref.read(activeJobsProvider.future),
+      ref.read(activeJobsProvider.future).catchError((_) => const <JobPost>[]),
+      ref
+          .read(activeQuickJobsProvider.future)
+          .catchError((_) => const <JobPost>[]),
+      ref
+          .read(featuredEmployersProvider.future)
+          .catchError((_) => const <FeaturedEmployer>[]),
+      ref
+          .read(personalizedJobRecommendationsProvider.future)
+          .catchError((_) => const <JobRecommendation>[]),
     ]);
   }
 
@@ -82,7 +103,7 @@ class _CandidateHomePageState extends ConsumerState<CandidateHomePage> {
     );
   }
 
-  Future<void> _handleApply(JobPost job, dynamic user) async {
+  Future<void> _handleApply(JobPost job, AuthUserProfile? user) async {
     if (user == null) {
       _showMessage('Vui lòng đăng nhập để ứng tuyển.');
       return;
@@ -237,20 +258,42 @@ class _CandidateHomePageState extends ConsumerState<CandidateHomePage> {
         : 'Chưa có email';
     final standardJobsAsync = ref.watch(activeJobsProvider);
     final quickJobsAsync = ref.watch(activeQuickJobsProvider);
-    final feedJobs = <JobPost>[
+    final recommendationsAsync = ref.watch(
+      personalizedJobRecommendationsProvider,
+    );
+    final featuredEmployersAsync = ref.watch(featuredEmployersProvider);
+    final notificationCount =
+        ref
+            .watch(candidateNotificationControllerProvider)
+            .asData
+            ?.value
+            .summary
+            .unread ??
+        0;
+    final chats = ref.watch(candidateChatsProvider).asData?.value;
+    final chatCount = chats == null
+        ? 0
+        : ref.read(candidateChatsProvider.notifier).totalUnreadCount(chats);
+
+    final allJobs = _uniqueJobs([
       ...(quickJobsAsync.value ?? const <JobPost>[]),
       ...(standardJobsAsync.value ?? const <JobPost>[]),
-    ];
-    final uniqueFeedJobs = <String, JobPost>{
-      for (final job in feedJobs) job.id: job,
-    }.values.toList();
-    final featuredJobs = uniqueFeedJobs
-        .where((job) => job.visibilityScore > 0)
-        .map(FeaturedJobItem.fromJob)
-        .toList(growable: false);
+    ]);
+    final filteredJobs = _filterJobs(allJobs, _keyword);
+    final filteredRecommendations = _filterRecommendations(
+      recommendationsAsync.value ?? const <JobRecommendation>[],
+      _keyword,
+    );
+    final topCompanies = _buildCompanyRanking(filteredJobs);
+    final dataLoading =
+        (standardJobsAsync.isLoading || quickJobsAsync.isLoading) &&
+        allJobs.isEmpty;
+    final dataError =
+        (standardJobsAsync.hasError || quickJobsAsync.hasError) &&
+        allJobs.isEmpty;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.background(context),
       drawer: CandidateMenuDrawer(
         displayName: displayName,
         email: email,
@@ -263,212 +306,226 @@ class _CandidateHomePageState extends ConsumerState<CandidateHomePage> {
         onSupportTap: () => _closeDrawerAndRun(widget.onSupportTap),
         onSignOutTap: () => _closeDrawerAndRun(widget.onSignOutTap),
       ),
-      appBar: OppoHomeHeader(
-        onSearchChanged: (_) {},
-        onChatPressed: () => Navigator.of(
-          context,
-        ).push(MaterialPageRoute(builder: (_) => const MessagesScreen())),
-      ),
       body: RefreshIndicator(
         onRefresh: _onRefresh,
         color: AppColors.primary,
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.surface(context),
         child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
             SliverToBoxAdapter(
-              child: CandidateIntentInput(
-                avatarUrl: user?.profileImage,
-                onChanged: (_) {},
-                onSubmitted: (_) {},
-              ),
-            ),
-            const SliverToBoxAdapter(child: HomeS3BannerCarousel()),
-            SliverToBoxAdapter(
-              child: FeaturedJobsSection(
-                items: featuredJobs,
-                onSeeAllPressed: widget.onSeeAllJobsTap,
-                onJobPressed: (jobId) {
-                  final selectedJob = uniqueFeedJobs.firstWhere(
-                    (job) => job.id == jobId,
-                  );
-                  _openJobDetail(selectedJob);
-                },
-              ),
-            ),
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: _FeedSectionHeader(
-                  onSeeAllJobsTap: widget.onSeeAllJobsTap,
+              child: _PageWidth(
+                child: HomeHeader(
+                  displayName: displayName,
+                  searchController: _searchController,
+                  onSearchChanged: (value) {
+                    setState(() => _keyword = value);
+                  },
+                  onNotificationTap: widget.onNotificationTap,
+                  onChatTap: () {
+                    if (user?.isActive != true) {
+                      _showMessage(candidateChatAvailabilityMessage);
+                      return;
+                    }
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const MessagesScreen()),
+                    );
+                  },
+                  notificationCount: notificationCount,
+                  chatCount: chatCount,
                 ),
               ),
             ),
-            if (standardJobsAsync.isLoading && uniqueFeedJobs.isEmpty)
-              const SliverToBoxAdapter(child: _FeedLoadingState())
-            else if (standardJobsAsync.hasError && uniqueFeedJobs.isEmpty)
-              SliverToBoxAdapter(
-                child: _FeedErrorState(
+            SliverToBoxAdapter(
+              child: _PageWidth(
+                child: GenZFeedSection(
+                  jobs: filteredJobs.take(6).toList(growable: false),
+                  isLoading: dataLoading,
+                  hasError: dataError,
                   onRetry: () {
                     ref.invalidate(activeJobsProvider);
                     ref.invalidate(activeQuickJobsProvider);
                   },
+                  onSeeAll: widget.onSeeAllJobsTap,
+                  onJobTap: _openJobDetail,
+                  onApply: (job) => _handleApply(job, user),
                 ),
-              )
-            else if (uniqueFeedJobs.isEmpty)
-              SliverToBoxAdapter(
-                child: _FeedEmptyState(onSeeAllJobsTap: widget.onSeeAllJobsTap),
-              )
-            else
-              SliverList.separated(
-                itemCount: uniqueFeedJobs.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 12),
-                itemBuilder: (context, index) {
-                  final job = uniqueFeedJobs[index];
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: JobPostCard(
-                      job: job,
-                      onDetailsPressed: () => _openJobDetail(job),
-                      onApplyPressed: () => _handleApply(job, user),
-                    ),
-                  );
-                },
               ),
-            const SliverToBoxAdapter(child: SizedBox(height: 88)),
+            ),
+            SliverToBoxAdapter(
+              child: _PageWidth(
+                child: RecommendedJobsSection(
+                  recommendations: filteredRecommendations
+                      .take(6)
+                      .toList(growable: false),
+                  isLoading: recommendationsAsync.isLoading,
+                  hasError: recommendationsAsync.hasError,
+                  onRetry: () =>
+                      ref.invalidate(personalizedJobRecommendationsProvider),
+                  onSeeAll: widget.onSeeAllJobsTap,
+                  onJobTap: _openJobDetail,
+                  onApply: (job) => _handleApply(job, user),
+                ),
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: _PageWidth(
+                child: SponsoredBannerSection(
+                  employers:
+                      featuredEmployersAsync.value ??
+                      const <FeaturedEmployer>[],
+                  isLoading: featuredEmployersAsync.isLoading,
+                  onViewJobs: widget.onSeeAllJobsTap,
+                ),
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: _PageWidth(
+                child: TopCompaniesSection(
+                  companies: topCompanies.take(5).toList(growable: false),
+                  isLoading: dataLoading,
+                  onSeeAll: widget.onSeeAllJobsTap,
+                ),
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: _PageWidth(
+                child: DirectionJobsSection(
+                  jobs: filteredJobs.take(8).toList(growable: false),
+                  isLoading: dataLoading,
+                  hasError: dataError,
+                  onRetry: () {
+                    ref.invalidate(activeJobsProvider);
+                    ref.invalidate(activeQuickJobsProvider);
+                  },
+                  onSeeAll: widget.onSeeAllJobsTap,
+                  onJobTap: _openJobDetail,
+                  onApply: (job) => _handleApply(job, user),
+                ),
+              ),
+            ),
+            const SliverToBoxAdapter(child: SizedBox(height: 92)),
           ],
         ),
       ),
     );
   }
+
+  List<JobPost> _uniqueJobs(List<JobPost> jobs) {
+    final byId = <String, JobPost>{for (final job in jobs) job.id: job};
+    final unique = byId.values.toList(growable: false);
+    return sortJobsByVisibilityThenCreatedAt(unique);
+  }
+
+  List<JobPost> _filterJobs(List<JobPost> jobs, String keyword) {
+    final normalized = keyword.trim().toLowerCase();
+    if (normalized.isEmpty) return jobs;
+    return jobs
+        .where((job) {
+          final haystack = [
+            job.title,
+            job.description,
+            job.employerName,
+            job.companyName ?? '',
+            job.location,
+            job.salary,
+            job.shiftTime,
+            job.tags.join(' '),
+          ].join(' ').toLowerCase();
+          return haystack.contains(normalized);
+        })
+        .toList(growable: false);
+  }
+
+  List<JobRecommendation> _filterRecommendations(
+    List<JobRecommendation> recommendations,
+    String keyword,
+  ) {
+    final normalized = keyword.trim().toLowerCase();
+    if (normalized.isEmpty) return recommendations;
+    return recommendations
+        .where((item) {
+          final job = item.job;
+          final haystack = [
+            job.title,
+            job.description,
+            job.employerName,
+            job.companyName ?? '',
+            job.location,
+            job.salary,
+            job.shiftTime,
+            job.tags.join(' '),
+          ].join(' ').toLowerCase();
+          return haystack.contains(normalized);
+        })
+        .toList(growable: false);
+  }
+
+  List<CompanyRankItem> _buildCompanyRanking(List<JobPost> jobs) {
+    final grouped = <String, _CompanyBucket>{};
+    for (final job in jobs) {
+      final name = companyNameOf(job);
+      final key = job.employerId.trim().isNotEmpty
+          ? job.employerId.trim()
+          : name.toLowerCase();
+      grouped.update(
+        key,
+        (bucket) => bucket.copyWith(count: bucket.count + 1),
+        ifAbsent: () => _CompanyBucket(
+          name: name,
+          logoUrl: job.employerAvatarUrl,
+          count: 1,
+        ),
+      );
+    }
+
+    final sorted = grouped.values.toList()
+      ..sort((a, b) {
+        final countComparison = b.count.compareTo(a.count);
+        if (countComparison != 0) return countComparison;
+        return a.name.compareTo(b.name);
+      });
+
+    return [
+      for (var index = 0; index < sorted.length; index++)
+        CompanyRankItem(
+          rank: index + 1,
+          name: sorted[index].name,
+          logoUrl: sorted[index].logoUrl,
+          activeJobCount: sorted[index].count,
+        ),
+    ];
+  }
 }
 
-class _FeedSectionHeader extends StatelessWidget {
-  const _FeedSectionHeader({required this.onSeeAllJobsTap});
+class _PageWidth extends StatelessWidget {
+  const _PageWidth({required this.child});
 
-  final VoidCallback onSeeAllJobsTap;
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.fromLTRB(14, 6, 14, 10),
-      child: Row(
-        children: [
-          const Expanded(
-            child: Text(
-              'Bảng tin việc làm',
-              style: TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 18,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ),
-          TextButton(
-            onPressed: onSeeAllJobsTap,
-            child: const Text('Xem tất cả'),
-          ),
-        ],
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 960),
+        child: child,
       ),
     );
   }
 }
 
-class _FeedLoadingState extends StatelessWidget {
-  const _FeedLoadingState();
+class _CompanyBucket {
+  const _CompanyBucket({required this.name, required this.count, this.logoUrl});
 
-  @override
-  Widget build(BuildContext context) {
-    return const Padding(
-      padding: EdgeInsets.symmetric(vertical: 42),
-      child: Center(child: CircularProgressIndicator(color: Color(0xFF0866FF))),
-    );
-  }
-}
+  final String name;
+  final int count;
+  final String? logoUrl;
 
-class _FeedErrorState extends StatelessWidget {
-  const _FeedErrorState({required this.onRetry});
-
-  final VoidCallback onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    return _DarkNotice(
-      icon: Icons.wifi_off_rounded,
-      title: 'Không thể tải bảng tin',
-      message: 'Vui lòng kiểm tra kết nối rồi thử lại.',
-      actionLabel: 'Tải lại',
-      onAction: onRetry,
-    );
-  }
-}
-
-class _FeedEmptyState extends StatelessWidget {
-  const _FeedEmptyState({required this.onSeeAllJobsTap});
-
-  final VoidCallback onSeeAllJobsTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return _DarkNotice(
-      icon: Icons.work_outline_rounded,
-      title: 'Chưa có bài tuyển dụng',
-      message: 'Khi có việc phù hợp, bảng tin sẽ hiển thị ở đây.',
-      actionLabel: 'Khám phá công việc',
-      onAction: onSeeAllJobsTap,
-    );
-  }
-}
-
-class _DarkNotice extends StatelessWidget {
-  const _DarkNotice({
-    required this.icon,
-    required this.title,
-    required this.message,
-    required this.actionLabel,
-    required this.onAction,
-  });
-
-  final IconData icon;
-  final String title;
-  final String message;
-  final String actionLabel;
-  final VoidCallback onAction;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(22),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, color: AppColors.textMuted, size: 42),
-          const SizedBox(height: 10),
-          Text(
-            title,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 17,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            message,
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: AppColors.textMuted),
-          ),
-          const SizedBox(height: 14),
-          FilledButton(onPressed: onAction, child: Text(actionLabel)),
-        ],
-      ),
+  _CompanyBucket copyWith({int? count}) {
+    return _CompanyBucket(
+      name: name,
+      count: count ?? this.count,
+      logoUrl: logoUrl,
     );
   }
 }

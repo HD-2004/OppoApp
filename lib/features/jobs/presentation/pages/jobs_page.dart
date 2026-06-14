@@ -200,7 +200,7 @@ class _JobsPageState extends ConsumerState<JobsPage> {
                 ? 'Bạn đã ứng tuyển công việc này rồi!'
                 : msg.replaceAll('Exception: ', ''),
           ),
-          backgroundColor: const Color(0xFFEF4444),
+          backgroundColor: AppColors.danger,
         ),
       );
     }
@@ -213,7 +213,7 @@ class _JobsPageState extends ConsumerState<JobsPage> {
     final jobsState = jobsAsync.asData?.value ?? const JobsState();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FC),
+      backgroundColor: AppColors.background(context),
       appBar: _searchMode
           ? _buildSearchAppBar(controller)
           : JobsHeader(onSearchTap: _toggleSearch),
@@ -224,9 +224,9 @@ class _JobsPageState extends ConsumerState<JobsPage> {
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
             // ── Title ─────────────────────────────────────────────────────
-            const SliverToBoxAdapter(
+            SliverToBoxAdapter(
               child: Padding(
-                padding: EdgeInsets.fromLTRB(16, 20, 16, 4),
+                padding: const EdgeInsets.fromLTRB(16, 20, 16, 4),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -235,14 +235,17 @@ class _JobsPageState extends ConsumerState<JobsPage> {
                       style: TextStyle(
                         fontSize: 26,
                         fontWeight: FontWeight.w900,
-                        color: Color(0xFF111827),
+                        color: AppColors.textPrimaryFor(context),
                         letterSpacing: -0.5,
                       ),
                     ),
-                    SizedBox(height: 4),
+                    const SizedBox(height: 4),
                     Text(
                       'Tìm kiếm cơ hội phù hợp với bạn hôm nay.',
-                      style: TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: AppColors.textSecondaryFor(context),
+                      ),
                     ),
                   ],
                 ),
@@ -303,9 +306,9 @@ class _JobsPageState extends ConsumerState<JobsPage> {
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
           child: Text(
             'Tìm thấy ${jobs.length} công việc',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
-              color: Color(0xFF6B7280),
+              color: AppColors.textSecondaryFor(context),
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -324,21 +327,27 @@ class _JobsPageState extends ConsumerState<JobsPage> {
 
   PreferredSizeWidget _buildSearchAppBar(JobsController controller) {
     return AppBar(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.surface(context),
       elevation: 0,
       leading: IconButton(
-        icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF374151)),
+        icon: Icon(
+          Icons.arrow_back_rounded,
+          color: AppColors.textPrimaryFor(context),
+        ),
         onPressed: _toggleSearch,
       ),
       title: TextField(
         controller: _searchController,
         autofocus: true,
-        decoration: const InputDecoration(
+        decoration: InputDecoration(
           hintText: 'Tìm việc làm, công ty...',
           border: InputBorder.none,
-          hintStyle: TextStyle(color: Color(0xFF9CA3AF)),
+          hintStyle: TextStyle(color: AppColors.textMutedFor(context)),
         ),
-        style: const TextStyle(fontSize: 16, color: Color(0xFF111827)),
+        style: TextStyle(
+          fontSize: 16,
+          color: AppColors.textPrimaryFor(context),
+        ),
         onChanged: (v) {
           controller.setKeyword(v);
           setState(() {});
@@ -347,7 +356,10 @@ class _JobsPageState extends ConsumerState<JobsPage> {
       actions: [
         if (_searchController.text.isNotEmpty)
           IconButton(
-            icon: const Icon(Icons.close_rounded, color: Color(0xFF6B7280)),
+            icon: Icon(
+              Icons.close_rounded,
+              color: AppColors.textSecondaryFor(context),
+            ),
             onPressed: () {
               _searchController.clear();
               controller.setKeyword('');

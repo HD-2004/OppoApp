@@ -45,4 +45,8 @@ abstract class ApplicationRepository {
     required String status,
     required List<Map<String, dynamic>> chatMessages,
   });
+  Future<void> archiveApplicationChat({
+    required String applicationId,
+    required DateTime archivedAt,
+  });
 }

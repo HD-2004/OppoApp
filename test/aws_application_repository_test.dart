@@ -10,6 +10,22 @@ void main() {
       'status': 'completed',
       'candidateConfirmed': true,
       'candidateConfirmedAt': '2026-06-09T03:30:00.000Z',
+      'chatStatus': 'archived',
+      'chatArchivedAt': '2026-06-09T03:30:00.000Z',
+      'chatClosedAt': '2026-06-09T03:30:00.000Z',
+    });
+  });
+
+  test('builds a soft archive payload for completed chat threads', () {
+    final archivedAt = DateTime.parse('2026-06-14T15:45:00+07:00');
+
+    expect(buildChatArchivePayload(archivedAt), {
+      'status': 'archived',
+      'chatStatus': 'archived',
+      'archivedAt': '2026-06-14T08:45:00.000Z',
+      'chatArchivedAt': '2026-06-14T08:45:00.000Z',
+      'closedAt': '2026-06-14T08:45:00.000Z',
+      'chatClosedAt': '2026-06-14T08:45:00.000Z',
     });
   });
 

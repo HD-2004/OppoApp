@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/localization/app_localizations.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../shared/platform/cv_file_picker.dart';
 import '../../auth/application/auth_controller.dart';
 import '../../auth/domain/auth_user_profile.dart';
@@ -131,7 +132,7 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
         : 'Chưa có email';
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FC),
+      backgroundColor: AppColors.background(context),
       drawer: CandidateMenuDrawer(
         displayName: displayName,
         email: email,
@@ -249,7 +250,7 @@ class _ProfileAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     return AppBar(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.surface(context),
       elevation: 0,
       scrolledUnderElevation: 0,
       leading: const CandidateMenuButton(),
@@ -258,14 +259,14 @@ class _ProfileAppBar extends StatelessWidget implements PreferredSizeWidget {
         style: TextStyle(
           fontSize: 20,
           fontWeight: FontWeight.w900,
-          color: Color(0xFF1E3A8A),
+          color: AppColors.primary,
         ),
       ),
       actions: [
         IconButton(
-          icon: const Icon(
+          icon: Icon(
             Icons.notifications_none_rounded,
-            color: Color(0xFF1E293B),
+            color: AppColors.textPrimaryFor(context),
             size: 24,
           ),
           onPressed: () {},
@@ -614,7 +615,7 @@ class _ProfileSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: Colors.white,
+      color: AppColors.surface(context),
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
       child: child,
@@ -910,9 +911,9 @@ class _InfoCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFF9FAFB),
+        color: AppColors.fieldFill(context),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        border: Border.all(color: AppColors.borderFor(context)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -931,10 +932,10 @@ class _InfoCard extends StatelessWidget {
               const SizedBox(width: 8),
               Text(
                 label.toUpperCase(),
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.bold,
-                  color: Color(0xFF6B7280),
+                  color: AppColors.textSecondaryFor(context),
                   letterSpacing: 0.5,
                 ),
               ),
@@ -948,7 +949,7 @@ class _InfoCard extends StatelessWidget {
               style: TextStyle(
                 fontSize: valueFontSize,
                 fontWeight: FontWeight.w700,
-                color: const Color(0xFF111827),
+                color: AppColors.textPrimaryFor(context),
               ),
               maxLines: maxLines,
               overflow: TextOverflow.ellipsis,
@@ -1762,14 +1763,14 @@ class _SkillsSectionState extends ConsumerState<_SkillsSection> {
                   Icon(
                     _isAdding ? Icons.close_rounded : Icons.add_rounded,
                     size: 16,
-                    color: const Color(0xFF1E3A8A),
+                    color: AppColors.primary,
                   ),
                   const SizedBox(width: 3),
                   Text(
                     _isAdding ? 'Đóng' : 'Thêm',
                     style: const TextStyle(
                       fontSize: 13,
-                      color: Color(0xFF1E3A8A),
+                      color: AppColors.primary,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -1794,23 +1795,23 @@ class _SkillsSectionState extends ConsumerState<_SkillsSection> {
                   ? IconButton(
                       tooltip: 'Thêm kỹ năng',
                       icon: const Icon(Icons.add_circle_rounded),
-                      color: const Color(0xFF1E3A8A),
+                      color: AppColors.primary,
                       onPressed: _isSaving ? null : () => _addSkill(query),
                     )
                   : null,
               filled: true,
-              fillColor: const Color(0xFFF9FAFB),
+              fillColor: AppColors.fieldFill(context),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                borderSide: BorderSide(color: AppColors.borderFor(context)),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                borderSide: BorderSide(color: AppColors.borderFor(context)),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: Color(0xFF1E3A8A)),
+                borderSide: const BorderSide(color: AppColors.primary),
               ),
             ),
           ),
@@ -1825,12 +1826,12 @@ class _SkillsSectionState extends ConsumerState<_SkillsSection> {
                       label: Text(skill),
                       avatar: const Icon(Icons.add_rounded, size: 16),
                       onPressed: _isSaving ? null : () => _addSkill(skill),
-                      backgroundColor: const Color(0xFFEFF6FF),
+                      backgroundColor: AppColors.softPrimaryFor(context),
                       labelStyle: const TextStyle(
-                        color: Color(0xFF1E3A8A),
+                        color: AppColors.primary,
                         fontWeight: FontWeight.w600,
                       ),
-                      side: const BorderSide(color: Color(0xFFBFDBFE)),
+                      side: BorderSide(color: AppColors.borderFor(context)),
                     ),
                   )
                   .toList(),
@@ -1844,8 +1845,8 @@ class _SkillsSectionState extends ConsumerState<_SkillsSection> {
                 icon: const Icon(Icons.add_rounded),
                 label: Text('Thêm "$query"'),
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFF1E3A8A),
-                  side: const BorderSide(color: Color(0xFFBFDBFE)),
+                  foregroundColor: AppColors.primary,
+                  side: BorderSide(color: AppColors.borderFor(context)),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(10),
                   ),
@@ -1861,7 +1862,7 @@ class _SkillsSectionState extends ConsumerState<_SkillsSection> {
             const SizedBox(height: 8),
             Text(
               _message!,
-              style: const TextStyle(fontSize: 12, color: Color(0xFFDC2626)),
+              style: const TextStyle(fontSize: 12, color: AppColors.danger),
             ),
           ],
           if (_skills.isNotEmpty) const SizedBox(height: 12),
@@ -1911,19 +1912,19 @@ class _SkillChip extends StatelessWidget {
         bottom: 7,
       ),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.cardBackground(context),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        border: Border.all(color: AppColors.borderFor(context)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
             skill,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w500,
-              color: Color(0xFF111827),
+              color: AppColors.textPrimaryFor(context),
             ),
           ),
           if (isVerified) ...[
@@ -1931,7 +1932,7 @@ class _SkillChip extends StatelessWidget {
             const Icon(
               Icons.verified_rounded,
               size: 16,
-              color: Color(0xFF1E3A8A),
+              color: AppColors.primary,
             ),
           ],
           if (onRemove != null) ...[
@@ -1939,12 +1940,12 @@ class _SkillChip extends StatelessWidget {
             InkWell(
               onTap: onRemove,
               borderRadius: BorderRadius.circular(14),
-              child: const Padding(
-                padding: EdgeInsets.all(3),
+              child: Padding(
+                padding: const EdgeInsets.all(3),
                 child: Icon(
                   Icons.close_rounded,
                   size: 16,
-                  color: Color(0xFF9CA3AF),
+                  color: AppColors.disabledFor(context),
                 ),
               ),
             ),
@@ -1979,9 +1980,9 @@ class _ActionTile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: const Color(0xFFF9FAFB),
+          color: AppColors.fieldFill(context),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE5E7EB)),
+          border: Border.all(color: AppColors.borderFor(context)),
         ),
         child: Row(
           children: [
@@ -2001,25 +2002,25 @@ class _ActionTile extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,
-                      color: Color(0xFF111827),
+                      color: AppColors.textPrimaryFor(context),
                     ),
                   ),
                   Text(
                     subtitle,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
-                      color: Color(0xFF9CA3AF),
+                      color: AppColors.textMutedFor(context),
                     ),
                   ),
                 ],
               ),
             ),
-            const Icon(
+            Icon(
               Icons.chevron_right_rounded,
-              color: Color(0xFF9CA3AF),
+              color: AppColors.textMutedFor(context),
               size: 20,
             ),
           ],
@@ -2039,10 +2040,10 @@ class _SectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       title,
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 18,
         fontWeight: FontWeight.w900,
-        color: Color(0xFF111827),
+        color: AppColors.textPrimaryFor(context),
       ),
     );
   }
@@ -2061,24 +2062,27 @@ class _EmptyEntryState extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 14),
         decoration: BoxDecoration(
-          color: const Color(0xFFF9FAFB),
+          color: AppColors.fieldFill(context),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: const Color(0xFFE5E7EB),
+            color: AppColors.borderFor(context),
             style: BorderStyle.solid,
           ),
         ),
         child: Row(
           children: [
-            const Icon(
+            Icon(
               Icons.add_circle_outline_rounded,
-              color: Color(0xFF9CA3AF),
+              color: AppColors.textMutedFor(context),
               size: 20,
             ),
             const SizedBox(width: 10),
             Text(
               message,
-              style: const TextStyle(fontSize: 13, color: Color(0xFF9CA3AF)),
+              style: TextStyle(
+                fontSize: 13,
+                color: AppColors.textMutedFor(context),
+              ),
             ),
           ],
         ),

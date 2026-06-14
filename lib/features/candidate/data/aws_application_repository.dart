@@ -13,10 +13,26 @@ final applicationRepositoryProvider = Provider<ApplicationRepository>((ref) {
 });
 
 Map<String, dynamic> buildCompletionConfirmationPayload(DateTime confirmedAt) {
+  final archivedAt = confirmedAt.toUtc().toIso8601String();
   return {
     'status': 'completed',
     'candidateConfirmed': true,
-    'candidateConfirmedAt': confirmedAt.toUtc().toIso8601String(),
+    'candidateConfirmedAt': archivedAt,
+    'chatStatus': 'archived',
+    'chatArchivedAt': archivedAt,
+    'chatClosedAt': archivedAt,
+  };
+}
+
+Map<String, dynamic> buildChatArchivePayload(DateTime archivedAt) {
+  final timestamp = archivedAt.toUtc().toIso8601String();
+  return {
+    'status': 'archived',
+    'chatStatus': 'archived',
+    'archivedAt': timestamp,
+    'chatArchivedAt': timestamp,
+    'closedAt': timestamp,
+    'chatClosedAt': timestamp,
   };
 }
 
@@ -386,6 +402,32 @@ class AwsApplicationRepository implements ApplicationRepository {
       final body = jsonDecode(response.body);
       final errorMsg =
           body['error'] ?? body['message'] ?? 'Lỗi khi cập nhật tin nhắn';
+      throw Exception(errorMsg);
+    }
+  }
+
+  @override
+  Future<void> archiveApplicationChat({
+    required String applicationId,
+    required DateTime archivedAt,
+  }) async {
+    final token = await _getAuthToken();
+    if (token == null) {
+      throw Exception('Vui lòng đăng nhập để thực hiện hành động này.');
+    }
+
+    final response = await http.put(
+      Uri.parse('$_applicationsBaseUrl/applications/$applicationId/status'),
+      headers: _buildHeaders(token),
+      body: jsonEncode(buildChatArchivePayload(archivedAt)),
+    );
+
+    if (response.statusCode != 200) {
+      final body = jsonDecode(response.body);
+      final errorMsg =
+          body['error'] ??
+          body['message'] ??
+          'Không thể lưu trữ cuộc trò chuyện';
       throw Exception(errorMsg);
     }
   }

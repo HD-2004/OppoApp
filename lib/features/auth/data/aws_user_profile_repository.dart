@@ -7,6 +7,26 @@ import '../../../shared/domain/app_role.dart';
 import '../domain/auth_user_profile.dart';
 import 'user_profile_repository.dart';
 
+Map<String, dynamic> buildProfileCreatePayload({
+  required String userId,
+  required String email,
+  required String fullName,
+  required AppRole? role,
+  required DateTime createdAt,
+}) {
+  final now = createdAt.toIso8601String();
+  return {
+    'userId': userId,
+    'email': email.trim(),
+    'fullName': fullName.trim(),
+    if (role != null) 'role': role.cognitoValue,
+    'kycCompleted': false,
+    'profileCompleted': false,
+    'createdAt': now,
+    'updatedAt': now,
+  };
+}
+
 class AwsUserProfileRepository implements UserProfileRepository {
   static const _apiBaseUrl =
       'https://sd7ds72m8g.execute-api.ap-southeast-1.amazonaws.com/prod';
@@ -121,17 +141,13 @@ class AwsUserProfileRepository implements UserProfileRepository {
 
     // 2. Create new profile in DynamoDB
     final token = await _getAuthToken();
-    final now = DateTime.now().toIso8601String();
-    final payload = {
-      'userId': userId,
-      'email': email.trim(),
-      'fullName': fullName.trim(),
-      'role': 'candidate', // Only Candidate role is supported on the app
-      'kycCompleted': false,
-      'profileCompleted': false,
-      'createdAt': now,
-      'updatedAt': now,
-    };
+    final payload = buildProfileCreatePayload(
+      userId: userId,
+      email: email,
+      fullName: fullName,
+      role: role,
+      createdAt: DateTime.now(),
+    );
 
     final response = await http.post(
       Uri.parse('$_apiBaseUrl/profile'),
@@ -353,7 +369,7 @@ class AwsUserProfileRepository implements UserProfileRepository {
     return AuthUserProfile(
       userId: data['userId'] as String? ?? defaultUserId,
       username: data['username'] as String? ?? data['email'] as String? ?? '',
-      role: parsedRole ?? AppRole.candidate,
+      role: parsedRole,
       email: data['email'] as String? ?? '',
       fullName: data['fullName'] as String? ?? '',
       kycCompleted: data['kycCompleted'] == true,

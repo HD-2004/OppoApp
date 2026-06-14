@@ -59,7 +59,7 @@ class ConversationTile extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.cardBackground(context),
           borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
@@ -108,7 +108,7 @@ class ConversationTile extends StatelessWidget {
                                   color: const Color(0xFF22C55E),
                                   shape: BoxShape.circle,
                                   border: Border.all(
-                                    color: Colors.white,
+                                    color: AppColors.cardBackground(context),
                                     width: 2,
                                   ),
                                 ),
@@ -135,7 +135,7 @@ class ConversationTile extends StatelessWidget {
                                       fontWeight: isUnread
                                           ? FontWeight.w800
                                           : FontWeight.w700,
-                                      color: const Color(0xFF111827),
+                                      color: AppColors.textPrimaryFor(context),
                                     ),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
@@ -154,7 +154,9 @@ class ConversationTile extends StatelessWidget {
                                             fontSize: 12,
                                             color: isUnread
                                                 ? AppColors.primary
-                                                : const Color(0xFF9CA3AF),
+                                                : AppColors.textMutedFor(
+                                                    context,
+                                                  ),
                                             fontWeight: isUnread
                                                 ? FontWeight.w600
                                                 : FontWeight.w400,
@@ -164,8 +166,8 @@ class ConversationTile extends StatelessWidget {
                                           const SizedBox(width: 4),
                                           Tooltip(
                                             message: canDelete
-                                                ? 'Xóa cuộc trò chuyện'
-                                                : 'Chỉ xóa được sau khi hoàn thành công việc',
+                                                ? 'Lưu trữ cuộc trò chuyện'
+                                                : 'Chỉ lưu trữ được sau khi hoàn thành công việc',
                                             child: InkWell(
                                               onTap: onDelete,
                                               borderRadius:
@@ -176,14 +178,15 @@ class ConversationTile extends StatelessWidget {
                                                 ),
                                                 child: Icon(
                                                   canDelete
-                                                      ? Icons
-                                                            .delete_outline_rounded
+                                                      ? Icons.archive_outlined
                                                       : Icons
                                                             .lock_outline_rounded,
                                                   size: 18,
                                                   color: canDelete
-                                                      ? const Color(0xFFDC2626)
-                                                      : const Color(0xFF9CA3AF),
+                                                      ? AppColors.danger
+                                                      : AppColors.disabledFor(
+                                                          context,
+                                                        ),
                                                 ),
                                               ),
                                             ),
@@ -209,8 +212,8 @@ class ConversationTile extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 13,
                                 color: isUnread
-                                    ? const Color(0xFF374151)
-                                    : const Color(0xFF9CA3AF),
+                                    ? AppColors.textSecondaryFor(context)
+                                    : AppColors.textMutedFor(context),
                                 fontWeight: isUnread
                                     ? FontWeight.w500
                                     : FontWeight.w400,
@@ -326,14 +329,14 @@ class _StatusBadge extends StatelessWidget {
       case ConversationStatus.hired:
         return _Badge(
           label: 'Đã nhận việc',
-          bgColor: const Color(0xFFF3F4F6),
-          textColor: const Color(0xFF374151),
+          bgColor: AppColors.fieldFill(context),
+          textColor: AppColors.textSecondaryFor(context),
         );
       case ConversationStatus.pending:
         return _Badge(
           label: 'Đang xem xét',
-          bgColor: const Color(0xFFF3F4F6),
-          textColor: const Color(0xFF374151),
+          bgColor: AppColors.fieldFill(context),
+          textColor: AppColors.textSecondaryFor(context),
         );
       case ConversationStatus.none:
         return const SizedBox.shrink();

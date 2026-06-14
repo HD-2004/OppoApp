@@ -59,9 +59,55 @@ void main() {
     expect(countUnreadEmployerMessages(messages, lastReadId: 100), 1);
   });
 
-  test('allows deleting conversations only after the job is completed', () {
-    expect(canDeleteConversation('accepted'), isFalse);
-    expect(canDeleteConversation('completed_pending_candidate'), isFalse);
-    expect(canDeleteConversation(' COMPLETED '), isTrue);
+  test('allows archiving conversations only after the job is completed', () {
+    expect(canArchiveConversation('accepted'), isFalse);
+    expect(canArchiveConversation('completed_pending_candidate'), isFalse);
+    expect(canArchiveConversation(' COMPLETED '), isTrue);
+  });
+
+  test('default candidate chat list excludes closed conversations', () {
+    expect(isVisibleInCandidateChatList({'status': 'accepted'}), isTrue);
+    expect(isVisibleInCandidateChatList({'status': 'pending'}), isFalse);
+    expect(isVisibleInCandidateChatList({'status': 'completed'}), isFalse);
+    expect(isVisibleInCandidateChatList({'status': 'archived'}), isFalse);
+    expect(isVisibleInCandidateChatList({'status': 'deleted'}), isFalse);
+    expect(
+      isVisibleInCandidateChatList({
+        'status': 'accepted',
+        'chatStatus': 'archived',
+      }),
+      isFalse,
+    );
+    expect(
+      isVisibleInCandidateChatList({
+        'status': 'accepted',
+        'archivedAt': '2026-06-14T10:00:00.000Z',
+      }),
+      isFalse,
+    );
+  });
+
+  test('chat access requires an active candidate profile', () {
+    expect(candidateChatAccessMessage(isSignedIn: false), 'login_required');
+    expect(
+      candidateChatAccessMessage(isSignedIn: true, isCandidate: false),
+      'role_forbidden',
+    );
+    expect(
+      candidateChatAccessMessage(
+        isSignedIn: true,
+        isCandidate: true,
+        isActive: false,
+      ),
+      'availability_off',
+    );
+    expect(
+      candidateChatAccessMessage(
+        isSignedIn: true,
+        isCandidate: true,
+        isActive: true,
+      ),
+      isNull,
+    );
   });
 }

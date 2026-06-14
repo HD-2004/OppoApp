@@ -98,10 +98,16 @@ class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
         chatMessages: [],
       ),
     );
-    final isCompleted = currentApp.status == 'completed';
+    final accessError = messagesAsync.error;
+    final accessErrorCode = accessError is ChatAccessException
+        ? accessError.code
+        : null;
+    final isCompleted =
+        currentApp.status == 'completed' || accessErrorCode == 'chat_completed';
+    final isLocked = isCompleted || accessErrorCode != null;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FC),
+      backgroundColor: AppColors.background(context),
       appBar: _ChatAppBar(
         name: _name,
         avatarUrl: _avatarUrl,
@@ -114,7 +120,11 @@ class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
           Expanded(
             child: messagesAsync.when(
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (err, _) => Center(child: Text('Lỗi tải tin nhắn: $err')),
+              error: (err, _) => _BlockedChatState(
+                message: err is ChatAccessException
+                    ? err.toString()
+                    : 'Lỗi tải tin nhắn: $err',
+              ),
               data: (messages) => _MessagesArea(
                 messages: messages,
                 scrollController: _scrollController,
@@ -128,7 +138,10 @@ class _ChatRoomScreenState extends ConsumerState<ChatRoomScreen> {
           // ── Input bar ─────────────────────────────────────────
           _InputBar(
             controller: _inputController,
-            isCompleted: isCompleted,
+            isCompleted: isLocked,
+            disabledHint: accessErrorCode == 'availability_off'
+                ? candidateChatAvailabilityMessage
+                : null,
             onSend: () async {
               final text = _inputController.text;
               if (text.trim().isEmpty) return;
@@ -173,10 +186,10 @@ class _ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     return AppBar(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.surface(context),
       elevation: 0,
       scrolledUnderElevation: 1,
-      leading: const BackButton(color: Color(0xFF1E293B)),
+      leading: BackButton(color: AppColors.textPrimaryFor(context)),
       titleSpacing: 0,
       title: Row(
         children: [
@@ -212,7 +225,10 @@ class _ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                     decoration: BoxDecoration(
                       color: const Color(0xFF22C55E),
                       shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2),
+                      border: Border.all(
+                        color: AppColors.surface(context),
+                        width: 2,
+                      ),
                     ),
                   ),
                 ),
@@ -229,10 +245,10 @@ class _ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                     Flexible(
                       child: Text(
                         name,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
-                          color: Color(0xFF111827),
+                          color: AppColors.textPrimaryFor(context),
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -254,10 +270,10 @@ class _ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                   style: TextStyle(
                     fontSize: 11,
                     color: isCompleted
-                        ? const Color(0xFF9CA3AF)
+                        ? AppColors.textMutedFor(context)
                         : (isOnline
                               ? const Color(0xFF22C55E)
-                              : const Color(0xFF9CA3AF)),
+                              : AppColors.textMutedFor(context)),
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -276,9 +292,9 @@ class _ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
           onPressed: isCompleted ? null : () {},
         ),
         IconButton(
-          icon: const Icon(
+          icon: Icon(
             Icons.info_outline_rounded,
-            color: Color(0xFF6B7280),
+            color: AppColors.textSecondaryFor(context),
             size: 22,
           ),
           onPressed: () {},
@@ -309,7 +325,7 @@ class _MessagesArea extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (messages.isEmpty) {
-      return _buildEmptyState();
+      return _buildEmptyState(context);
     }
 
     return ListView.builder(
@@ -325,12 +341,12 @@ class _MessagesArea extends StatelessWidget {
         final isMe =
             message.sender == 'them'; // candidate is 'them' (me in the app)
 
-        return _buildMessageRow(message, isMe);
+        return _buildMessageRow(context, message, isMe);
       },
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(BuildContext context) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -338,8 +354,8 @@ class _MessagesArea extends StatelessWidget {
           Container(
             width: 68,
             height: 68,
-            decoration: const BoxDecoration(
-              color: AppColors.primarySoft,
+            decoration: BoxDecoration(
+              color: AppColors.softPrimaryFor(context),
               shape: BoxShape.circle,
             ),
             child: const Icon(
@@ -352,20 +368,20 @@ class _MessagesArea extends StatelessWidget {
           Text(
             'Bắt đầu trò chuyện\nvới $name',
             textAlign: TextAlign.center,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w600,
-              color: Color(0xFF374151),
+              color: AppColors.textSecondaryFor(context),
               height: 1.5,
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'Nhắn tin để hỏi về công việc\nhoặc lịch phỏng vấn.',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 13,
-              color: Color(0xFF9CA3AF),
+              color: AppColors.textMutedFor(context),
               height: 1.5,
             ),
           ),
@@ -402,7 +418,11 @@ class _MessagesArea extends StatelessWidget {
     );
   }
 
-  Widget _buildMessageRow(ChatMessage message, bool isMe) {
+  Widget _buildMessageRow(
+    BuildContext context,
+    ChatMessage message,
+    bool isMe,
+  ) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
@@ -427,7 +447,9 @@ class _MessagesArea extends StatelessWidget {
                     vertical: 10,
                   ),
                   decoration: BoxDecoration(
-                    color: isMe ? AppColors.primary : Colors.white,
+                    color: isMe
+                        ? AppColors.primary
+                        : AppColors.cardBackground(context),
                     borderRadius: BorderRadius.only(
                       topLeft: const Radius.circular(16),
                       topRight: const Radius.circular(16),
@@ -443,13 +465,15 @@ class _MessagesArea extends StatelessWidget {
                     ],
                     border: isMe
                         ? null
-                        : Border.all(color: const Color(0xFFE5E7EB)),
+                        : Border.all(color: AppColors.borderFor(context)),
                   ),
                   child: Text(
                     message.text,
                     style: TextStyle(
                       fontSize: 14,
-                      color: isMe ? Colors.white : const Color(0xFF111827),
+                      color: isMe
+                          ? Colors.white
+                          : AppColors.textPrimaryFor(context),
                       height: 1.4,
                     ),
                   ),
@@ -457,9 +481,9 @@ class _MessagesArea extends StatelessWidget {
                 const SizedBox(height: 3),
                 Text(
                   message.time,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 10,
-                    color: Color(0xFF9CA3AF),
+                    color: AppColors.textMutedFor(context),
                   ),
                 ),
               ],
@@ -468,6 +492,50 @@ class _MessagesArea extends StatelessWidget {
           if (isMe) const SizedBox(width: 32),
           if (!isMe) const SizedBox(width: 32),
         ],
+      ),
+    );
+  }
+}
+
+class _BlockedChatState extends StatelessWidget {
+  const _BlockedChatState({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 68,
+              height: 68,
+              decoration: BoxDecoration(
+                color: AppColors.softPrimaryFor(context),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.lock_outline_rounded,
+                color: AppColors.primary,
+                size: 32,
+              ),
+            ),
+            const SizedBox(height: 14),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppColors.textSecondaryFor(context),
+                height: 1.45,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -485,7 +553,7 @@ class _SmallAvatar extends StatelessWidget {
       width: 32,
       height: 32,
       decoration: BoxDecoration(
-        color: AppColors.secondarySoft,
+        color: AppColors.softPrimaryFor(context),
         borderRadius: BorderRadius.circular(10),
       ),
       child: avatarUrl.isNotEmpty
@@ -530,17 +598,19 @@ class _InputBar extends StatelessWidget {
     required this.controller,
     required this.onSend,
     this.isCompleted = false,
+    this.disabledHint,
   });
 
   final TextEditingController controller;
   final VoidCallback onSend;
   final bool isCompleted;
+  final String? disabledHint;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.surface(context),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.06),
@@ -558,9 +628,9 @@ class _InputBar extends StatelessWidget {
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(
+            icon: Icon(
               Icons.attach_file_rounded,
-              color: Color(0xFF9CA3AF),
+              color: AppColors.disabledFor(context),
               size: 22,
             ),
             onPressed: isCompleted ? null : () {},
@@ -571,7 +641,7 @@ class _InputBar extends StatelessWidget {
           Expanded(
             child: Container(
               decoration: BoxDecoration(
-                color: const Color(0xFFF3F4F6),
+                color: AppColors.fieldFill(context),
                 borderRadius: BorderRadius.circular(24),
               ),
               child: TextField(
@@ -582,10 +652,10 @@ class _InputBar extends StatelessWidget {
                 textCapitalization: TextCapitalization.sentences,
                 decoration: InputDecoration(
                   hintText: isCompleted
-                      ? 'Hội thoại đã kết thúc và bị khóa'
+                      ? (disabledHint ?? 'Hội thoại đã kết thúc và bị khóa')
                       : 'Nhắn tin...',
-                  hintStyle: const TextStyle(
-                    color: Color(0xFF9CA3AF),
+                  hintStyle: TextStyle(
+                    color: AppColors.textMutedFor(context),
                     fontSize: 14,
                   ),
                   border: InputBorder.none,
@@ -595,7 +665,10 @@ class _InputBar extends StatelessWidget {
                   ),
                   isDense: true,
                 ),
-                style: const TextStyle(fontSize: 14, color: Color(0xFF111827)),
+                style: TextStyle(
+                  fontSize: 14,
+                  color: AppColors.textPrimaryFor(context),
+                ),
               ),
             ),
           ),
@@ -607,7 +680,7 @@ class _InputBar extends StatelessWidget {
               height: 42,
               decoration: BoxDecoration(
                 color: isCompleted
-                    ? const Color(0xFF9CA3AF)
+                    ? AppColors.disabledFor(context)
                     : AppColors.primary,
                 shape: BoxShape.circle,
               ),
