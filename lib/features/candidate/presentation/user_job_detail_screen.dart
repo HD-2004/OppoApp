@@ -2,14 +2,16 @@ import 'package:flutter/material.dart';
 
 import 'package:oppo_temp_jobs/core/theme/app_colors.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../employer/presentation/company_profile_screen.dart';
 import '../domain/job_post.dart';
+import '../data/aws_job_repository.dart';
 
 /// Màn hình chi tiết công việc — đồng bộ dữ liệu với website qua cùng backend.
 /// Dữ liệu: AwsJobRepository → REST API AWS.
 /// Không có mock/fake data — mọi field hiển thị từ [JobPost] backend thật.
-class UserJobDetailScreen extends StatelessWidget {
+class UserJobDetailScreen extends ConsumerStatefulWidget {
   const UserJobDetailScreen({
     super.key,
     required this.job,
@@ -20,6 +22,23 @@ class UserJobDetailScreen extends StatelessWidget {
   final JobPost job;
   final VoidCallback onApplyPressed;
   final bool showApplyButton;
+
+  @override
+  ConsumerState<UserJobDetailScreen> createState() => _UserJobDetailScreenState();
+}
+
+class _UserJobDetailScreenState extends ConsumerState<UserJobDetailScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Increment view count when this screen is opened
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(jobRepositoryProvider).incrementJobViews(
+        widget.job.idJob,
+        isQuickJob: widget.job.isQuickJob,
+      );
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -49,7 +68,7 @@ class UserJobDetailScreen extends StatelessWidget {
                   const SizedBox(width: 8),
                 ],
                 flexibleSpace: FlexibleSpaceBar(
-                  background: _HeroBanner(job: job),
+                  background: _HeroBanner(job: widget.job),
                 ),
               ),
 
@@ -59,37 +78,37 @@ class UserJobDetailScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Quick info cards
-                    _QuickInfoSection(job: job),
+                    _QuickInfoSection(job: widget.job),
 
                     const _SectionDivider(),
 
                     // Mô tả công việc
-                    if (job.description.isNotEmpty)
-                      _DescriptionSection(text: job.description),
+                    if (widget.job.description.isNotEmpty)
+                      _DescriptionSection(text: widget.job.description),
 
                     // Yêu cầu
-                    if (job.requirements != null &&
-                        job.requirements!.isNotEmpty) ...[
+                    if (widget.job.requirements != null &&
+                        widget.job.requirements!.isNotEmpty) ...[
                       const _SectionDivider(),
-                      _RequirementsSection(text: job.requirements!),
+                      _RequirementsSection(text: widget.job.requirements!),
                     ],
 
                     // Quyền lợi
-                    if (job.benefits != null && job.benefits!.isNotEmpty) ...[
+                    if (widget.job.benefits != null && widget.job.benefits!.isNotEmpty) ...[
                       const _SectionDivider(),
-                      _BenefitsSection(text: job.benefits!),
+                      _BenefitsSection(text: widget.job.benefits!),
                     ],
 
                     // Thông tin nhà tuyển dụng
                     const _SectionDivider(),
-                    _EmployerInfoCard(job: job),
+                    _EmployerInfoCard(job: widget.job),
 
                     // Vị trí tương tự — từ tags/jobType, không mock
                     const _SectionDivider(),
-                    _SimilarPositions(job: job),
+                    _SimilarPositions(job: widget.job),
 
                     // Bottom spacing cho sticky button
-                    SizedBox(height: showApplyButton ? 100 : 24),
+                    SizedBox(height: widget.showApplyButton ? 100 : 24),
                   ],
                 ),
               ),
@@ -97,12 +116,12 @@ class UserJobDetailScreen extends StatelessWidget {
           ),
 
           // ── Sticky bottom apply button ─────────────────────────
-          if (showApplyButton)
+          if (widget.showApplyButton)
             Positioned(
               left: 0,
               right: 0,
               bottom: 0,
-              child: _StickyApplyBar(onApply: onApplyPressed),
+              child: _StickyApplyBar(onApply: widget.onApplyPressed),
             ),
         ],
       ),

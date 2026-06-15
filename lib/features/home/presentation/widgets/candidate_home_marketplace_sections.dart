@@ -603,6 +603,42 @@ class JobCard extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          if (job.isQuickJob || job.jobType == JobPostType.urgent)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 6),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFFF7ED),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(
+                                    color: const Color(0xFFFED7AA),
+                                  ),
+                                ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.local_fire_department_rounded,
+                                      size: 11,
+                                      color: Color(0xFFF97316),
+                                    ),
+                                    SizedBox(width: 3),
+                                    Text(
+                                      'Tuyển gấp',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xFFC2410C),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
                           Text(
                             job.title.trim().isEmpty
                                 ? 'Không công khai'
@@ -651,6 +687,7 @@ class JobCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 13),
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     if (matchScore != null)
                       Flexible(
@@ -677,8 +714,9 @@ class JobCard extends StatelessWidget {
                             ),
                           ),
                         ),
-                      ),
-                    const Spacer(),
+                      )
+                    else
+                      const SizedBox.shrink(),
                     FilledButton(
                       onPressed: onApply,
                       style: FilledButton.styleFrom(

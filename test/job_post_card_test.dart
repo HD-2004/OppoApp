@@ -37,6 +37,42 @@ void main() {
     expect(find.text('Hot deal'), findsNothing);
     expect(find.text('Nhiều ứng viên đang quan tâm'), findsNothing);
   });
+
+  testWidgets('job post card deducts 15% platform fee from totalSalary', (
+    tester,
+  ) async {
+    final jobWithTotalSalary = JobPost(
+      id: 'job-2',
+      idJob: 'job-2',
+      employerId: 'employer-1',
+      employerName: 'Katinat Quận Cam',
+      title: 'Nhân viên phục vụ',
+      jobType: JobPostType.partTime,
+      location: 'Nhà Văn hóa Sinh Viên, Khu đô thị Đại học Quốc gia',
+      salary: '500.000 VND / ca',
+      totalSalary: 500000,
+      shiftTime: '18:00 - 22:00',
+      description: 'Phục vụ khách hàng tại quầy.',
+      requirements: 'Có kinh nghiệm phục vụ',
+      tags: const ['F&B'],
+      postedAt: DateTime(2026, 6, 10, 18),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: JobPostCard(
+            job: jobWithTotalSalary,
+            onDetailsPressed: () {},
+            onApplyPressed: () {},
+          ),
+        ),
+      ),
+    );
+
+    // 500.000 * 0.85 = 425.000 VND / ca
+    expect(find.text('425.000 VND / ca'), findsOneWidget);
+  });
 }
 
 final _job = JobPost(

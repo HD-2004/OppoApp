@@ -346,7 +346,8 @@ String _shiftTime(JobPost job) {
 
 String _salary(JobPost job) {
   if (job.totalSalary != null && job.totalSalary! > 0) {
-    return '${_formatMoney(job.totalSalary!)} VND / ca';
+    final candidateIncome = (job.totalSalary! * 0.85).round();
+    return '${_formatMoney(candidateIncome)} VND / ca';
   }
 
   final salary = job.salary.trim();
