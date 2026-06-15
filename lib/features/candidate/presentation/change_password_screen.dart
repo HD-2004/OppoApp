@@ -4,6 +4,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/errors/auth_failure.dart';
 import '../../../core/localization/app_localizations.dart';
 import '../../auth/application/auth_controller.dart';
+import '../../auth/presentation/auth_form_fields.dart';
+import '../../auth/presentation/widgets/auth_header.dart';
+import '../../auth/presentation/widgets/auth_primary_button.dart';
+import '../../auth/presentation/widgets/auth_scaffold.dart';
+import '../../auth/presentation/widgets/auth_text_field.dart';
+import '../../auth/presentation/widgets/password_requirement_list.dart';
+import '../../auth/presentation/widgets/password_strength_bar.dart';
 
 class ChangePasswordScreen extends ConsumerStatefulWidget {
   const ChangePasswordScreen({super.key});
@@ -19,52 +26,77 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
   final _newPasswordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   bool _isSubmitting = false;
+  bool _obscureCurrentPassword = true;
+  bool _obscureNewPassword = true;
+  bool _obscureConfirmPassword = true;
+  bool _canSubmit = false;
+
+  @override
+  void initState() {
+    super.initState();
+    for (final controller in [
+      _currentPasswordController,
+      _newPasswordController,
+      _confirmPasswordController,
+    ]) {
+      controller.addListener(_updateSubmitState);
+    }
+  }
 
   @override
   void dispose() {
-    _currentPasswordController.dispose();
-    _newPasswordController.dispose();
-    _confirmPasswordController.dispose();
+    for (final controller in [
+      _currentPasswordController,
+      _newPasswordController,
+      _confirmPasswordController,
+    ]) {
+      controller.removeListener(_updateSubmitState);
+      controller.dispose();
+    }
     super.dispose();
   }
 
-  String? _validateRequiredPassword(String? value) {
-    if (value == null || value.isEmpty) {
-      return AppLocalizations.of(context).passwordRequired;
+  void _updateSubmitState() {
+    final next =
+        _currentPasswordController.text.isNotEmpty &&
+        _newPasswordController.text.isNotEmpty &&
+        _confirmPasswordController.text.isNotEmpty;
+    if (next != _canSubmit) {
+      setState(() => _canSubmit = next);
+    } else {
+      setState(() {});
     }
-    return null;
   }
 
   String? _validateNewPassword(String? value) {
-    if (value == null || value.isEmpty) {
-      return AppLocalizations.of(context).passwordRequired;
+    final strings = AppLocalizations.of(context);
+    final requiredError = requiredTextValidator(
+      value,
+      message: strings.passwordRequired,
+    );
+    if (requiredError != null) {
+      return requiredError;
     }
+
     if (value == _currentPasswordController.text) {
-      return AppLocalizations.of(context).weakPassword;
+      return strings.passwordReuseNotAllowed;
     }
-    final hasMinLength = value.length >= 8;
-    final hasUppercase = RegExp(r'[A-Z]').hasMatch(value);
-    final hasLowercase = RegExp(r'[a-z]').hasMatch(value);
-    final hasNumber = RegExp(r'[0-9]').hasMatch(value);
-    final hasSymbol = RegExp(r'[^A-Za-z0-9]').hasMatch(value);
-    if (!hasMinLength ||
-        !hasUppercase ||
-        !hasLowercase ||
-        !hasNumber ||
-        !hasSymbol) {
-      return AppLocalizations.of(context).weakPassword;
-    }
-    return null;
+
+    return cognitoPasswordValidator(
+      value,
+      requiredMessage: strings.passwordRequired,
+      weakPasswordMessage: strings.weakPassword,
+    );
   }
 
   String? _validateConfirmPassword(String? value) {
-    if (value == null || value.isEmpty) {
-      return AppLocalizations.of(context).passwordRequired;
-    }
     if (value != _newPasswordController.text) {
       return AppLocalizations.of(context).passwordMismatch;
     }
-    return null;
+    return requiredTextValidator(
+      value,
+      message: AppLocalizations.of(context).passwordRequired,
+    );
   }
 
   Future<void> _submit() async {
@@ -124,57 +156,118 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
   Widget build(BuildContext context) {
     final strings = AppLocalizations.of(context);
 
-    return Scaffold(
-      appBar: AppBar(title: Text(strings.changePassword)),
-      body: SafeArea(
-        child: Form(
-          key: _formKey,
-          child: ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              TextFormField(
-                controller: _currentPasswordController,
-                obscureText: true,
-                decoration: InputDecoration(
-                  labelText: strings.currentPassword,
-                  border: const OutlineInputBorder(),
-                ),
-                validator: _validateRequiredPassword,
+    return AuthScaffold(
+      leading: Align(
+        alignment: Alignment.centerLeft,
+        child: IconButton.filledTonal(
+          tooltip: strings.back,
+          onPressed: () => Navigator.of(context).maybePop(),
+          icon: const Icon(Icons.arrow_back_rounded),
+        ),
+      ),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AuthHeader(
+              compact: true,
+              title: strings.changePassword,
+              subtitle:
+                  'Cập nhật mật khẩu mới để bảo vệ tài khoản ứng viên của bạn.',
+              icon: Icons.password_rounded,
+            ),
+            const SizedBox(height: 28),
+            AuthFormCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  AuthTextField(
+                    controller: _currentPasswordController,
+                    label: strings.currentPassword,
+                    icon: Icons.lock_outline_rounded,
+                    obscureText: _obscureCurrentPassword,
+                    textInputAction: TextInputAction.next,
+                    validator: (value) => requiredTextValidator(
+                      value,
+                      message: strings.passwordRequired,
+                    ),
+                    suffix: IconButton(
+                      tooltip: _obscureCurrentPassword
+                          ? strings.text('showPassword')
+                          : strings.text('hidePassword'),
+                      icon: Icon(
+                        _obscureCurrentPassword
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
+                      ),
+                      onPressed: () => setState(
+                        () =>
+                            _obscureCurrentPassword = !_obscureCurrentPassword,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  AuthTextField(
+                    controller: _newPasswordController,
+                    label: strings.newPassword,
+                    icon: Icons.lock_reset_outlined,
+                    obscureText: _obscureNewPassword,
+                    textInputAction: TextInputAction.next,
+                    validator: _validateNewPassword,
+                    suffix: IconButton(
+                      tooltip: _obscureNewPassword
+                          ? strings.text('showPassword')
+                          : strings.text('hidePassword'),
+                      icon: Icon(
+                        _obscureNewPassword
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
+                      ),
+                      onPressed: () => setState(
+                        () => _obscureNewPassword = !_obscureNewPassword,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  PasswordStrengthBar(password: _newPasswordController.text),
+                  const SizedBox(height: 12),
+                  PasswordRequirementList(
+                    password: _newPasswordController.text,
+                  ),
+                  const SizedBox(height: 16),
+                  AuthTextField(
+                    controller: _confirmPasswordController,
+                    label: strings.confirmNewPassword,
+                    icon: Icons.verified_user_outlined,
+                    obscureText: _obscureConfirmPassword,
+                    validator: _validateConfirmPassword,
+                    suffix: IconButton(
+                      tooltip: _obscureConfirmPassword
+                          ? strings.text('showPassword')
+                          : strings.text('hidePassword'),
+                      icon: Icon(
+                        _obscureConfirmPassword
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
+                      ),
+                      onPressed: () => setState(
+                        () =>
+                            _obscureConfirmPassword = !_obscureConfirmPassword,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  AuthPrimaryButton(
+                    label: strings.changePassword,
+                    icon: Icons.password_outlined,
+                    isLoading: _isSubmitting,
+                    onPressed: _canSubmit ? _submit : null,
+                  ),
+                ],
               ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _newPasswordController,
-                obscureText: true,
-                decoration: InputDecoration(
-                  labelText: strings.newPassword,
-                  helperText: strings.weakPassword,
-                  border: const OutlineInputBorder(),
-                ),
-                validator: _validateNewPassword,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _confirmPasswordController,
-                obscureText: true,
-                decoration: InputDecoration(
-                  labelText: strings.confirmNewPassword,
-                  border: const OutlineInputBorder(),
-                ),
-                validator: _validateConfirmPassword,
-              ),
-              const SizedBox(height: 20),
-              FilledButton(
-                onPressed: _isSubmitting ? null : _submit,
-                child: _isSubmitting
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Text(strings.changePassword),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

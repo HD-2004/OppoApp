@@ -7,7 +7,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../auth/application/auth_controller.dart';
 import '../../candidate/data/aws_application_repository.dart';
 import '../../candidate/domain/application_repository.dart';
-import '../../../shared/domain/app_role.dart';
 import '../domain/candidate_application.dart';
 
 const candidateChatAvailabilityMessage =
@@ -36,23 +35,13 @@ bool canArchiveConversation(String status) {
   return status.trim().toLowerCase() == 'completed';
 }
 
-<<<<<<< HEAD
 bool canDeleteConversation(String status) => canArchiveConversation(status);
-=======
-class CandidateChatsNotifier extends AsyncNotifier<List<CandidateApplication>> {
-  static const _deletedChatsKey = 'deleted_chats';
-  static const _standardJobsUrl = 'https://dlidp35x33.execute-api.ap-southeast-1.amazonaws.com/prod';
-  static const _quickJobsUrl = 'https://6zw89pkuxb.execute-api.ap-southeast-1.amazonaws.com/prod';
-  static final Map<String, Map<String, dynamic>?> _jobDetailsCache = {};
->>>>>>> 685db4d9d0a26c8008d886951313f806b6b51bea
 
 String? candidateChatAccessMessage({
   required bool isSignedIn,
-  bool isCandidate = true,
   bool isActive = true,
 }) {
   if (!isSignedIn) return 'login_required';
-  if (!isCandidate) return 'role_forbidden';
   if (!isActive) return 'availability_off';
   return null;
 }
@@ -60,7 +49,6 @@ String? candidateChatAccessMessage({
 String chatAccessUiMessage(String code) {
   return switch (code) {
     'login_required' => 'Vui lòng đăng nhập để sử dụng Chatting.',
-    'role_forbidden' => 'Tài khoản này không có quyền sử dụng Chatting.',
     'availability_off' => candidateChatAvailabilityMessage,
     'chat_completed' => chatCompletedMessage,
     _ => 'Không thể mở cuộc trò chuyện này.',
@@ -98,6 +86,12 @@ class ChatAccessException implements Exception {
 }
 
 class CandidateChatsNotifier extends AsyncNotifier<List<CandidateApplication>> {
+  static const _standardJobsUrl =
+      'https://dlidp35x33.execute-api.ap-southeast-1.amazonaws.com/prod';
+  static const _quickJobsUrl =
+      'https://6zw89pkuxb.execute-api.ap-southeast-1.amazonaws.com/prod';
+  static final Map<String, Map<String, dynamic>?> _jobDetailsCache = {};
+
   Timer? _timer;
   Map<String, int> _lastReadIds = {};
 
@@ -107,7 +101,6 @@ class CandidateChatsNotifier extends AsyncNotifier<List<CandidateApplication>> {
     final user = authState?.user;
     final accessCode = candidateChatAccessMessage(
       isSignedIn: user != null,
-      isCandidate: user?.role == AppRole.candidate,
       isActive: user?.isActive == true,
     );
     if (accessCode == 'login_required') return [];
@@ -161,9 +154,6 @@ class CandidateChatsNotifier extends AsyncNotifier<List<CandidateApplication>> {
     ApplicationRepository repo,
   ) async {
     final rawApps = await repo.getCandidateApplications(userId);
-<<<<<<< HEAD
-    final validApps = rawApps.where(isVisibleInCandidateChatList).toList();
-=======
 
     // Clean up preferences for completed apps
     try {
@@ -181,15 +171,7 @@ class CandidateChatsNotifier extends AsyncNotifier<List<CandidateApplication>> {
       }
     } catch (_) {}
 
-    // Filter accepted or completed_pending_candidate apps
-    final validRawApps = rawApps.where((app) {
-      final status = app['status']?.toString().trim().toLowerCase() ?? '';
-      final applicationId = app['applicationId']?.toString() ?? '';
-      return (status == 'accepted' ||
-              status == 'completed_pending_candidate') &&
-          !_deletedChatIds.contains(applicationId);
-    }).toList();
->>>>>>> 685db4d9d0a26c8008d886951313f806b6b51bea
+    final validRawApps = rawApps.where(isVisibleInCandidateChatList).toList();
 
     final List<Map<String, dynamic>> enrichedApps = [];
 
@@ -366,7 +348,6 @@ class CandidateChatsNotifier extends AsyncNotifier<List<CandidateApplication>> {
     final user = authState?.user;
     final accessCode = candidateChatAccessMessage(
       isSignedIn: user != null,
-      isCandidate: user?.role == AppRole.candidate,
       isActive: user?.isActive == true,
     );
     if (accessCode == 'login_required') return;
@@ -406,7 +387,6 @@ class ActiveChatNotifier extends AsyncNotifier<List<ChatMessage>> {
     final user = authState?.user;
     final accessCode = candidateChatAccessMessage(
       isSignedIn: user != null,
-      isCandidate: user?.role == AppRole.candidate,
       isActive: user?.isActive == true,
     );
 
@@ -474,7 +454,6 @@ class ActiveChatNotifier extends AsyncNotifier<List<ChatMessage>> {
     final user = authState?.user;
     final accessCode = candidateChatAccessMessage(
       isSignedIn: user != null,
-      isCandidate: user?.role == AppRole.candidate,
       isActive: user?.isActive == true,
     );
     if (accessCode != null) {

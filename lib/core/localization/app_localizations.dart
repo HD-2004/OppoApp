@@ -49,6 +49,9 @@ class AppLocalizations {
   String get fullName => text('fullName');
   String get forgotPassword => text('forgotPassword');
   String get resetPassword => text('resetPassword');
+  String get verifyOtp => text('verifyOtp');
+  String get otpInvalidOrExpired => text('otpInvalidOrExpired');
+  String get resetSessionExpired => text('resetSessionExpired');
   String get currentPassword => text('currentPassword');
   String get newPassword => text('newPassword');
   String get confirmNewPassword => text('confirmNewPassword');
@@ -81,6 +84,7 @@ class AppLocalizations {
   String get off => text('off');
   String get weakPassword => text('weakPassword');
   String get passwordMismatch => text('passwordMismatch');
+  String get passwordReuseNotAllowed => text('passwordReuseNotAllowed');
   String get unknownError => text('unknownError');
   String get networkError => text('networkError');
   String get wrongCurrentPassword => text('wrongCurrentPassword');
@@ -163,6 +167,10 @@ const _vi = {
   'fullName': 'Họ và tên',
   'forgotPassword': 'Quên mật khẩu',
   'resetPassword': 'Đặt lại mật khẩu',
+  'verifyOtp': 'Xác thực OTP',
+  'otpInvalidOrExpired': 'Mã OTP không đúng hoặc đã hết hạn.',
+  'resetSessionExpired':
+      'Phiên đổi mật khẩu đã hết hạn. Vui lòng xác thực OTP lại.',
   'currentPassword': 'Mật khẩu hiện tại',
   'newPassword': 'Mật khẩu mới',
   'confirmNewPassword': 'Xác nhận mật khẩu mới',
@@ -310,6 +318,7 @@ const _vi = {
   'passwordMismatch': 'Mật khẩu xác nhận không khớp.',
   'invalidEmail': 'Email không hợp lệ.',
   'weakPassword': 'Mật khẩu không đáp ứng yêu cầu bảo mật.',
+  'passwordReuseNotAllowed': 'Mật khẩu mới không được trùng mật khẩu hiện tại.',
   'networkError': 'Lỗi kết nối mạng. Vui lòng kiểm tra internet.',
   'unknownError': 'Đã có lỗi xảy ra. Vui lòng thử lại.',
   'wrongCurrentPassword': 'Mật khẩu hiện tại không đúng.',
@@ -340,7 +349,6 @@ const _vi = {
   'pendingReviewTitle': 'Đang xét duyệt',
   'rejectedTitle': 'Không được duyệt',
   'contactSupport': 'Liên hệ hỗ trợ',
-  'missingRoleTitle': 'Thiếu vai trò',
   'changePasswordSuccess': 'Đổi mật khẩu thành công.',
   'deleteReasonRequired': 'Vui lòng nhập lý do xóa tài khoản.',
   'deleteConfirmRequired':
@@ -388,6 +396,10 @@ const _en = {
   'fullName': 'Full name',
   'forgotPassword': 'Forgot password',
   'resetPassword': 'Reset password',
+  'verifyOtp': 'Verify OTP',
+  'otpInvalidOrExpired': 'The OTP is incorrect or has expired.',
+  'resetSessionExpired':
+      'Your reset session has expired. Please verify OTP again.',
   'currentPassword': 'Current password',
   'newPassword': 'New password',
   'confirmNewPassword': 'Confirm new password',
@@ -535,6 +547,8 @@ const _en = {
   'passwordMismatch': 'Passwords do not match.',
   'invalidEmail': 'Invalid email address.',
   'weakPassword': 'Password does not meet the security requirements.',
+  'passwordReuseNotAllowed':
+      'New password cannot be the same as your current password.',
   'networkError': 'Network error. Please check your internet connection.',
   'unknownError': 'Something went wrong. Please try again.',
   'wrongCurrentPassword': 'Current password is incorrect.',
@@ -566,7 +580,6 @@ const _en = {
   'pendingReviewTitle': 'Pending review',
   'rejectedTitle': 'Not approved',
   'contactSupport': 'Contact support',
-  'missingRoleTitle': 'Missing role',
   'changePasswordSuccess': 'Password changed successfully.',
   'deleteReasonRequired': 'Please enter a reason for deleting your account.',
   'deleteConfirmRequired':

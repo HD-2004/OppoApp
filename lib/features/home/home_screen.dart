@@ -32,13 +32,6 @@ class HomeScreen extends StatelessWidget {
               subtitle: l10n.text('urgentJobs'),
               onTap: () => context.go('/worker'),
             ),
-            const SizedBox(height: 12),
-            _RoleEntryCard(
-              icon: Icons.storefront_outlined,
-              title: l10n.employer,
-              subtitle: l10n.text('urgentJobs'),
-              onTap: () => context.go('/employer'),
-            ),
           ],
         ),
       ),

@@ -6,23 +6,16 @@ import '../features/auth/domain/auth_state.dart';
 import '../features/auth/presentation/confirm_signup_screen.dart';
 import '../features/auth/presentation/forgot_password_screen.dart';
 import '../features/auth/presentation/login_screen.dart';
-import '../features/auth/presentation/missing_role_screen.dart';
 import '../features/auth/presentation/register_screen.dart';
 import '../features/auth/presentation/reset_password_screen.dart';
 import '../features/candidate/presentation/kyc_verification_screen.dart';
 import '../features/candidate/presentation/update_profile_screen.dart';
 import '../features/candidate/presentation/user_dashboard_screen.dart';
-import '../features/employer/presentation/employer_home_screen.dart';
-import '../features/employer/presentation/employer_pending_review_screen.dart';
-import '../features/employer/presentation/employer_rejected_screen.dart';
-import '../features/employer_packages/presentation/pages/package_comparison_screen.dart';
 import '../features/home/home_screen.dart';
 import '../features/intro/presentation/intro_screen.dart';
 import '../features/intro/presentation/splash_screen.dart';
 import '../features/urgent_jobs/presentation/booking_screen.dart';
-import '../features/urgent_jobs/presentation/employer_dashboard_screen.dart';
 import '../features/urgent_jobs/presentation/shift_detail_screen.dart';
-import '../shared/domain/app_role.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final router = GoRouter(
@@ -58,42 +51,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         return location == '/confirm-signup' ? null : '/confirm-signup$query';
       }
 
-      if (value.status == AuthStatus.missingRole) {
-        return location == '/missing-role' ? null : '/missing-role';
-      }
-
       final user = value.user;
       if (user == null) {
         return '/login';
       }
 
-      if (user.role == AppRole.employer) {
-        if (user.isEmployerApproved) {
-          if (isAuthRoute ||
-              location == '/' ||
-              location == '/missing-role' ||
-              location == '/employer/pending-review' ||
-              location == '/employer/rejected') {
-            return '/employer';
-          }
-          return null;
-        }
-        if (user.isEmployerRejected) {
-          return location == '/employer/rejected' ? null : '/employer/rejected';
-        }
-        return location == '/employer/pending-review'
-            ? null
-            : '/employer/pending-review';
-      }
-
-      if (user.role == AppRole.candidate) {
-        if (isAuthRoute ||
-            location == '/' ||
-            location == '/missing-role' ||
-            location == '/candidate/kyc' ||
-            location == '/candidate/update-profile') {
-          return '/candidate';
-        }
+      if (isAuthRoute ||
+          location == '/' ||
+          location == '/missing-role' ||
+          location.startsWith('/employer') ||
+          location == '/candidate/kyc' ||
+          location == '/candidate/update-profile') {
+        return '/candidate';
       }
 
       return null;
@@ -136,10 +105,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           return ResetPasswordScreen(email: state.uri.queryParameters['email']);
         },
       ),
-      GoRoute(
-        path: '/missing-role',
-        builder: (context, state) => const MissingRoleScreen(),
-      ),
+      GoRoute(path: '/missing-role', redirect: (context, state) => '/candidate'),
       GoRoute(
         path: '/candidate',
         builder: (context, state) => const UserDashboardScreen(),
@@ -157,25 +123,22 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const UpdateProfileScreen(),
       ),
       GoRoute(path: '/worker', redirect: (context, state) => '/candidate'),
-      GoRoute(
-        path: '/employer',
-        builder: (context, state) => const EmployerHomeScreen(),
-      ),
+      GoRoute(path: '/employer', redirect: (context, state) => '/candidate'),
       GoRoute(
         path: '/employer/packages',
-        builder: (context, state) => const PackageComparisonScreen(),
+        redirect: (context, state) => '/candidate',
       ),
       GoRoute(
         path: '/employer/pending-review',
-        builder: (context, state) => const EmployerPendingReviewScreen(),
+        redirect: (context, state) => '/candidate',
       ),
       GoRoute(
         path: '/employer/rejected',
-        builder: (context, state) => const EmployerRejectedScreen(),
+        redirect: (context, state) => '/candidate',
       ),
       GoRoute(
         path: '/employer-demo',
-        builder: (context, state) => const EmployerDashboardScreen(),
+        redirect: (context, state) => '/candidate',
       ),
       GoRoute(
         path: '/jobs/:jobId',
@@ -195,9 +158,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   ref.listen<AsyncValue<AuthState>>(authControllerProvider, (previous, next) {
     if (previous?.isLoading != next.isLoading ||
         previous?.value?.status != next.value?.status ||
-        previous?.value?.user?.role != next.value?.user?.role ||
-        previous?.value?.user?.employerStatus !=
-            next.value?.user?.employerStatus) {
+        previous?.value?.user?.role != next.value?.user?.role) {
       router.refresh();
     }
   });

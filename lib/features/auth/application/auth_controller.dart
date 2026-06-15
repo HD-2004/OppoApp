@@ -2,15 +2,19 @@ import 'package:amplify_flutter/amplify_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/errors/auth_failure.dart';
-import '../../../shared/domain/app_role.dart';
 import '../data/auth_repository.dart';
 import '../data/auth_service.dart';
 import '../data/aws_user_profile_repository.dart';
+import '../data/password_reset_api.dart';
 import '../data/user_profile_repository.dart';
 import '../domain/auth_user_profile.dart';
 import '../domain/auth_state.dart';
 
 final authServiceProvider = Provider<AuthService>((ref) => AuthService());
+
+final passwordResetApiProvider = Provider<PasswordResetApi>((ref) {
+  return PasswordResetApi();
+});
 
 final userProfileRepositoryProvider = Provider<UserProfileRepository>((ref) {
   return AwsUserProfileRepository();
@@ -29,21 +33,7 @@ final authControllerProvider = AsyncNotifierProvider<AuthController, AuthState>(
 
 class AuthController extends AsyncNotifier<AuthState> {
   String routeAfterLogin(AuthUserProfile user) {
-    if (user.role == AppRole.employer) {
-      if (user.isEmployerApproved) {
-        return '/employer';
-      }
-      if (user.isEmployerRejected) {
-        return '/employer/rejected';
-      }
-      return '/employer/pending-review';
-    }
-
-    if (user.role == AppRole.candidate) {
-      return '/candidate';
-    }
-
-    return '/missing-role';
+    return '/candidate';
   }
 
   @override
@@ -60,10 +50,6 @@ class AuthController extends AsyncNotifier<AuthState> {
       if (profile == null) {
         return const AuthState.unauthenticated();
       }
-      if (profile.role == null) {
-        return AuthState.missingRole(profile);
-      }
-
       return AuthState.authenticated(profile);
     } on AuthFailure catch (failure) {
       if (failure.code == 'configuration') {
@@ -109,11 +95,7 @@ class AuthController extends AsyncNotifier<AuthState> {
       state = const AsyncData(AuthState.unauthenticated());
       return;
     }
-    state = AsyncData(
-      profile.role == null
-          ? AuthState.missingRole(profile)
-          : AuthState.authenticated(profile),
-    );
+    state = AsyncData(AuthState.authenticated(profile));
   }
 
   Future<void> signOut() async {
@@ -134,7 +116,14 @@ class AuthController extends AsyncNotifier<AuthState> {
   }
 
   Future<void> resetPassword({required String email}) {
-    return ref.read(authRepositoryProvider).resetPassword(email: email);
+    return ref.read(passwordResetApiProvider).requestOtp(email: email);
+  }
+
+  Future<String> verifyResetPasswordOtp({
+    required String email,
+    required String otp,
+  }) {
+    return ref.read(passwordResetApiProvider).verifyOtp(email: email, otp: otp);
   }
 
   Future<void> confirmResetPassword({
@@ -147,6 +136,20 @@ class AuthController extends AsyncNotifier<AuthState> {
         .confirmResetPassword(
           email: email,
           confirmationCode: confirmationCode,
+          newPassword: newPassword,
+        );
+  }
+
+  Future<void> confirmResetPasswordWithToken({
+    required String email,
+    required String resetToken,
+    required String newPassword,
+  }) {
+    return ref
+        .read(passwordResetApiProvider)
+        .confirmResetPassword(
+          email: email,
+          resetToken: resetToken,
           newPassword: newPassword,
         );
   }

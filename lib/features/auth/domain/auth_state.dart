@@ -1,6 +1,6 @@
 import 'auth_user_profile.dart';
 
-enum AuthStatus { unauthenticated, authenticated, unconfirmed, missingRole }
+enum AuthStatus { unauthenticated, authenticated, unconfirmed }
 
 class AuthState {
   const AuthState._({required this.status, this.user, this.pendingEmail});
@@ -13,9 +13,6 @@ class AuthState {
 
   const AuthState.unconfirmed(String email)
     : this._(status: AuthStatus.unconfirmed, pendingEmail: email);
-
-  const AuthState.missingRole(AuthUserProfile user)
-    : this._(status: AuthStatus.missingRole, user: user);
 
   final AuthStatus status;
   final AuthUserProfile? user;

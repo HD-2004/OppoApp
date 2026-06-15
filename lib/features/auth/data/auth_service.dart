@@ -183,7 +183,7 @@ class AuthService {
       return roleFromAttributes;
     }
 
-    return _fetchRoleFromCognitoGroups();
+    return await _fetchRoleFromCognitoGroups() ?? AppRole.candidate;
   }
 
   Future<void> resetPassword({required String email}) async {
@@ -253,28 +253,11 @@ class AuthService {
       fullName: fullName,
       kycCompleted: false,
       profileCompleted: false,
-      employerStatus: role == AppRole.employer
-          ? EmployerStatus.pendingReview
-          : null,
     );
   }
 
   String routeAfterLogin(AuthUserProfile profile) {
-    if (profile.role == AppRole.employer) {
-      if (profile.isEmployerApproved) {
-        return '/employer';
-      }
-      if (profile.isEmployerRejected) {
-        return '/employer/rejected';
-      }
-      return '/employer/pending-review';
-    }
-
-    if (profile.role == AppRole.candidate) {
-      return '/candidate';
-    }
-
-    return '/missing-role';
+    return '/candidate';
   }
 
   Future<AppRole?> _fetchRoleFromUserAttributes() async {
@@ -303,10 +286,7 @@ class AuthService {
       final groups = tokens?.accessToken.groups ?? const <String>[];
 
       for (final group in groups) {
-        final role = AppRoleParser.fromCognitoValue(group);
-        if (role != null) {
-          return role;
-        }
+        return AppRoleParser.fromCognitoValue(group);
       }
 
       return null;

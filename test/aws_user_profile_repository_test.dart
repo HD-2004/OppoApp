@@ -4,21 +4,21 @@ import 'package:oppo_temp_jobs/shared/domain/app_role.dart';
 
 void main() {
   test(
-    'new profile payload uses the Cognito role instead of hardcoding candidate',
+    'new profile payload always stores candidate role in the mobile app',
     () {
       final payload = buildProfileCreatePayload(
-        userId: 'employer-1',
-        email: 'owner@example.com',
-        fullName: 'Owner',
-        role: AppRole.employer,
+        userId: 'user-1',
+        email: 'candidate@example.com',
+        fullName: 'Candidate',
+        role: AppRole.candidate,
         createdAt: DateTime.parse('2026-06-14T08:00:00Z'),
       );
 
-      expect(payload['role'], 'employer');
+      expect(payload['role'], 'user');
     },
   );
 
-  test('new profile payload keeps missing role explicit', () {
+  test('new profile payload defaults missing role to candidate', () {
     final payload = buildProfileCreatePayload(
       userId: 'unknown-1',
       email: 'unknown@example.com',
@@ -27,6 +27,6 @@ void main() {
       createdAt: DateTime.parse('2026-06-14T08:00:00Z'),
     );
 
-    expect(payload.containsKey('role'), isFalse);
+    expect(payload['role'], 'user');
   });
 }

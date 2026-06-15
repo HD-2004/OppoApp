@@ -112,7 +112,7 @@ void main() {
     expect(find.textContaining('Gửi lại mã sau'), findsOneWidget);
   });
 
-  testWidgets('reset password shows strength guidance for the new password', (
+  testWidgets('reset password starts with OTP verification before password', (
     tester,
   ) async {
     await pumpAuthScreen(
@@ -120,9 +120,9 @@ void main() {
       const ResetPasswordScreen(email: 'user@example.com'),
     );
 
-    expect(find.text('Tạo mật khẩu\nmới'), findsOneWidget);
-    expect(find.text('Mật khẩu mới'), findsWidgets);
-    expect(find.text('Độ mạnh mật khẩu'), findsOneWidget);
-    expect(find.text('Đổi mật khẩu'), findsWidgets);
+    expect(find.text('Xác thực\nOTP'), findsOneWidget);
+    expect(find.text('Mã xác nhận OTP'), findsOneWidget);
+    expect(find.text('Xác thực OTP'), findsOneWidget);
+    expect(find.text('Độ mạnh mật khẩu'), findsNothing);
   });
 }

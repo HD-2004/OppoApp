@@ -16,6 +16,8 @@ import 'widgets/otp_input_field.dart';
 import 'widgets/password_requirement_list.dart';
 import 'widgets/password_strength_bar.dart';
 
+enum _ResetPasswordStep { otp, password }
+
 class ResetPasswordScreen extends ConsumerStatefulWidget {
   const ResetPasswordScreen({super.key, this.email});
 
@@ -32,6 +34,8 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
   final _codeController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  _ResetPasswordStep _step = _ResetPasswordStep.otp;
+  String? _resetToken;
   bool _isSubmitting = false;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
@@ -66,11 +70,16 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
   }
 
   void _updateSubmitState() {
-    final next =
-        _emailController.text.trim().isNotEmpty &&
-        _codeController.text.trim().length == 6 &&
-        _passwordController.text.isNotEmpty &&
-        _confirmPasswordController.text.isNotEmpty;
+    final hasEmail = _emailController.text.trim().isNotEmpty;
+    final next = switch (_step) {
+      _ResetPasswordStep.otp =>
+        hasEmail && _codeController.text.trim().length == 6,
+      _ResetPasswordStep.password =>
+        hasEmail &&
+            _resetToken != null &&
+            _passwordController.text.isNotEmpty &&
+            _confirmPasswordController.text.isNotEmpty,
+    };
     if (next != _canSubmit) {
       setState(() => _canSubmit = next);
     } else {
@@ -78,16 +87,45 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
     }
   }
 
+  Future<void> _verifyOtp() async {
+    if (!_formKey.currentState!.validate()) return;
+    final l10n = AppLocalizations.of(context);
+    setState(() => _isSubmitting = true);
+    try {
+      final token = await ref
+          .read(authControllerProvider.notifier)
+          .verifyResetPasswordOtp(
+            email: _emailController.text,
+            otp: _codeController.text.trim(),
+          );
+      if (mounted) {
+        setState(() {
+          _resetToken = token;
+          _step = _ResetPasswordStep.password;
+          _canSubmit = false;
+        });
+      }
+    } on AuthFailure catch (f) {
+      _showError(f.message);
+    } catch (_) {
+      _showError(l10n.unknownError);
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    final resetToken = _resetToken;
+    if (resetToken == null) return;
     final l10n = AppLocalizations.of(context);
     setState(() => _isSubmitting = true);
     try {
       await ref
           .read(authControllerProvider.notifier)
-          .confirmResetPassword(
+          .confirmResetPasswordWithToken(
             email: _emailController.text,
-            confirmationCode: _codeController.text.trim(),
+            resetToken: resetToken,
             newPassword: _passwordController.text,
           );
       if (mounted) {
@@ -113,6 +151,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final isOtpStep = _step == _ResetPasswordStep.otp;
 
     return AuthScaffold(
       leading: Align(
@@ -129,19 +168,22 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // ── Header ──────────────────────────────────────────
-            const AuthHeader(
+            AuthHeader(
               compact: true,
-              title: 'Tạo mật khẩu\nmới',
-              subtitle:
-                  'Nhập mã OTP từ email và đặt mật khẩu mới cho tài khoản.',
-              icon: Icons.lock_reset_outlined,
+              title: isOtpStep ? 'Xác thực\nOTP' : 'Tạo mật khẩu\nmới',
+              subtitle: isOtpStep
+                  ? 'Nhập mã OTP từ email để xác nhận trước khi đổi mật khẩu.'
+                  : 'Thiết lập mật khẩu mới cho tài khoản của bạn.',
+              icon: isOtpStep
+                  ? Icons.mark_email_read_outlined
+                  : Icons.lock_reset_outlined,
             ),
             const SizedBox(height: 24),
 
             // ── Timeline — step 3 active ─────────────────────────
-            const AuthTimeline(
-              activeIndex: 2,
-              steps: [
+            AuthTimeline(
+              activeIndex: isOtpStep ? 1 : 2,
+              steps: const [
                 AuthTimelineStep(
                   icon: Icons.mail_outline_rounded,
                   label: 'Email',
@@ -212,90 +254,21 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                     const SizedBox(height: 18),
                   ],
 
-                  // OTP code
-                  Text(
-                    'Mã xác nhận OTP',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: AuthColors.textSecondary(context),
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 12),
-                  OtpInputField(
-                    controller: _codeController,
-                    onChanged: (_) => _updateSubmitState(),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // New password
-                  AuthTextField(
-                    controller: _passwordController,
-                    label: l10n.newPassword,
-                    icon: Icons.lock_outline_rounded,
-                    obscureText: _obscurePassword,
-                    textInputAction: TextInputAction.next,
-                    validator: (v) => cognitoPasswordValidator(
-                      v,
-                      requiredMessage: l10n.passwordRequired,
-                      weakPasswordMessage: l10n.weakPassword,
-                    ),
-                    suffix: IconButton(
-                      tooltip: _obscurePassword
-                          ? l10n.text('showPassword')
-                          : l10n.text('hidePassword'),
-                      icon: Icon(
-                        _obscurePassword
-                            ? Icons.visibility_outlined
-                            : Icons.visibility_off_outlined,
-                      ),
-                      onPressed: () =>
-                          setState(() => _obscurePassword = !_obscurePassword),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  PasswordStrengthBar(password: _passwordController.text),
-                  const SizedBox(height: 12),
-                  PasswordRequirementList(password: _passwordController.text),
-                  const SizedBox(height: 14),
-
-                  // Confirm password
-                  AuthTextField(
-                    controller: _confirmPasswordController,
-                    label: l10n.confirmNewPassword,
-                    icon: Icons.lock_reset_outlined,
-                    obscureText: _obscureConfirmPassword,
-                    validator: (v) {
-                      if (v != _passwordController.text) {
-                        return l10n.passwordMismatch;
-                      }
-                      return requiredTextValidator(
-                        v,
-                        message: l10n.passwordRequired,
-                      );
-                    },
-                    suffix: IconButton(
-                      tooltip: _obscureConfirmPassword
-                          ? l10n.text('showPassword')
-                          : l10n.text('hidePassword'),
-                      icon: Icon(
-                        _obscureConfirmPassword
-                            ? Icons.visibility_outlined
-                            : Icons.visibility_off_outlined,
-                      ),
-                      onPressed: () => setState(
-                        () =>
-                            _obscureConfirmPassword = !_obscureConfirmPassword,
-                      ),
-                    ),
-                  ),
+                  if (isOtpStep)
+                    ..._buildOtpStep(context)
+                  else ...[
+                    ..._buildPasswordStep(context, l10n),
+                  ],
                   const SizedBox(height: 22),
                   AuthPrimaryButton(
-                    label: 'Đổi mật khẩu',
-                    icon: Icons.password_outlined,
+                    label: isOtpStep ? l10n.text('verifyOtp') : 'Đổi mật khẩu',
+                    icon: isOtpStep
+                        ? Icons.verified_user_outlined
+                        : Icons.password_outlined,
                     isLoading: _isSubmitting,
-                    onPressed: _canSubmit ? _submit : null,
+                    onPressed: _canSubmit
+                        ? (isOtpStep ? _verifyOtp : _submit)
+                        : null,
                   ),
                 ],
               ),
@@ -304,5 +277,82 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
         ),
       ),
     );
+  }
+
+  List<Widget> _buildOtpStep(BuildContext context) {
+    return [
+      Text(
+        'Mã xác nhận OTP',
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w700,
+          color: AuthColors.textSecondary(context),
+        ),
+        textAlign: TextAlign.center,
+      ),
+      const SizedBox(height: 12),
+      OtpInputField(
+        controller: _codeController,
+        onChanged: (_) => _updateSubmitState(),
+      ),
+    ];
+  }
+
+  List<Widget> _buildPasswordStep(BuildContext context, AppLocalizations l10n) {
+    return [
+      AuthTextField(
+        controller: _passwordController,
+        label: l10n.newPassword,
+        icon: Icons.lock_outline_rounded,
+        obscureText: _obscurePassword,
+        textInputAction: TextInputAction.next,
+        validator: (v) => cognitoPasswordValidator(
+          v,
+          requiredMessage: l10n.passwordRequired,
+          weakPasswordMessage: l10n.weakPassword,
+        ),
+        suffix: IconButton(
+          tooltip: _obscurePassword
+              ? l10n.text('showPassword')
+              : l10n.text('hidePassword'),
+          icon: Icon(
+            _obscurePassword
+                ? Icons.visibility_outlined
+                : Icons.visibility_off_outlined,
+          ),
+          onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+        ),
+      ),
+      const SizedBox(height: 12),
+      PasswordStrengthBar(password: _passwordController.text),
+      const SizedBox(height: 12),
+      PasswordRequirementList(password: _passwordController.text),
+      const SizedBox(height: 14),
+      AuthTextField(
+        controller: _confirmPasswordController,
+        label: l10n.confirmNewPassword,
+        icon: Icons.lock_reset_outlined,
+        obscureText: _obscureConfirmPassword,
+        validator: (v) {
+          if (v != _passwordController.text) {
+            return l10n.passwordMismatch;
+          }
+          return requiredTextValidator(v, message: l10n.passwordRequired);
+        },
+        suffix: IconButton(
+          tooltip: _obscureConfirmPassword
+              ? l10n.text('showPassword')
+              : l10n.text('hidePassword'),
+          icon: Icon(
+            _obscureConfirmPassword
+                ? Icons.visibility_outlined
+                : Icons.visibility_off_outlined,
+          ),
+          onPressed: () => setState(
+            () => _obscureConfirmPassword = !_obscureConfirmPassword,
+          ),
+        ),
+      ),
+    ];
   }
 }

@@ -1,40 +1,5 @@
 import '../../../shared/domain/app_role.dart';
 
-enum EmployerStatus { pendingReview, approved, rejected }
-
-extension EmployerStatusValue on EmployerStatus {
-  String get value {
-    return switch (this) {
-      EmployerStatus.pendingReview => 'pending_review',
-      EmployerStatus.approved => 'approved',
-      EmployerStatus.rejected => 'rejected',
-    };
-  }
-
-  String get message {
-    return switch (this) {
-      EmployerStatus.pendingReview =>
-        'Tài khoản nhà tuyển dụng của bạn đang được xét duyệt.',
-      EmployerStatus.approved => 'Tài khoản nhà tuyển dụng đã được duyệt.',
-      EmployerStatus.rejected =>
-        'Tài khoản nhà tuyển dụng của bạn không được duyệt.',
-    };
-  }
-}
-
-class EmployerStatusParser {
-  const EmployerStatusParser._();
-
-  static EmployerStatus? fromValue(String? value) {
-    return switch (value?.trim().toLowerCase()) {
-      'pending_review' => EmployerStatus.pendingReview,
-      'approved' => EmployerStatus.approved,
-      'rejected' => EmployerStatus.rejected,
-      _ => null,
-    };
-  }
-}
-
 class AuthUserProfile {
   const AuthUserProfile({
     required this.userId,
@@ -52,7 +17,6 @@ class AuthUserProfile {
     this.bio,
     this.skills,
     this.profileImage,
-    this.employerStatus,
     this.savedJobs,
     this.createdAt,
     this.updatedAt,
@@ -78,7 +42,6 @@ class AuthUserProfile {
   final String? bio;
   final List<String>? skills;
   final String? profileImage;
-  final EmployerStatus? employerStatus;
   final List<String>? savedJobs;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -87,21 +50,6 @@ class AuthUserProfile {
   final double? latitude;
   final double? longitude;
   final Map<String, String>? socialLinks;
-
-  bool get isEmployerApproved {
-    return role == AppRole.employer &&
-        employerStatus == EmployerStatus.approved;
-  }
-
-  bool get isEmployerPendingReview {
-    return role == AppRole.employer &&
-        employerStatus == EmployerStatus.pendingReview;
-  }
-
-  bool get isEmployerRejected {
-    return role == AppRole.employer &&
-        employerStatus == EmployerStatus.rejected;
-  }
 
   AuthUserProfile copyWith({
     String? userId,
@@ -119,7 +67,6 @@ class AuthUserProfile {
     String? bio,
     List<String>? skills,
     String? profileImage,
-    EmployerStatus? employerStatus,
     List<String>? savedJobs,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -145,7 +92,6 @@ class AuthUserProfile {
       bio: bio ?? this.bio,
       skills: skills ?? this.skills,
       profileImage: profileImage ?? this.profileImage,
-      employerStatus: employerStatus ?? this.employerStatus,
       savedJobs: savedJobs ?? this.savedJobs,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,

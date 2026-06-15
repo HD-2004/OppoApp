@@ -87,24 +87,15 @@ void main() {
     );
   });
 
-  test('chat access requires an active candidate profile', () {
+  test('chat access requires sign-in and active availability only', () {
     expect(candidateChatAccessMessage(isSignedIn: false), 'login_required');
     expect(
-      candidateChatAccessMessage(isSignedIn: true, isCandidate: false),
-      'role_forbidden',
-    );
-    expect(
-      candidateChatAccessMessage(
-        isSignedIn: true,
-        isCandidate: true,
-        isActive: false,
-      ),
+      candidateChatAccessMessage(isSignedIn: true, isActive: false),
       'availability_off',
     );
     expect(
       candidateChatAccessMessage(
         isSignedIn: true,
-        isCandidate: true,
         isActive: true,
       ),
       isNull,

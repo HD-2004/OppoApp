@@ -19,7 +19,7 @@ Map<String, dynamic> buildProfileCreatePayload({
     'userId': userId,
     'email': email.trim(),
     'fullName': fullName.trim(),
-    if (role != null) 'role': role.cognitoValue,
+    'role': (role ?? AppRole.candidate).cognitoValue,
     'kycCompleted': false,
     'profileCompleted': false,
     'createdAt': now,

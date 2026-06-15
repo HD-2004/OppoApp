@@ -110,18 +110,6 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
           .toList();
     }
 
-<<<<<<< HEAD
-    if (_selectedTabIndex == 1) {
-      conversations = conversations
-          .where(
-            (item) =>
-                ref.read(candidateChatsProvider.notifier).isUnread(item.chat),
-          )
-          .toList();
-    }
-
-=======
->>>>>>> 685db4d9d0a26c8008d886951313f806b6b51bea
     if (conversations.isEmpty) {
       return const _EmptyState(
         icon: Icons.chat_bubble_outline_rounded,
@@ -384,80 +372,6 @@ class _SearchBar extends StatelessWidget {
   }
 }
 
-
-<<<<<<< HEAD
-class _FilterTabs extends StatelessWidget {
-  const _FilterTabs({
-    required this.selectedIndex,
-    required this.unreadCount,
-    required this.onTabSelected,
-  });
-
-  final int selectedIndex;
-  final int unreadCount;
-  final ValueChanged<int> onTabSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
-      child: Row(
-        children: [
-          _Tab(
-            label: 'Tất cả',
-            isActive: selectedIndex == 0,
-            onTap: () => onTabSelected(0),
-          ),
-          const SizedBox(width: 8),
-          _Tab(
-            label: unreadCount > 0 ? 'Chưa đọc ($unreadCount)' : 'Chưa đọc',
-            isActive: selectedIndex == 1,
-            onTap: () => onTabSelected(1),
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
-    );
-  }
-}
-
-class _Tab extends StatelessWidget {
-  const _Tab({required this.label, required this.onTap, this.isActive = false});
-
-  final String label;
-  final VoidCallback onTap;
-  final bool isActive;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-        decoration: BoxDecoration(
-          color: isActive
-              ? AppColors.primary
-              : AppColors.cardBackground(context),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isActive ? AppColors.primary : AppColors.borderFor(context),
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: isActive ? Colors.white : AppColors.textPrimaryFor(context),
-          ),
-        ),
-      ),
-    );
-  }
-}
-=======
->>>>>>> 685db4d9d0a26c8008d886951313f806b6b51bea
 
 // ── Empty state ───────────────────────────────────────────────────────────────
 

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:oppo_temp_jobs/core/localization/app_localizations.dart';
 import 'package:oppo_temp_jobs/core/theme/app_colors.dart';
+import 'package:oppo_temp_jobs/core/theme/app_theme.dart';
 import 'package:oppo_temp_jobs/features/auth/application/auth_controller.dart';
 import 'package:oppo_temp_jobs/features/auth/domain/auth_state.dart';
 import 'package:oppo_temp_jobs/features/candidate/application/jobs_providers.dart';
@@ -56,10 +57,11 @@ void main() {
           activeJobsProvider.overrideWith((_) async => <JobPost>[]),
           activeQuickJobsProvider.overrideWith((_) async => <JobPost>[]),
         ],
-        child: const MaterialApp(
-          locale: Locale('vi'),
+        child: MaterialApp(
+          locale: const Locale('vi'),
+          theme: AppTheme.lightTheme,
           supportedLocales: AppLocalizations.supportedLocales,
-          localizationsDelegates: [
+          localizationsDelegates: const [
             AppLocalizations.delegate,
             GlobalMaterialLocalizations.delegate,
             GlobalWidgetsLocalizations.delegate,
