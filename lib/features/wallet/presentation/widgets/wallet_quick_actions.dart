@@ -7,18 +7,16 @@ class WalletQuickActions extends StatelessWidget {
     super.key,
     required this.onWithdraw,
     required this.onHistory,
-    required this.onStatistics,
   });
 
   final VoidCallback onWithdraw;
   final VoidCallback onHistory;
-  final VoidCallback onStatistics;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return GridView.count(
-      crossAxisCount: 3,
+      crossAxisCount: 2,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       mainAxisSpacing: 10,
@@ -34,11 +32,6 @@ class WalletQuickActions extends StatelessWidget {
           icon: Icons.receipt_long_outlined,
           label: l10n.text('transactionHistory'),
           onTap: onHistory,
-        ),
-        _ActionTile(
-          icon: Icons.bar_chart_outlined,
-          label: l10n.text('revenueStatistics'),
-          onTap: onStatistics,
         ),
       ],
     );

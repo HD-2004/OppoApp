@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:amplify_flutter/amplify_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -5,16 +7,11 @@ import '../../../core/errors/auth_failure.dart';
 import '../data/auth_repository.dart';
 import '../data/auth_service.dart';
 import '../data/aws_user_profile_repository.dart';
-import '../data/password_reset_api.dart';
 import '../data/user_profile_repository.dart';
 import '../domain/auth_user_profile.dart';
 import '../domain/auth_state.dart';
 
 final authServiceProvider = Provider<AuthService>((ref) => AuthService());
-
-final passwordResetApiProvider = Provider<PasswordResetApi>((ref) {
-  return PasswordResetApi();
-});
 
 final userProfileRepositoryProvider = Provider<UserProfileRepository>((ref) {
   return AwsUserProfileRepository();
@@ -116,14 +113,7 @@ class AuthController extends AsyncNotifier<AuthState> {
   }
 
   Future<void> resetPassword({required String email}) {
-    return ref.read(passwordResetApiProvider).requestOtp(email: email);
-  }
-
-  Future<String> verifyResetPasswordOtp({
-    required String email,
-    required String otp,
-  }) {
-    return ref.read(passwordResetApiProvider).verifyOtp(email: email, otp: otp);
+    return ref.read(authRepositoryProvider).resetPassword(email: email);
   }
 
   Future<void> confirmResetPassword({
@@ -136,20 +126,6 @@ class AuthController extends AsyncNotifier<AuthState> {
         .confirmResetPassword(
           email: email,
           confirmationCode: confirmationCode,
-          newPassword: newPassword,
-        );
-  }
-
-  Future<void> confirmResetPasswordWithToken({
-    required String email,
-    required String resetToken,
-    required String newPassword,
-  }) {
-    return ref
-        .read(passwordResetApiProvider)
-        .confirmResetPassword(
-          email: email,
-          resetToken: resetToken,
           newPassword: newPassword,
         );
   }
@@ -239,6 +215,56 @@ class AuthController extends AsyncNotifier<AuthState> {
     state = AsyncData(AuthState.authenticated(updated));
   }
 
+  void pruneSavedJobs(List<String> validSavedJobs) {
+    final current = state.asData?.value.user;
+    if (current == null) {
+      return;
+    }
+
+    final normalized = <String>[
+      for (final id in validSavedJobs)
+        if (id.trim().isNotEmpty) id.trim(),
+    ];
+    final deduped = normalized.toSet().toList(growable: false);
+    final currentSaved = current.savedJobs ?? const <String>[];
+    if (_sameStringList(currentSaved, deduped)) {
+      return;
+    }
+
+    final optimistic = current.copyWith(savedJobs: deduped);
+    state = AsyncData(AuthState.authenticated(optimistic));
+
+    unawaited(_persistSavedJobs(optimistic, deduped));
+  }
+
+  Future<void> _persistSavedJobs(
+    AuthUserProfile current,
+    List<String> savedJobs,
+  ) async {
+    try {
+      final updated = await ref
+          .read(authRepositoryProvider)
+          .updateProfileCompleted(
+            userId: current.userId,
+            completed: current.profileCompleted,
+            fullName: current.fullName,
+            phone: current.phone,
+            cccd: current.cccd,
+            dateOfBirth: current.dateOfBirth,
+            location: current.location,
+            title: current.title,
+            bio: current.bio,
+            skills: current.skills,
+            profileImage: current.profileImage,
+            socialLinks: current.socialLinks,
+            savedJobs: savedJobs,
+          );
+      state = AsyncData(AuthState.authenticated(updated));
+    } catch (error) {
+      safePrint('Could not prune expired saved jobs: $error');
+    }
+  }
+
   Future<void> submitVerificationRequest() async {
     final current = state.asData?.value.user;
     if (current == null) {
@@ -276,4 +302,16 @@ class AuthController extends AsyncNotifier<AuthState> {
 
     state = AsyncData(AuthState.authenticated(resolved));
   }
+}
+
+bool _sameStringList(List<String> a, List<String> b) {
+  if (a.length != b.length) {
+    return false;
+  }
+  for (var i = 0; i < a.length; i++) {
+    if (a[i] != b[i]) {
+      return false;
+    }
+  }
+  return true;
 }

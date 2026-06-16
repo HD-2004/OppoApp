@@ -73,6 +73,57 @@ void main() {
     // 500.000 * 0.85 = 425.000 VND / ca
     expect(find.text('425.000 VND / ca'), findsOneWidget);
   });
+
+  testWidgets('job post card has a saved icon that does not open details', (
+    tester,
+  ) async {
+    var detailsTapCount = 0;
+    var saveTapCount = 0;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: JobPostCard(
+            job: _job,
+            isSaved: false,
+            onDetailsPressed: () => detailsTapCount++,
+            onApplyPressed: () {},
+            onSavePressed: () => saveTapCount++,
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byIcon(Icons.bookmark_border_rounded), findsOneWidget);
+    expect(find.byIcon(Icons.bookmark_rounded), findsNothing);
+
+    await tester.tap(find.byTooltip('Lưu công việc'));
+    await tester.pump();
+
+    expect(saveTapCount, 1);
+    expect(detailsTapCount, 0);
+  });
+
+  testWidgets('job post card shows filled saved icon when job is saved', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: JobPostCard(
+            job: _job,
+            isSaved: true,
+            onDetailsPressed: () {},
+            onApplyPressed: () {},
+            onSavePressed: () {},
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byIcon(Icons.bookmark_rounded), findsOneWidget);
+    expect(find.byIcon(Icons.bookmark_border_rounded), findsNothing);
+  });
 }
 
 final _job = JobPost(

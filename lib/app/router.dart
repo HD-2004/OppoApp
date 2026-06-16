@@ -37,7 +37,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           location == '/confirm-signup' ||
           location == '/otp-verification' ||
           location == '/forgot-password' ||
-          location == '/reset-password';
+          location == '/reset-password' ||
+          location == '/reset-password/new-password';
 
       if (value.status == AuthStatus.unauthenticated) {
         return isAuthRoute ? null : '/login';
@@ -105,7 +106,23 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           return ResetPasswordScreen(email: state.uri.queryParameters['email']);
         },
       ),
-      GoRoute(path: '/missing-role', redirect: (context, state) => '/candidate'),
+      GoRoute(
+        path: '/reset-password/new-password',
+        redirect: (context, state) {
+          return state.extra is ResetPasswordSession
+              ? null
+              : '/forgot-password';
+        },
+        builder: (context, state) {
+          return ResetPasswordNewPasswordScreen(
+            session: state.extra as ResetPasswordSession?,
+          );
+        },
+      ),
+      GoRoute(
+        path: '/missing-role',
+        redirect: (context, state) => '/candidate',
+      ),
       GoRoute(
         path: '/candidate',
         builder: (context, state) => const UserDashboardScreen(),

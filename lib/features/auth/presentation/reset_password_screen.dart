@@ -16,7 +16,15 @@ import 'widgets/otp_input_field.dart';
 import 'widgets/password_requirement_list.dart';
 import 'widgets/password_strength_bar.dart';
 
-enum _ResetPasswordStep { otp, password }
+class ResetPasswordSession {
+  const ResetPasswordSession({
+    required this.email,
+    required this.confirmationCode,
+  });
+
+  final String email;
+  final String confirmationCode;
+}
 
 class ResetPasswordScreen extends ConsumerStatefulWidget {
   const ResetPasswordScreen({super.key, this.email});
@@ -32,10 +40,152 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _emailController;
   final _codeController = TextEditingController();
+  bool _canContinue = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _emailController = TextEditingController(text: widget.email ?? '');
+    _emailController.addListener(_updateContinueState);
+    _codeController.addListener(_updateContinueState);
+    _updateContinueState();
+  }
+
+  @override
+  void dispose() {
+    _emailController.removeListener(_updateContinueState);
+    _codeController.removeListener(_updateContinueState);
+    _emailController.dispose();
+    _codeController.dispose();
+    super.dispose();
+  }
+
+  void _updateContinueState() {
+    final next =
+        _emailController.text.trim().isNotEmpty &&
+        _codeController.text.trim().length == 6;
+    if (next != _canContinue) {
+      setState(() => _canContinue = next);
+    } else if (mounted) {
+      setState(() {});
+    }
+  }
+
+  void _continueToPassword() {
+    if (!_formKey.currentState!.validate()) return;
+    context.push(
+      '/reset-password/new-password',
+      extra: ResetPasswordSession(
+        email: _emailController.text.trim(),
+        confirmationCode: _codeController.text.trim(),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+
+    return AuthScaffold(
+      leading: Align(
+        alignment: Alignment.centerLeft,
+        child: IconButton.filledTonal(
+          tooltip: l10n.back,
+          onPressed: () => context.go('/login'),
+          icon: const Icon(Icons.arrow_back_rounded),
+        ),
+      ),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const AuthHeader(
+              compact: true,
+              title: 'Nhập mã\nOTP',
+              subtitle:
+                  'Nhập mã OTP đã được gửi tới email để tiếp tục đặt mật khẩu mới.',
+              icon: Icons.pin_outlined,
+            ),
+            const SizedBox(height: 24),
+            const AuthTimeline(
+              activeIndex: 1,
+              steps: [
+                AuthTimelineStep(icon: Icons.check_rounded, label: 'Email'),
+                AuthTimelineStep(icon: Icons.pin_outlined, label: 'OTP'),
+                AuthTimelineStep(
+                  icon: Icons.lock_reset_outlined,
+                  label: 'Mật khẩu mới',
+                ),
+              ],
+            ),
+            const SizedBox(height: 28),
+            AuthFormCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (widget.email == null || widget.email!.trim().isEmpty) ...[
+                    AuthTextField(
+                      controller: _emailController,
+                      label: l10n.email,
+                      icon: Icons.mail_outline_rounded,
+                      keyboardType: TextInputType.emailAddress,
+                      validator: (v) => emailValidator(
+                        v,
+                        requiredMessage: l10n.emailRequired,
+                        invalidMessage: l10n.text('invalidEmail'),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                  ] else ...[
+                    _EmailChip(email: _emailController.text),
+                    const SizedBox(height: 18),
+                  ],
+                  Text(
+                    'Mã xác nhận OTP',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: AuthColors.textSecondary(context),
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 12),
+                  OtpInputField(
+                    controller: _codeController,
+                    onChanged: (_) => _updateContinueState(),
+                  ),
+                  const SizedBox(height: 22),
+                  AuthPrimaryButton(
+                    label: 'Tiếp tục',
+                    icon: Icons.arrow_forward_rounded,
+                    onPressed: _canContinue ? _continueToPassword : null,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class ResetPasswordNewPasswordScreen extends ConsumerStatefulWidget {
+  const ResetPasswordNewPasswordScreen({super.key, required this.session});
+
+  final ResetPasswordSession? session;
+
+  @override
+  ConsumerState<ResetPasswordNewPasswordScreen> createState() =>
+      _ResetPasswordNewPasswordScreenState();
+}
+
+class _ResetPasswordNewPasswordScreenState
+    extends ConsumerState<ResetPasswordNewPasswordScreen> {
+  final _formKey = GlobalKey<FormState>();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-  _ResetPasswordStep _step = _ResetPasswordStep.otp;
-  String? _resetToken;
   bool _isSubmitting = false;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
@@ -44,88 +194,42 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
   @override
   void initState() {
     super.initState();
-    _emailController = TextEditingController(text: widget.email ?? '');
-    for (final c in [
-      _emailController,
-      _codeController,
-      _passwordController,
-      _confirmPasswordController,
-    ]) {
-      c.addListener(_updateSubmitState);
-    }
+    _passwordController.addListener(_updateSubmitState);
+    _confirmPasswordController.addListener(_updateSubmitState);
   }
 
   @override
   void dispose() {
-    for (final c in [
-      _emailController,
-      _codeController,
-      _passwordController,
-      _confirmPasswordController,
-    ]) {
-      c.removeListener(_updateSubmitState);
-      c.dispose();
-    }
+    _passwordController.removeListener(_updateSubmitState);
+    _confirmPasswordController.removeListener(_updateSubmitState);
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
   void _updateSubmitState() {
-    final hasEmail = _emailController.text.trim().isNotEmpty;
-    final next = switch (_step) {
-      _ResetPasswordStep.otp =>
-        hasEmail && _codeController.text.trim().length == 6,
-      _ResetPasswordStep.password =>
-        hasEmail &&
-            _resetToken != null &&
-            _passwordController.text.isNotEmpty &&
-            _confirmPasswordController.text.isNotEmpty,
-    };
+    final next =
+        widget.session != null &&
+        _passwordController.text.isNotEmpty &&
+        _confirmPasswordController.text.isNotEmpty;
     if (next != _canSubmit) {
       setState(() => _canSubmit = next);
-    } else {
+    } else if (mounted) {
       setState(() {});
     }
   }
 
-  Future<void> _verifyOtp() async {
-    if (!_formKey.currentState!.validate()) return;
-    final l10n = AppLocalizations.of(context);
-    setState(() => _isSubmitting = true);
-    try {
-      final token = await ref
-          .read(authControllerProvider.notifier)
-          .verifyResetPasswordOtp(
-            email: _emailController.text,
-            otp: _codeController.text.trim(),
-          );
-      if (mounted) {
-        setState(() {
-          _resetToken = token;
-          _step = _ResetPasswordStep.password;
-          _canSubmit = false;
-        });
-      }
-    } on AuthFailure catch (f) {
-      _showError(f.message);
-    } catch (_) {
-      _showError(l10n.unknownError);
-    } finally {
-      if (mounted) setState(() => _isSubmitting = false);
-    }
-  }
-
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
-    final resetToken = _resetToken;
-    if (resetToken == null) return;
+    final session = widget.session;
+    if (session == null || !_formKey.currentState!.validate()) return;
     final l10n = AppLocalizations.of(context);
     setState(() => _isSubmitting = true);
     try {
       await ref
           .read(authControllerProvider.notifier)
-          .confirmResetPasswordWithToken(
-            email: _emailController.text,
-            resetToken: resetToken,
+          .confirmResetPassword(
+            email: session.email,
+            confirmationCode: session.confirmationCode,
             newPassword: _passwordController.text,
           );
       if (mounted) {
@@ -151,14 +255,29 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    final isOtpStep = _step == _ResetPasswordStep.otp;
+    final session = widget.session;
+
+    if (session == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) context.go('/forgot-password');
+      });
+      return const AuthScaffold(child: SizedBox.shrink());
+    }
 
     return AuthScaffold(
       leading: Align(
         alignment: Alignment.centerLeft,
         child: IconButton.filledTonal(
           tooltip: l10n.back,
-          onPressed: () => context.go('/login'),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+              return;
+            }
+            context.go(
+              '/reset-password?email=${Uri.encodeComponent(session.email)}',
+            );
+          },
           icon: const Icon(Icons.arrow_back_rounded),
         ),
       ),
@@ -167,28 +286,18 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // ── Header ──────────────────────────────────────────
-            AuthHeader(
+            const AuthHeader(
               compact: true,
-              title: isOtpStep ? 'Xác thực\nOTP' : 'Tạo mật khẩu\nmới',
-              subtitle: isOtpStep
-                  ? 'Nhập mã OTP từ email để xác nhận trước khi đổi mật khẩu.'
-                  : 'Thiết lập mật khẩu mới cho tài khoản của bạn.',
-              icon: isOtpStep
-                  ? Icons.mark_email_read_outlined
-                  : Icons.lock_reset_outlined,
+              title: 'Tạo mật khẩu\nmới',
+              subtitle: 'Thiết lập mật khẩu mới cho tài khoản của bạn.',
+              icon: Icons.lock_reset_outlined,
             ),
             const SizedBox(height: 24),
-
-            // ── Timeline — step 3 active ─────────────────────────
-            AuthTimeline(
-              activeIndex: isOtpStep ? 1 : 2,
-              steps: const [
-                AuthTimelineStep(
-                  icon: Icons.mail_outline_rounded,
-                  label: 'Email',
-                ),
-                AuthTimelineStep(icon: Icons.pin_outlined, label: 'OTP'),
+            const AuthTimeline(
+              activeIndex: 2,
+              steps: [
+                AuthTimelineStep(icon: Icons.check_rounded, label: 'Email'),
+                AuthTimelineStep(icon: Icons.check_rounded, label: 'OTP'),
                 AuthTimelineStep(
                   icon: Icons.lock_reset_outlined,
                   label: 'Mật khẩu mới',
@@ -196,79 +305,76 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
               ],
             ),
             const SizedBox(height: 28),
-
-            // ── Form card ─────────────────────────────────────────
             AuthFormCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Email — show or input
-                  if (widget.email == null || widget.email!.trim().isEmpty) ...[
-                    AuthTextField(
-                      controller: _emailController,
-                      label: l10n.email,
-                      icon: Icons.mail_outline_rounded,
-                      keyboardType: TextInputType.emailAddress,
-                      validator: (v) => emailValidator(
+                  _EmailChip(email: session.email),
+                  const SizedBox(height: 20),
+                  AuthTextField(
+                    controller: _passwordController,
+                    label: l10n.newPassword,
+                    icon: Icons.lock_outline_rounded,
+                    obscureText: _obscurePassword,
+                    textInputAction: TextInputAction.next,
+                    validator: (v) => cognitoPasswordValidator(
+                      v,
+                      requiredMessage: l10n.passwordRequired,
+                      weakPasswordMessage: l10n.weakPassword,
+                    ),
+                    suffix: IconButton(
+                      tooltip: _obscurePassword
+                          ? l10n.text('showPassword')
+                          : l10n.text('hidePassword'),
+                      icon: Icon(
+                        _obscurePassword
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
+                      ),
+                      onPressed: () =>
+                          setState(() => _obscurePassword = !_obscurePassword),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  PasswordStrengthBar(password: _passwordController.text),
+                  const SizedBox(height: 12),
+                  PasswordRequirementList(password: _passwordController.text),
+                  const SizedBox(height: 14),
+                  AuthTextField(
+                    controller: _confirmPasswordController,
+                    label: l10n.confirmNewPassword,
+                    icon: Icons.lock_reset_outlined,
+                    obscureText: _obscureConfirmPassword,
+                    validator: (v) {
+                      if (v != _passwordController.text) {
+                        return l10n.passwordMismatch;
+                      }
+                      return requiredTextValidator(
                         v,
-                        requiredMessage: l10n.emailRequired,
-                        invalidMessage: l10n.text('invalidEmail'),
+                        message: l10n.passwordRequired,
+                      );
+                    },
+                    suffix: IconButton(
+                      tooltip: _obscureConfirmPassword
+                          ? l10n.text('showPassword')
+                          : l10n.text('hidePassword'),
+                      icon: Icon(
+                        _obscureConfirmPassword
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
+                      ),
+                      onPressed: () => setState(
+                        () =>
+                            _obscureConfirmPassword = !_obscureConfirmPassword,
                       ),
                     ),
-                    const SizedBox(height: 18),
-                  ] else ...[
-                    Center(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AuthColors.primary.withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: AuthColors.primary.withValues(alpha: 0.15),
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.mail_outline_rounded,
-                              size: 15,
-                              color: AuthColors.primary,
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              _emailController.text,
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                color: AuthColors.primary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-                  ],
-
-                  if (isOtpStep)
-                    ..._buildOtpStep(context)
-                  else ...[
-                    ..._buildPasswordStep(context, l10n),
-                  ],
+                  ),
                   const SizedBox(height: 22),
                   AuthPrimaryButton(
-                    label: isOtpStep ? l10n.text('verifyOtp') : 'Đổi mật khẩu',
-                    icon: isOtpStep
-                        ? Icons.verified_user_outlined
-                        : Icons.password_outlined,
+                    label: 'Đổi mật khẩu',
+                    icon: Icons.password_outlined,
                     isLoading: _isSubmitting,
-                    onPressed: _canSubmit
-                        ? (isOtpStep ? _verifyOtp : _submit)
-                        : null,
+                    onPressed: _canSubmit ? _submit : null,
                   ),
                 ],
               ),
@@ -278,81 +384,46 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
       ),
     );
   }
+}
 
-  List<Widget> _buildOtpStep(BuildContext context) {
-    return [
-      Text(
-        'Mã xác nhận OTP',
-        style: TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.w700,
-          color: AuthColors.textSecondary(context),
-        ),
-        textAlign: TextAlign.center,
-      ),
-      const SizedBox(height: 12),
-      OtpInputField(
-        controller: _codeController,
-        onChanged: (_) => _updateSubmitState(),
-      ),
-    ];
-  }
+class _EmailChip extends StatelessWidget {
+  const _EmailChip({required this.email});
 
-  List<Widget> _buildPasswordStep(BuildContext context, AppLocalizations l10n) {
-    return [
-      AuthTextField(
-        controller: _passwordController,
-        label: l10n.newPassword,
-        icon: Icons.lock_outline_rounded,
-        obscureText: _obscurePassword,
-        textInputAction: TextInputAction.next,
-        validator: (v) => cognitoPasswordValidator(
-          v,
-          requiredMessage: l10n.passwordRequired,
-          weakPasswordMessage: l10n.weakPassword,
+  final String email;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: AuthColors.primary.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AuthColors.primary.withValues(alpha: 0.15)),
         ),
-        suffix: IconButton(
-          tooltip: _obscurePassword
-              ? l10n.text('showPassword')
-              : l10n.text('hidePassword'),
-          icon: Icon(
-            _obscurePassword
-                ? Icons.visibility_outlined
-                : Icons.visibility_off_outlined,
-          ),
-          onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-        ),
-      ),
-      const SizedBox(height: 12),
-      PasswordStrengthBar(password: _passwordController.text),
-      const SizedBox(height: 12),
-      PasswordRequirementList(password: _passwordController.text),
-      const SizedBox(height: 14),
-      AuthTextField(
-        controller: _confirmPasswordController,
-        label: l10n.confirmNewPassword,
-        icon: Icons.lock_reset_outlined,
-        obscureText: _obscureConfirmPassword,
-        validator: (v) {
-          if (v != _passwordController.text) {
-            return l10n.passwordMismatch;
-          }
-          return requiredTextValidator(v, message: l10n.passwordRequired);
-        },
-        suffix: IconButton(
-          tooltip: _obscureConfirmPassword
-              ? l10n.text('showPassword')
-              : l10n.text('hidePassword'),
-          icon: Icon(
-            _obscureConfirmPassword
-                ? Icons.visibility_outlined
-                : Icons.visibility_off_outlined,
-          ),
-          onPressed: () => setState(
-            () => _obscureConfirmPassword = !_obscureConfirmPassword,
-          ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.mail_outline_rounded,
+              size: 15,
+              color: AuthColors.primary,
+            ),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                email,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: AuthColors.primary,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
-    ];
+    );
   }
 }

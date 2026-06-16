@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:oppo_temp_jobs/core/localization/app_localizations.dart';
 import 'package:oppo_temp_jobs/features/auth/application/auth_controller.dart';
+import 'package:oppo_temp_jobs/features/auth/data/user_profile_repository.dart';
 import 'package:oppo_temp_jobs/features/auth/domain/auth_state.dart';
 import 'package:oppo_temp_jobs/features/auth/domain/auth_user_profile.dart';
 import 'package:oppo_temp_jobs/features/candidate/application/jobs_providers.dart';
@@ -29,7 +32,16 @@ void main() {
           activeJobsProvider.overrideWith((_) async => [_job]),
           activeQuickJobsProvider.overrideWith((_) async => <JobPost>[]),
         ],
-        child: const MaterialApp(home: UserJobsScreen(showBackButton: false)),
+        child: const MaterialApp(
+          localizationsDelegates: [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: UserJobsScreen(showBackButton: false),
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -38,9 +50,7 @@ void main() {
     expect(find.text('Tìm thấy 1 công việc phù hợp'), findsOneWidget);
   });
 
-  testWidgets('urgent tab badge shows urgent count before tab is selected', (
-    tester,
-  ) async {
+  testWidgets('job type dropdown selects urgent jobs', (tester) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -50,15 +60,122 @@ void main() {
           activeJobsProvider.overrideWith((_) async => [_job, _secondJob]),
           activeQuickJobsProvider.overrideWith((_) async => [_quickJob]),
         ],
-        child: const MaterialApp(home: UserJobsScreen(showBackButton: false)),
+        child: const MaterialApp(
+          localizationsDelegates: [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: UserJobsScreen(showBackButton: false),
+        ),
       ),
     );
     await tester.pumpAndSettle();
 
+    expect(find.text('Loại công việc'), findsOneWidget);
     expect(find.text('Công việc tiêu chuẩn'), findsOneWidget);
-    expect(find.text('Công việc Tuyển gấp'), findsOneWidget);
     expect(find.text('Tìm thấy 2 công việc phù hợp'), findsOneWidget);
-    expect(find.text('1'), findsOneWidget);
+
+    await tester.tap(find.text('Loại công việc'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Công việc Tuyển gấp'), findsOneWidget);
+
+    await tester.tap(find.text('Công việc Tuyển gấp'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Tìm thấy 1 công việc phù hợp'), findsOneWidget);
+  });
+
+  testWidgets('job type selector and saved jobs icon fit on mobile', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authControllerProvider.overrideWithBuild(
+            (_, _) => AuthState.authenticated(_activeCandidateWithSavedJobs),
+          ),
+          activeJobsProvider.overrideWith((_) async => [_job, _secondJob]),
+          activeQuickJobsProvider.overrideWith((_) async => [_quickJob]),
+        ],
+        child: const MaterialApp(
+          localizationsDelegates: [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: UserJobsScreen(showBackButton: false),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final horizontalScrollViews = tester
+        .widgetList<SingleChildScrollView>(find.byType(SingleChildScrollView))
+        .where((widget) => widget.scrollDirection == Axis.horizontal);
+
+    expect(horizontalScrollViews, isEmpty);
+    expect(find.text('Loại công việc'), findsOneWidget);
+    expect(find.text('Công việc tiêu chuẩn'), findsOneWidget);
+    expect(find.byKey(const Key('saved-jobs-button')), findsOneWidget);
+    expect(find.byKey(const Key('saved-jobs-badge')), findsOneWidget);
+    expect(find.text('2'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('saved-jobs-button')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Tìm thấy 2 công việc phù hợp'), findsOneWidget);
+  });
+
+  testWidgets('saved jobs badge ignores expired saved job ids', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authControllerProvider.overrideWithBuild(
+            (_, _) => AuthState.authenticated(_candidateWithExpiredSavedJob),
+          ),
+          userProfileRepositoryProvider.overrideWithValue(
+            _FakeUserProfileRepository(),
+          ),
+          activeJobsProvider.overrideWith((_) async => [_job]),
+          activeQuickJobsProvider.overrideWith((_) async => <JobPost>[]),
+        ],
+        child: const MaterialApp(
+          localizationsDelegates: [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: UserJobsScreen(showBackButton: false),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('saved-jobs-button')), findsOneWidget);
+    expect(find.byKey(const Key('saved-jobs-badge')), findsNothing);
+    expect(find.text('1'), findsNothing);
   });
 }
 
@@ -84,6 +201,32 @@ const _activeCandidateUser = AuthUserProfile(
   isActive: true,
   latitude: 10.0,
   longitude: 106.0,
+);
+
+const _activeCandidateWithSavedJobs = AuthUserProfile(
+  userId: 'candidate-1',
+  username: 'candidate',
+  role: AppRole.candidate,
+  email: 'candidate@example.com',
+  fullName: 'Nguyen An',
+  kycCompleted: true,
+  profileCompleted: true,
+  verificationStatus: 'APPROVED',
+  isActive: true,
+  latitude: 10.0,
+  longitude: 106.0,
+  savedJobs: ['job-1', 'quick-job'],
+);
+
+const _candidateWithExpiredSavedJob = AuthUserProfile(
+  userId: 'candidate-1',
+  username: 'candidate',
+  role: AppRole.candidate,
+  email: 'candidate@example.com',
+  fullName: 'Nguyen An',
+  kycCompleted: true,
+  profileCompleted: true,
+  savedJobs: ['expired-job'],
 );
 
 final _job = JobPost(
@@ -133,3 +276,73 @@ final _quickJob = JobPost(
   postedAt: DateTime(2026, 1, 3),
   isQuickJob: true,
 );
+
+class _FakeUserProfileRepository implements UserProfileRepository {
+  @override
+  Future<void> savePendingRegistration(PendingRegistrationProfile profile) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<AuthUserProfile?> getByUserId(String userId) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<AuthUserProfile?> getByEmail(String email) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<AuthUserProfile> upsertAfterLogin({
+    required String userId,
+    required String username,
+    required String email,
+    required String fullName,
+    required AppRole? role,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<AuthUserProfile> updateKycCompleted({
+    required String userId,
+    required bool completed,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<AuthUserProfile> updateProfileCompleted({
+    required String userId,
+    required bool completed,
+    String? fullName,
+    String? phone,
+    String? cccd,
+    String? dateOfBirth,
+    String? location,
+    String? title,
+    String? bio,
+    List<String>? skills,
+    String? profileImage,
+    Map<String, String>? socialLinks,
+    List<String>? savedJobs,
+  }) async {
+    return _candidateWithExpiredSavedJob.copyWith(savedJobs: savedJobs);
+  }
+
+  @override
+  Future<AuthUserProfile> submitVerificationRequest({required String userId}) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<AuthUserProfile> updateAvailability({
+    required String userId,
+    required bool isActive,
+    double? latitude,
+    double? longitude,
+  }) {
+    throw UnimplementedError();
+  }
+}

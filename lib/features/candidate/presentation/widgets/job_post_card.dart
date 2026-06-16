@@ -12,6 +12,8 @@ class JobPostCard extends StatelessWidget {
     required this.onApplyPressed,
     this.distance,
     this.isApplying = false,
+    this.isSaved = false,
+    this.onSavePressed,
   });
 
   final JobPost job;
@@ -19,6 +21,8 @@ class JobPostCard extends StatelessWidget {
   final VoidCallback? onApplyPressed;
   final double? distance;
   final bool isApplying;
+  final bool isSaved;
+  final VoidCallback? onSavePressed;
 
   String _postedTimeLabel(DateTime postedAt) {
     if (postedAt.millisecondsSinceEpoch == 0) {
@@ -99,6 +103,8 @@ class JobPostCard extends StatelessWidget {
                       ],
                     ),
                   ),
+                  const SizedBox(width: 8),
+                  _SaveJobButton(isSaved: isSaved, onPressed: onSavePressed),
                 ],
               ),
               const SizedBox(height: 16),
@@ -178,6 +184,40 @@ class JobPostCard extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _SaveJobButton extends StatelessWidget {
+  const _SaveJobButton({required this.isSaved, this.onPressed});
+
+  final bool isSaved;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final color = isSaved
+        ? AppColors.primary
+        : theme.colorScheme.onSurfaceVariant;
+
+    return IconButton(
+      tooltip: isSaved ? 'Bỏ lưu công việc' : 'Lưu công việc',
+      onPressed: onPressed,
+      style: IconButton.styleFrom(
+        backgroundColor: isSaved
+            ? AppColors.primary.withValues(alpha: 0.12)
+            : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.72),
+        foregroundColor: color,
+        fixedSize: const Size(40, 40),
+        minimumSize: const Size(40, 40),
+        padding: EdgeInsets.zero,
+        shape: const CircleBorder(),
+      ),
+      icon: Icon(
+        isSaved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+        size: 22,
       ),
     );
   }

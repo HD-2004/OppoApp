@@ -2,7 +2,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/repositories/api_wallet_repository.dart';
 import '../../domain/entities/linked_bank_account.dart';
-import '../../domain/entities/revenue_statistics.dart';
 import '../../domain/entities/wallet.dart';
 import '../../domain/entities/wallet_transaction.dart';
 import '../../domain/entities/withdrawal_request.dart';
@@ -20,7 +19,6 @@ class WalletState {
     required this.wallet,
     required this.recentTransactions,
     required this.transactions,
-    required this.statistics,
     this.linkedBankAccount,
     this.isBalanceVisible = true,
     this.isRefreshing = false,
@@ -31,7 +29,6 @@ class WalletState {
   final LinkedBankAccount? linkedBankAccount;
   final List<WalletTransaction> recentTransactions;
   final List<WalletTransaction> transactions;
-  final RevenueStatistics statistics;
   final bool isBalanceVisible;
   final bool isRefreshing;
   final String? errorMessage;
@@ -42,7 +39,6 @@ class WalletState {
     bool clearLinkedBankAccount = false,
     List<WalletTransaction>? recentTransactions,
     List<WalletTransaction>? transactions,
-    RevenueStatistics? statistics,
     bool? isBalanceVisible,
     bool? isRefreshing,
     String? errorMessage,
@@ -54,7 +50,6 @@ class WalletState {
           : linkedBankAccount ?? this.linkedBankAccount,
       recentTransactions: recentTransactions ?? this.recentTransactions,
       transactions: transactions ?? this.transactions,
-      statistics: statistics ?? this.statistics,
       isBalanceVisible: isBalanceVisible ?? this.isBalanceVisible,
       isRefreshing: isRefreshing ?? this.isRefreshing,
       errorMessage: errorMessage,
@@ -74,13 +69,11 @@ class WalletController extends AsyncNotifier<WalletState> {
     final wallet = await _repository.getWalletOverview();
     final bankAccount = await _repository.getLinkedBankAccount();
     final transactions = await _repository.getTransactions();
-    final statistics = await _repository.getRevenueStatistics();
     return WalletState(
       wallet: wallet,
       linkedBankAccount: bankAccount,
       recentTransactions: transactions.take(5).toList(),
       transactions: transactions,
-      statistics: statistics,
     );
   }
 
@@ -115,15 +108,6 @@ class WalletController extends AsyncNotifier<WalletState> {
         recentTransactions: transactions.take(5).toList(),
       ),
     );
-  }
-
-  Future<void> loadStatistics() async {
-    final current = state.asData?.value;
-    if (current == null) {
-      return;
-    }
-    final statistics = await _repository.getRevenueStatistics();
-    state = AsyncData(current.copyWith(statistics: statistics));
   }
 
   Future<LinkedBankAccount> linkBankAccount({

@@ -51,6 +51,7 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
 
   // Layout: 'list', 'grid'
   String _viewMode = 'list';
+  String? _lastSavedJobsCleanupSignature;
 
   @override
   void dispose() {
@@ -335,7 +336,7 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
       baseList = [
         ...allStandard,
         ...allQuick,
-      ].where((job) => savedJobIds.contains(job.id)).toList();
+      ].where((job) => _isJobSaved(job, savedJobIds)).toList();
     }
 
     // Apply Search Keyword
@@ -401,6 +402,58 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
     }
 
     return baseList;
+  }
+
+  bool _isJobSaved(JobPost job, List<String> savedJobIds) {
+    return savedJobIds.contains(job.id) || savedJobIds.contains(job.idJob);
+  }
+
+  List<String> _validSavedJobIds(
+    List<String> savedJobIds,
+    List<JobPost> standardJobs,
+    List<JobPost> quickJobs,
+  ) {
+    final activeJobIds = <String>{
+      for (final job in [...standardJobs, ...quickJobs]) ...[
+        if (job.id.trim().isNotEmpty) job.id,
+        if (job.idJob.trim().isNotEmpty) job.idJob,
+      ],
+    };
+
+    final valid = <String>[];
+    for (final jobId in savedJobIds) {
+      final trimmed = jobId.trim();
+      if (trimmed.isNotEmpty &&
+          activeJobIds.contains(trimmed) &&
+          !valid.contains(trimmed)) {
+        valid.add(trimmed);
+      }
+    }
+    return valid;
+  }
+
+  void _pruneExpiredSavedJobs(
+    List<String> savedJobIds,
+    List<String> validSavedJobIds,
+  ) {
+    if (_sameStringList(savedJobIds, validSavedJobIds)) {
+      return;
+    }
+
+    final signature = '${savedJobIds.join('|')}=>${validSavedJobIds.join('|')}';
+    if (_lastSavedJobsCleanupSignature == signature) {
+      return;
+    }
+    _lastSavedJobsCleanupSignature = signature;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      ref
+          .read(authControllerProvider.notifier)
+          .pruneSavedJobs(validSavedJobIds);
+    });
   }
 
   void _clearFilters() {
@@ -674,7 +727,7 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
 
     // Profile sync
     final user = ref.watch(authControllerProvider).asData?.value.user;
-    final savedJobIds = user?.savedJobs ?? [];
+    final rawSavedJobIds = user?.savedJobs ?? const <String>[];
 
     return Scaffold(
       body: SafeArea(
@@ -682,6 +735,12 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
           data: (standardJobs) {
             return quickJobsAsync.when(
               data: (quickJobs) {
+                final savedJobIds = _validSavedJobIds(
+                  rawSavedJobIds,
+                  standardJobs,
+                  quickJobs,
+                );
+                _pruneExpiredSavedJobs(rawSavedJobIds, savedJobIds);
                 final filteredJobs = _getFilteredJobs(
                   standardJobs,
                   quickJobs,
@@ -846,35 +905,13 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
                           horizontal: 16,
                           vertical: 16,
                         ),
-                        child: SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: Row(
-                            children: [
-                              _TabItem(
-                                label: 'Công việc tiêu chuẩn',
-                                count: standardJobs.length,
-                                isActive: _activeTab == 0,
-                                icon: Icons.work_outline,
-                                onTap: () => setState(() => _activeTab = 0),
-                              ),
-                              const SizedBox(width: 10),
-                              _TabItem(
-                                label: 'Công việc Tuyển gấp',
-                                count: urgentJobsCount,
-                                isActive: _activeTab == 1,
-                                icon: Icons.flash_on_outlined,
-                                onTap: () => setState(() => _activeTab = 1),
-                              ),
-                              const SizedBox(width: 10),
-                              _TabItem(
-                                label: 'Công việc đã lưu',
-                                count: savedJobIds.length,
-                                isActive: _activeTab == 2,
-                                icon: Icons.bookmark_outline,
-                                onTap: () => setState(() => _activeTab = 2),
-                              ),
-                            ],
-                          ),
+                        child: _JobCategoryTabs(
+                          activeTab: _activeTab,
+                          standardCount: standardJobs.length,
+                          urgentCount: urgentJobsCount,
+                          savedCount: savedJobIds.length,
+                          onTabChanged: (tab) =>
+                              setState(() => _activeTab = tab),
                         ),
                       ),
 
@@ -1193,12 +1230,17 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
                                     const SizedBox(height: 16),
                                 itemBuilder: (context, index) {
                                   final job = filteredJobs[index];
+                                  final isSaved = _isJobSaved(job, savedJobIds);
                                   return JobPostCard(
                                     job: job,
                                     distance: _jobDistances[job.id],
+                                    isSaved: isSaved,
                                     onDetailsPressed: () => _openDetails(job),
                                     onApplyPressed: () =>
                                         _handleApply(job, user),
+                                    onSavePressed: () => ref
+                                        .read(authControllerProvider.notifier)
+                                        .toggleSavedJob(job.id),
                                   );
                                 },
                               )
@@ -1215,12 +1257,17 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
                                 itemCount: filteredJobs.length,
                                 itemBuilder: (context, index) {
                                   final job = filteredJobs[index];
+                                  final isSaved = _isJobSaved(job, savedJobIds);
                                   return JobPostCard(
                                     job: job,
                                     distance: _jobDistances[job.id],
+                                    isSaved: isSaved,
                                     onDetailsPressed: () => _openDetails(job),
                                     onApplyPressed: () =>
                                         _handleApply(job, user),
+                                    onSavePressed: () => ref
+                                        .read(authControllerProvider.notifier)
+                                        .toggleSavedJob(job.id),
                                   );
                                 },
                               ),
@@ -1261,87 +1308,408 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
   }
 }
 
-class _TabItem extends StatelessWidget {
-  const _TabItem({
+class _JobCategoryTabs extends StatefulWidget {
+  const _JobCategoryTabs({
+    required this.activeTab,
+    required this.standardCount,
+    required this.urgentCount,
+    required this.savedCount,
+    required this.onTabChanged,
+  });
+
+  final int activeTab;
+  final int standardCount;
+  final int urgentCount;
+  final int savedCount;
+  final ValueChanged<int> onTabChanged;
+
+  @override
+  State<_JobCategoryTabs> createState() => _JobCategoryTabsState();
+}
+
+class _JobCategoryTabsState extends State<_JobCategoryTabs> {
+  bool _isExpanded = false;
+
+  void _selectTab(int tab) {
+    setState(() => _isExpanded = false);
+    widget.onTabChanged(tab);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final selectedJobTypeTab = widget.activeTab == 1 ? 1 : 0;
+    final selectedLabel = selectedJobTypeTab == 1
+        ? 'Công việc Tuyển gấp'
+        : 'Công việc tiêu chuẩn';
+    final selectedIcon = selectedJobTypeTab == 1
+        ? Icons.flash_on_outlined
+        : Icons.work_outline;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: _JobTypeDropdownButton(
+                label: selectedLabel,
+                icon: selectedIcon,
+                isExpanded: _isExpanded,
+                isActive: widget.activeTab != 2,
+                onTap: () => setState(() => _isExpanded = !_isExpanded),
+              ),
+            ),
+            const SizedBox(width: 12),
+            _SavedJobsIconButton(
+              count: widget.savedCount,
+              isActive: widget.activeTab == 2,
+              onTap: () => _selectTab(2),
+            ),
+          ],
+        ),
+        if (_isExpanded) ...[
+          const SizedBox(height: 10),
+          _JobTypeDropdownPanel(
+            activeTab: selectedJobTypeTab,
+            standardCount: widget.standardCount,
+            urgentCount: widget.urgentCount,
+            onSelected: _selectTab,
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _JobTypeDropdownButton extends StatelessWidget {
+  const _JobTypeDropdownButton({
     required this.label,
-    required this.count,
-    required this.isActive,
     required this.icon,
+    required this.isExpanded,
+    required this.isActive,
     required this.onTap,
   });
 
   final String label;
-  final int count;
-  final bool isActive;
   final IconData icon;
+  final bool isExpanded;
+  final bool isActive;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final textTheme = theme.textTheme;
+    final foregroundColor = isActive ? Colors.white : AppColors.primary;
+    final mutedColor = isActive
+        ? Colors.white.withValues(alpha: 0.82)
+        : theme.colorScheme.onSurfaceVariant;
 
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: isActive ? AppColors.primary : theme.colorScheme.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isActive
-                ? Colors.transparent
-                : theme.colorScheme.outlineVariant,
-          ),
-          boxShadow: [
-            if (isActive)
-              BoxShadow(
-                color: AppColors.primary.withValues(alpha: 0.2),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-          ],
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Ink(
+          decoration: BoxDecoration(
+            color: isActive ? AppColors.primary : theme.colorScheme.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
               color: isActive
-                  ? Colors.white
-                  : theme.colorScheme.onSurfaceVariant,
-              size: 20,
+                  ? Colors.transparent
+                  : theme.colorScheme.outlineVariant,
             ),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: textTheme.bodyMedium?.copyWith(
-                color: isActive ? Colors.white : theme.colorScheme.onSurface,
-                fontWeight: FontWeight.w700,
-              ),
+            boxShadow: [
+              if (isActive)
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: 0.2),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Icon(icon, color: foregroundColor, size: 22),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Loại công việc',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: textTheme.labelMedium?.copyWith(
+                          color: mutedColor,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: textTheme.bodyLarge?.copyWith(
+                          color: foregroundColor,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Icon(
+                  isExpanded
+                      ? Icons.keyboard_arrow_up_rounded
+                      : Icons.keyboard_arrow_down_rounded,
+                  color: foregroundColor,
+                  size: 24,
+                ),
+              ],
             ),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: isActive
-                    ? Colors.white.withValues(alpha: 0.2)
-                    : theme.colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                '$count',
-                style: textTheme.bodySmall?.copyWith(
-                  color: isActive
-                      ? Colors.white
-                      : theme.colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w800,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SavedJobsIconButton extends StatelessWidget {
+  const _SavedJobsIconButton({
+    required this.count,
+    required this.isActive,
+    required this.onTap,
+  });
+
+  final int count;
+  final bool isActive;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final foregroundColor = isActive
+        ? Colors.white
+        : theme.colorScheme.onSurfaceVariant;
+
+    return Tooltip(
+      message: 'Công việc đã lưu',
+      child: SizedBox(
+        width: 64,
+        height: 64,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Positioned.fill(
+              child: Material(
+                color: Colors.transparent,
+                shape: const CircleBorder(),
+                child: InkWell(
+                  key: const Key('saved-jobs-button'),
+                  customBorder: const CircleBorder(),
+                  onTap: onTap,
+                  child: Ink(
+                    decoration: ShapeDecoration(
+                      color: isActive
+                          ? AppColors.primary
+                          : theme.colorScheme.surface,
+                      shape: CircleBorder(
+                        side: BorderSide(
+                          color: isActive
+                              ? Colors.transparent
+                              : theme.colorScheme.outlineVariant,
+                        ),
+                      ),
+                    ),
+                    child: Icon(
+                      Icons.bookmark_outline_rounded,
+                      color: foregroundColor,
+                      size: 28,
+                    ),
+                  ),
                 ),
               ),
             ),
+            if (count > 0)
+              Positioned(
+                top: -2,
+                right: -2,
+                child: Container(
+                  key: const Key('saved-jobs-badge'),
+                  constraints: const BoxConstraints(
+                    minWidth: 22,
+                    minHeight: 22,
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFF4D2D),
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(
+                      color: theme.colorScheme.surface,
+                      width: 2,
+                    ),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    count > 99 ? '99+' : '$count',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w900,
+                      height: 1,
+                    ),
+                  ),
+                ),
+              ),
           ],
         ),
       ),
     );
   }
+}
+
+class _JobTypeDropdownPanel extends StatelessWidget {
+  const _JobTypeDropdownPanel({
+    required this.activeTab,
+    required this.standardCount,
+    required this.urgentCount,
+    required this.onSelected,
+  });
+
+  final int activeTab;
+  final int standardCount;
+  final int urgentCount;
+  final ValueChanged<int> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: theme.colorScheme.outlineVariant),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _JobTypeOption(
+            label: 'Công việc tiêu chuẩn',
+            count: standardCount,
+            icon: Icons.work_outline,
+            isActive: activeTab == 0,
+            onTap: () => onSelected(0),
+          ),
+          Divider(height: 1, color: theme.colorScheme.outlineVariant),
+          _JobTypeOption(
+            label: 'Công việc Tuyển gấp',
+            count: urgentCount,
+            icon: Icons.flash_on_outlined,
+            isActive: activeTab == 1,
+            onTap: () => onSelected(1),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _JobTypeOption extends StatelessWidget {
+  const _JobTypeOption({
+    required this.label,
+    required this.count,
+    required this.icon,
+    required this.isActive,
+    required this.onTap,
+  });
+
+  final String label;
+  final int count;
+  final IconData icon;
+  final bool isActive;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          child: Row(
+            children: [
+              Icon(
+                icon,
+                color: isActive
+                    ? AppColors.primary
+                    : theme.colorScheme.onSurfaceVariant,
+                size: 22,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurface,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Container(
+                constraints: const BoxConstraints(minWidth: 32),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: isActive
+                      ? AppColors.primary.withValues(alpha: 0.12)
+                      : theme.colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  '$count',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: isActive
+                        ? AppColors.primary
+                        : theme.colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+bool _sameStringList(List<String> a, List<String> b) {
+  if (a.length != b.length) {
+    return false;
+  }
+  for (var i = 0; i < a.length; i++) {
+    if (a[i] != b[i]) {
+      return false;
+    }
+  }
+  return true;
 }

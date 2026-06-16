@@ -46,9 +46,7 @@ void main() {
     );
   });
 
-  testWidgets('login only shows Google hosted UI sign in', (
-    tester,
-  ) async {
+  testWidgets('login only shows Google hosted UI sign in', (tester) async {
     await pumpAuthScreen(tester, const LoginScreen());
 
     final googleButton = tester.widget<OutlinedButton>(
@@ -74,9 +72,7 @@ void main() {
     expect(find.text('Có ký tự đặc biệt'), findsOneWidget);
   });
 
-  testWidgets('register only shows Google hosted UI sign up', (
-    tester,
-  ) async {
+  testWidgets('register only shows Google hosted UI sign up', (tester) async {
     await pumpAuthScreen(tester, const RegisterScreen());
 
     final googleButton = tester.widget<OutlinedButton>(
@@ -112,7 +108,7 @@ void main() {
     expect(find.textContaining('Gửi lại mã sau'), findsOneWidget);
   });
 
-  testWidgets('reset password starts with OTP verification before password', (
+  testWidgets('reset password starts with OTP before new password', (
     tester,
   ) async {
     await pumpAuthScreen(
@@ -120,9 +116,10 @@ void main() {
       const ResetPasswordScreen(email: 'user@example.com'),
     );
 
-    expect(find.text('Xác thực\nOTP'), findsOneWidget);
+    expect(find.text('Nhập mã\nOTP'), findsOneWidget);
     expect(find.text('Mã xác nhận OTP'), findsOneWidget);
-    expect(find.text('Xác thực OTP'), findsOneWidget);
+    expect(find.text('Tiếp tục'), findsOneWidget);
+    expect(find.widgetWithText(TextFormField, 'Mật khẩu mới'), findsNothing);
     expect(find.text('Độ mạnh mật khẩu'), findsNothing);
   });
 }

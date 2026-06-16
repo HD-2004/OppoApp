@@ -49,9 +49,6 @@ class AppLocalizations {
   String get fullName => text('fullName');
   String get forgotPassword => text('forgotPassword');
   String get resetPassword => text('resetPassword');
-  String get verifyOtp => text('verifyOtp');
-  String get otpInvalidOrExpired => text('otpInvalidOrExpired');
-  String get resetSessionExpired => text('resetSessionExpired');
   String get currentPassword => text('currentPassword');
   String get newPassword => text('newPassword');
   String get confirmNewPassword => text('confirmNewPassword');
@@ -167,10 +164,6 @@ const _vi = {
   'fullName': 'Họ và tên',
   'forgotPassword': 'Quên mật khẩu',
   'resetPassword': 'Đặt lại mật khẩu',
-  'verifyOtp': 'Xác thực OTP',
-  'otpInvalidOrExpired': 'Mã OTP không đúng hoặc đã hết hạn.',
-  'resetSessionExpired':
-      'Phiên đổi mật khẩu đã hết hạn. Vui lòng xác thực OTP lại.',
   'currentPassword': 'Mật khẩu hiện tại',
   'newPassword': 'Mật khẩu mới',
   'confirmNewPassword': 'Xác nhận mật khẩu mới',
@@ -252,15 +245,9 @@ const _vi = {
   'bankAccountRemoved': 'Đã gỡ tài khoản ngân hàng.',
   'invalidAccountNumber': 'Số tài khoản không hợp lệ.',
   'removeLinkedAccount': 'Gỡ tài khoản liên kết',
-  'revenueStatistics': 'Thống kê thu nhập',
   'transactionHistory': 'Lịch sử giao dịch',
   'recentTransactions': 'Giao dịch gần đây',
   'viewAll': 'Xem tất cả',
-  'incomeSummary': 'Tổng quan thu nhập',
-  'thisWeekIncome': 'Thu nhập tuần này',
-  'thisMonthIncome': 'Thu nhập tháng này',
-  'completedShifts': 'Ca đã hoàn thành',
-  'averageIncomePerShift': 'Trung bình mỗi ca',
   'amount': 'Số tiền',
   'withdrawalAmount': 'Số tiền muốn rút',
   'estimatedProcessingTime': 'Thời gian xử lý dự kiến',
@@ -396,10 +383,6 @@ const _en = {
   'fullName': 'Full name',
   'forgotPassword': 'Forgot password',
   'resetPassword': 'Reset password',
-  'verifyOtp': 'Verify OTP',
-  'otpInvalidOrExpired': 'The OTP is incorrect or has expired.',
-  'resetSessionExpired':
-      'Your reset session has expired. Please verify OTP again.',
   'currentPassword': 'Current password',
   'newPassword': 'New password',
   'confirmNewPassword': 'Confirm new password',
@@ -481,15 +464,9 @@ const _en = {
   'bankAccountRemoved': 'Linked bank account removed.',
   'invalidAccountNumber': 'Invalid account number.',
   'removeLinkedAccount': 'Remove linked account',
-  'revenueStatistics': 'Revenue statistics',
   'transactionHistory': 'Transaction history',
   'recentTransactions': 'Recent Transactions',
   'viewAll': 'View All',
-  'incomeSummary': 'Income Summary',
-  'thisWeekIncome': 'This Week Income',
-  'thisMonthIncome': 'This Month Income',
-  'completedShifts': 'Completed Shifts',
-  'averageIncomePerShift': 'Average Income Per Shift',
   'amount': 'Amount',
   'withdrawalAmount': 'Withdrawal amount',
   'estimatedProcessingTime': 'Estimated processing time',

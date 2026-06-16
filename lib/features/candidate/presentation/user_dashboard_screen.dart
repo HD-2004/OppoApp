@@ -36,10 +36,6 @@ class _UserDashboardScreenState extends ConsumerState<UserDashboardScreen> {
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
   }
 
-  void _openJobs() {
-    _push(const UserJobsScreen());
-  }
-
   void _openSettings() {
     _push(const UserSettingsScreen());
   }
@@ -126,7 +122,7 @@ class _UserDashboardScreenState extends ConsumerState<UserDashboardScreen> {
         onNotificationTap: _openNotifications,
         onSeeAllJobsTap: () => _selectTab(_tabJobs),
         onWalletTap: () => _selectTab(_tabWallet),
-        onJobsTap: _openJobs,
+        onJobsTap: () => _selectTab(_tabJobs),
         onProfileTap: () => _selectTab(_tabProfile),
         onSettingsTap: _openSettings,
         onSupportTap: _openSupport,
@@ -138,7 +134,7 @@ class _UserDashboardScreenState extends ConsumerState<UserDashboardScreen> {
       const DigitalWalletScreen(),
       // 3 – Cá nhân
       UserProfileScreen(
-        onJobsTap: _openJobs,
+        onJobsTap: () => _selectTab(_tabJobs),
         onWalletTap: () => _selectTab(_tabWallet),
         onNotificationsTap: _openNotifications,
         onSettingsTap: _openSettings,

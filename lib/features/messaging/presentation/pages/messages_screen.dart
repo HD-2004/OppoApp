@@ -37,13 +37,7 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background(context),
-      appBar: _MessagesAppBar(
-        onCompose: () => ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Tính năng soạn tin nhắn đang phát triển.'),
-          ),
-        ),
-      ),
+      appBar: const _MessagesAppBar(),
       body: Column(
         children: [
           // ── Search bar ─────────────────────────────────────────────
@@ -267,9 +261,7 @@ class _ResolvedConversation {
 // ── AppBar ────────────────────────────────────────────────────────────────────
 
 class _MessagesAppBar extends StatelessWidget implements PreferredSizeWidget {
-  const _MessagesAppBar({required this.onCompose});
-
-  final VoidCallback onCompose;
+  const _MessagesAppBar();
 
   @override
   Size get preferredSize => const Size.fromHeight(56);
@@ -288,14 +280,6 @@ class _MessagesAppBar extends StatelessWidget implements PreferredSizeWidget {
           color: AppColors.textPrimaryFor(context),
         ),
       ),
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.edit_square, color: AppColors.primary),
-          onPressed: onCompose,
-          tooltip: 'Soạn tin nhắn',
-        ),
-        const SizedBox(width: 4),
-      ],
     );
   }
 }
@@ -371,7 +355,6 @@ class _SearchBar extends StatelessWidget {
     );
   }
 }
-
 
 // ── Empty state ───────────────────────────────────────────────────────────────
 

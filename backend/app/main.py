@@ -2,7 +2,7 @@ from fastapi import Depends, FastAPI, status
 from mangum import Mangum
 
 from .auth import get_current_principal, require_role
-from .dependencies import get_password_reset_service, get_repository, get_shift_service
+from .dependencies import get_repository, get_shift_service
 from .models import (
     CreateUrgentShiftRequest,
     DisputeRequest,
@@ -10,14 +10,6 @@ from .models import (
     Role,
     ShiftBooking,
     UrgentShiftJob,
-)
-from .password_reset import (
-    PasswordResetConfirmRequest,
-    PasswordResetRequest,
-    PasswordResetService,
-    PasswordResetSuccessResponse,
-    PasswordResetVerifyRequest,
-    PasswordResetVerifyResponse,
 )
 from .repositories import ShiftRepository
 from .services import ShiftService
@@ -30,43 +22,6 @@ app = FastAPI(title=settings.app_name)
 @app.get("/health")
 async def health() -> dict[str, str]:
     return {"status": "ok", "environment": settings.environment}
-
-
-@app.post(
-    "/auth/password-reset/request",
-    response_model=PasswordResetSuccessResponse,
-)
-async def request_password_reset(
-    payload: PasswordResetRequest,
-    service: PasswordResetService = Depends(get_password_reset_service),
-) -> PasswordResetSuccessResponse:
-    return await service.request_reset(payload.email)
-
-
-@app.post(
-    "/auth/password-reset/verify",
-    response_model=PasswordResetVerifyResponse,
-)
-async def verify_password_reset_otp(
-    payload: PasswordResetVerifyRequest,
-    service: PasswordResetService = Depends(get_password_reset_service),
-) -> PasswordResetVerifyResponse:
-    return await service.verify_otp(payload.email, payload.otp)
-
-
-@app.post(
-    "/auth/password-reset/confirm",
-    response_model=PasswordResetSuccessResponse,
-)
-async def confirm_password_reset(
-    payload: PasswordResetConfirmRequest,
-    service: PasswordResetService = Depends(get_password_reset_service),
-) -> PasswordResetSuccessResponse:
-    return await service.confirm_reset(
-        payload.email,
-        payload.resetToken,
-        payload.newPassword,
-    )
 
 
 @app.post(

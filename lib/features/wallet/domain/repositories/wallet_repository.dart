@@ -1,5 +1,4 @@
 import '../entities/linked_bank_account.dart';
-import '../entities/revenue_statistics.dart';
 import '../entities/wallet.dart';
 import '../entities/wallet_transaction.dart';
 import '../entities/withdrawal_request.dart';
@@ -30,6 +29,4 @@ abstract interface class WalletRepository {
     required String accountHolderName,
     String? branch,
   });
-
-  Future<RevenueStatistics> getRevenueStatistics();
 }

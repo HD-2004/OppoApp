@@ -12,10 +12,6 @@ class Settings(BaseSettings):
     jobs_table_name: str = "OppoTempJobs"
     bookings_table_name: str = "OppoShiftBookings"
     use_in_memory_repo: bool = True
-    password_reset_table_name: str = "OppoPasswordResetChallenges"
-    password_reset_secret: str = ""
-    cognito_user_pool_id: str = ""
-    ses_sender_email: str = ""
 
 
 @lru_cache

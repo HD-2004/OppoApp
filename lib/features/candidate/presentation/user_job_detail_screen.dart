@@ -24,7 +24,8 @@ class UserJobDetailScreen extends ConsumerStatefulWidget {
   final bool showApplyButton;
 
   @override
-  ConsumerState<UserJobDetailScreen> createState() => _UserJobDetailScreenState();
+  ConsumerState<UserJobDetailScreen> createState() =>
+      _UserJobDetailScreenState();
 }
 
 class _UserJobDetailScreenState extends ConsumerState<UserJobDetailScreen> {
@@ -33,10 +34,12 @@ class _UserJobDetailScreenState extends ConsumerState<UserJobDetailScreen> {
     super.initState();
     // Increment view count when this screen is opened
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(jobRepositoryProvider).incrementJobViews(
-        widget.job.idJob,
-        isQuickJob: widget.job.isQuickJob,
-      );
+      ref
+          .read(jobRepositoryProvider)
+          .incrementJobViews(
+            widget.job.idJob,
+            isQuickJob: widget.job.isQuickJob,
+          );
     });
   }
 
@@ -59,14 +62,6 @@ class _UserJobDetailScreenState extends ConsumerState<UserJobDetailScreen> {
                   icon: Icons.arrow_back_rounded,
                   onTap: () => Navigator.of(context).pop(),
                 ),
-                actions: [
-                  _CircleIconBtn(icon: Icons.share_outlined, onTap: () {}),
-                  _CircleIconBtn(
-                    icon: Icons.bookmark_border_rounded,
-                    onTap: () {},
-                  ),
-                  const SizedBox(width: 8),
-                ],
                 flexibleSpace: FlexibleSpaceBar(
                   background: _HeroBanner(job: widget.job),
                 ),
@@ -94,7 +89,8 @@ class _UserJobDetailScreenState extends ConsumerState<UserJobDetailScreen> {
                     ],
 
                     // Quyền lợi
-                    if (widget.job.benefits != null && widget.job.benefits!.isNotEmpty) ...[
+                    if (widget.job.benefits != null &&
+                        widget.job.benefits!.isNotEmpty) ...[
                       const _SectionDivider(),
                       _BenefitsSection(text: widget.job.benefits!),
                     ],

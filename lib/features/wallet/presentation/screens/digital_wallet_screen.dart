@@ -3,11 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/localization/app_localizations.dart';
 import '../controllers/wallet_controller.dart';
-import '../widgets/income_summary_card.dart';
 import '../widgets/recent_transactions_list.dart';
 import '../widgets/wallet_balance_card.dart';
 import '../widgets/wallet_quick_actions.dart';
-import 'revenue_statistics_screen.dart';
 import 'transaction_history_screen.dart';
 import 'withdraw_funds_screen.dart';
 
@@ -81,11 +79,7 @@ class DigitalWalletScreen extends ConsumerWidget {
                   ),
                   onHistory: () =>
                       _push(context, const TransactionHistoryScreen()),
-                  onStatistics: () =>
-                      _push(context, const RevenueStatisticsScreen()),
                 ),
-                const SizedBox(height: 16),
-                IncomeSummaryCard(statistics: walletState.statistics),
                 const SizedBox(height: 16),
                 RecentTransactionsList(
                   transactions: walletState.recentTransactions,

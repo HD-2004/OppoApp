@@ -4,7 +4,6 @@ import 'package:amplify_flutter/amplify_flutter.dart';
 import 'package:http/http.dart' as http;
 
 import '../../domain/entities/linked_bank_account.dart';
-import '../../domain/entities/revenue_statistics.dart';
 import '../../domain/entities/wallet.dart';
 import '../../domain/entities/wallet_transaction.dart';
 import '../../domain/entities/withdrawal_request.dart';
@@ -461,7 +460,6 @@ class ApiWalletRepository implements WalletRepository {
     return {
       'wallet': wallet,
       'transactions': mergedTx,
-      'incomeTransactions': incomeTransactions,
     };
   }
 
@@ -650,39 +648,4 @@ class ApiWalletRepository implements WalletRepository {
     );
   }
 
-  @override
-  Future<RevenueStatistics> getRevenueStatistics() async {
-    final data = await _getCalculatedData();
-    final incomeTransactions =
-        data['incomeTransactions'] as List<WalletTransaction>;
-    final wallet = data['wallet'] as WalletOverview;
-
-    final now = DateTime.now();
-    final oneWeekAgo = now.subtract(const Duration(days: 7));
-    final currentMonthStart = DateTime(now.year, now.month, 1);
-
-    double thisWeekIncome = 0;
-    double thisMonthIncome = 0;
-
-    for (final tx in incomeTransactions) {
-      if (tx.createdAt.isAfter(oneWeekAgo)) {
-        thisWeekIncome += tx.amount;
-      }
-      if (tx.createdAt.isAfter(currentMonthStart)) {
-        thisMonthIncome += tx.amount;
-      }
-    }
-
-    final completedShifts = incomeTransactions.length;
-    final averageIncome = completedShifts > 0
-        ? wallet.totalEarnings / completedShifts
-        : 0.0;
-
-    return RevenueStatistics(
-      thisWeekIncome: thisWeekIncome,
-      thisMonthIncome: thisMonthIncome,
-      completedShifts: completedShifts,
-      averageIncomePerShift: averageIncome,
-    );
-  }
 }
