@@ -99,3 +99,33 @@ class FeaturedEmployer {
   final int? activeJobCount;
   final String? distanceLabel;
 }
+
+class BannerAd {
+  const BannerAd({
+    required this.bannerId,
+    required this.title,
+    required this.imageUrl,
+    this.linkUrl,
+    this.order = 999.0,
+    this.isActive = true,
+  });
+
+  final String bannerId;
+  final String title;
+  final String imageUrl;
+  final String? linkUrl;
+  final double order;
+  final bool isActive;
+
+  factory BannerAd.fromJson(Map<String, dynamic> json) {
+    return BannerAd(
+      bannerId: json['bannerId']?.toString() ?? '',
+      title: json['title']?.toString() ?? '',
+      imageUrl: json['imageUrl']?.toString() ?? '',
+      linkUrl: json['linkUrl']?.toString(),
+      order: (json['order'] as num?)?.toDouble() ?? 999.0,
+      isActive: json['isActive'] as bool? ?? true,
+    );
+  }
+}
+

@@ -13,6 +13,7 @@ import '../domain/application_repository.dart';
 import '../domain/job_post.dart';
 import 'quick_job_intro_page.dart';
 import 'user_job_detail_screen.dart';
+import 'ai_screening_screen.dart';
 import 'widgets/availability_card.dart';
 import 'widgets/job_post_card.dart';
 
@@ -588,11 +589,24 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
                     final chosen = cvList.firstWhere(
                       (c) => c['id']?.toString() == selectedCvId,
                     );
-                    _submitApplication(
-                      job,
-                      chosen['cvUrl'] ?? chosen['cvS3Key'] ?? '',
-                      chosen['cvFileName'] ?? 'CV.pdf',
-                    );
+                    final cvUrl = chosen['cvUrl'] ?? chosen['cvS3Key'] ?? '';
+                    final cvFilename = chosen['cvFileName'] ?? 'CV.pdf';
+                    final cvS3Key = chosen['cvS3Key']?.toString();
+
+                    if (job.isAiScreeningEnabled) {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => AIScreeningScreen(
+                            job: job,
+                            cvFileName: cvFilename,
+                            cvUrl: cvUrl,
+                            cvS3Key: cvS3Key,
+                          ),
+                        ),
+                      );
+                    } else {
+                      _submitApplication(job, cvUrl, cvFilename);
+                    }
                   },
                   child: const Text('Nộp đơn'),
                 ),

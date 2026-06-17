@@ -17,6 +17,12 @@ final featuredEmployersProvider =
       return repository.getFeaturedEmployers();
     });
 
+final bannersProvider =
+    FutureProvider.autoDispose<List<BannerAd>>((ref) async {
+      final repository = ref.watch(featuredEmployerPackageRepositoryProvider);
+      return repository.getBanners();
+    });
+
 final packagePlansProvider =
     FutureProvider.autoDispose<List<EmployerPackagePlan>>((ref) async {
       final repository = ref.watch(featuredEmployerPackageRepositoryProvider);

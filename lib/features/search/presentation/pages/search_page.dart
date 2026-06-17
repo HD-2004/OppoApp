@@ -10,6 +10,7 @@ import '../../../../features/candidate/domain/application_repository.dart';
 import '../../../../features/candidate/domain/job_post.dart';
 import '../../../../features/candidate/notifications/application/notification_controller.dart';
 import '../../../../features/candidate/presentation/user_job_detail_screen.dart';
+import '../../../../features/candidate/presentation/ai_screening_screen.dart';
 import '../../../../features/home/presentation/widgets/candidate_menu_drawer.dart';
 import '../widgets/employer_spotlight_row.dart';
 import '../widgets/search_filter_pills.dart';
@@ -214,16 +215,29 @@ class _SearchPageState extends ConsumerState<SearchPage> {
             ),
             FilledButton(
               style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
-              onPressed: () {
+               onPressed: () {
                 Navigator.pop(ctx);
                 final chosen = cvs.firstWhere(
                   (c) => c['id']?.toString() == selectedId,
                 );
-                _submitApplication(
-                  job,
-                  chosen['cvUrl'] ?? chosen['cvS3Key'] ?? '',
-                  chosen['cvFileName'] ?? 'CV.pdf',
-                );
+                final cvUrl = chosen['cvUrl'] ?? chosen['cvS3Key'] ?? '';
+                final cvFilename = chosen['cvFileName'] ?? 'CV.pdf';
+                final cvS3Key = chosen['cvS3Key']?.toString();
+
+                if (job.isAiScreeningEnabled) {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => AIScreeningScreen(
+                        job: job,
+                        cvFileName: cvFilename,
+                        cvUrl: cvUrl,
+                        cvS3Key: cvS3Key,
+                      ),
+                    ),
+                  );
+                } else {
+                  _submitApplication(job, cvUrl, cvFilename);
+                }
               },
               child: const Text('Nộp đơn'),
             ),

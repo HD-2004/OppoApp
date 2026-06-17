@@ -8,4 +8,6 @@ abstract class FeaturedEmployerPackageRepository {
   Future<EmployerPackageStatus?> getCurrentPackageStatus();
 
   Future<void> purchasePackage(EmployerPackageTier tier);
+
+  Future<List<BannerAd>> getBanners();
 }

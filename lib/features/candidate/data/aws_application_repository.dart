@@ -186,20 +186,26 @@ class AwsApplicationRepository implements ApplicationRepository {
     required String cvUrl,
     required String cvFilename,
     required ApplicationNotificationDetails notification,
+    Map<String, dynamic>? extraFields,
   }) async {
     final token = await _getAuthToken();
     if (token == null) {
       throw Exception('Vui lòng đăng nhập để ứng tuyển.');
     }
 
+    final Map<String, dynamic> requestBody = {
+      'jobId': jobId,
+      'cvUrl': cvUrl,
+      'cvFilename': cvFilename,
+    };
+    if (extraFields != null) {
+      requestBody.addAll(extraFields);
+    }
+
     final response = await http.post(
       Uri.parse('$_applicationsBaseUrl/applications'),
       headers: _buildHeaders(token),
-      body: jsonEncode({
-        'jobId': jobId,
-        'cvUrl': cvUrl,
-        'cvFilename': cvFilename,
-      }),
+      body: jsonEncode(requestBody),
     );
 
     if (response.statusCode != 200 && response.statusCode != 201) {

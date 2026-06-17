@@ -105,6 +105,10 @@ class AwsJobRepository implements JobRepository {
       responsibilities: _nullableString(job['responsibilities']),
       requirements: _nullableString(job['requirements']),
       benefits: _nullableString(job['benefits']),
+      isAiScreeningEnabled: job['isAiScreeningEnabled'] == true || job['isAiScreeningEnabled'] == 1 || job['isAiScreeningEnabled'] == 'true',
+      customQuestions: job['customQuestions'] != null
+          ? List<String>.from((job['customQuestions'] as List).map((e) => e.toString()))
+          : const [],
     );
   }
 

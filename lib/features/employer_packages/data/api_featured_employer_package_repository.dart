@@ -64,6 +64,16 @@ class ApiFeaturedEmployerPackageRepository
   }
 
   @override
+  Future<List<BannerAd>> getBanners() async {
+    try {
+      final list = await _getList('/packages?type=banners');
+      return list.map(BannerAd.fromJson).toList();
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  @override
   Future<List<EmployerPackagePlan>> getAvailablePackages() async {
     final packages = await _getList('/packages');
     return packages

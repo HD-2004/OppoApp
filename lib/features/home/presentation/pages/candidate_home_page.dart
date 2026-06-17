@@ -10,6 +10,7 @@ import '../../../candidate/domain/application_repository.dart';
 import '../../../candidate/domain/job_post.dart';
 import '../../../candidate/notifications/application/notification_controller.dart';
 import '../../../candidate/presentation/user_job_detail_screen.dart';
+import '../../../candidate/presentation/ai_screening_screen.dart';
 import '../../../employer_packages/application/featured_employer_package_providers.dart';
 import '../../../employer_packages/domain/employer_package.dart';
 import '../../../messaging/application/messaging_providers.dart';
@@ -60,6 +61,7 @@ class _CandidateHomePageState extends ConsumerState<CandidateHomePage> {
     ref.invalidate(activeJobsProvider);
     ref.invalidate(featuredEmployersProvider);
     ref.invalidate(personalizedJobRecommendationsProvider);
+    ref.invalidate(bannersProvider);
 
     final userId = ref.read(authControllerProvider).asData?.value.user?.userId;
     if (userId != null) {
@@ -80,6 +82,9 @@ class _CandidateHomePageState extends ConsumerState<CandidateHomePage> {
       ref
           .read(personalizedJobRecommendationsProvider.future)
           .catchError((_) => const <JobRecommendation>[]),
+      ref
+          .read(bannersProvider.future)
+          .catchError((_) => const <BannerAd>[]),
     ]);
   }
 
@@ -189,13 +194,26 @@ class _CandidateHomePageState extends ConsumerState<CandidateHomePage> {
                       final chosen = cvs.firstWhere(
                         (cv) => cv['id']?.toString() == selectedId,
                       );
-                      _submitApplication(
-                        job,
-                        chosen['cvUrl']?.toString() ??
-                            chosen['cvS3Key']?.toString() ??
-                            '',
-                        chosen['cvFileName']?.toString() ?? 'CV.pdf',
-                      );
+                      final cvUrl = chosen['cvUrl']?.toString() ??
+                          chosen['cvS3Key']?.toString() ??
+                          '';
+                      final cvFilename = chosen['cvFileName']?.toString() ?? 'CV.pdf';
+                      final cvS3Key = chosen['cvS3Key']?.toString();
+
+                      if (job.isAiScreeningEnabled) {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => AIScreeningScreen(
+                              job: job,
+                              cvFileName: cvFilename,
+                              cvUrl: cvUrl,
+                              cvS3Key: cvS3Key,
+                            ),
+                          ),
+                        );
+                      } else {
+                        _submitApplication(job, cvUrl, cvFilename);
+                      }
                     },
               child: const Text('Nộp đơn'),
             ),
@@ -261,7 +279,7 @@ class _CandidateHomePageState extends ConsumerState<CandidateHomePage> {
     final recommendationsAsync = ref.watch(
       personalizedJobRecommendationsProvider,
     );
-    final featuredEmployersAsync = ref.watch(featuredEmployersProvider);
+    final bannersAsync = ref.watch(bannersProvider);
     final notificationCount =
         ref
             .watch(candidateNotificationControllerProvider)
@@ -338,17 +356,9 @@ class _CandidateHomePageState extends ConsumerState<CandidateHomePage> {
             ),
             SliverToBoxAdapter(
               child: _PageWidth(
-                child: GenZFeedSection(
-                  jobs: filteredJobs.take(6).toList(growable: false),
-                  isLoading: dataLoading,
-                  hasError: dataError,
-                  onRetry: () {
-                    ref.invalidate(activeJobsProvider);
-                    ref.invalidate(activeQuickJobsProvider);
-                  },
-                  onSeeAll: widget.onSeeAllJobsTap,
-                  onJobTap: _openJobDetail,
-                  onApply: (job) => _handleApply(job, user),
+                child: SponsoredBannerSection(
+                  banners: bannersAsync.value ?? const <BannerAd>[],
+                  isLoading: bannersAsync.isLoading,
                 ),
               ),
             ),
@@ -365,17 +375,6 @@ class _CandidateHomePageState extends ConsumerState<CandidateHomePage> {
                   onSeeAll: widget.onSeeAllJobsTap,
                   onJobTap: _openJobDetail,
                   onApply: (job) => _handleApply(job, user),
-                ),
-              ),
-            ),
-            SliverToBoxAdapter(
-              child: _PageWidth(
-                child: SponsoredBannerSection(
-                  employers:
-                      featuredEmployersAsync.value ??
-                      const <FeaturedEmployer>[],
-                  isLoading: featuredEmployersAsync.isLoading,
-                  onViewJobs: widget.onSeeAllJobsTap,
                 ),
               ),
             ),

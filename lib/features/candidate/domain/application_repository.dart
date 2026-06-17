@@ -30,6 +30,7 @@ abstract class ApplicationRepository {
     required String cvUrl,
     required String cvFilename,
     required ApplicationNotificationDetails notification,
+    Map<String, dynamic>? extraFields,
   });
   Future<List<Map<String, dynamic>>> getCandidateApplications(String userId);
   Future<void> confirmApplicationCompletion({

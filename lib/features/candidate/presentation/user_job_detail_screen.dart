@@ -117,7 +117,10 @@ class _UserJobDetailScreenState extends ConsumerState<UserJobDetailScreen> {
               left: 0,
               right: 0,
               bottom: 0,
-              child: _StickyApplyBar(onApply: widget.onApplyPressed),
+              child: _StickyApplyBar(
+                onApply: widget.onApplyPressed,
+                isAiEnabled: widget.job.isAiScreeningEnabled,
+              ),
             ),
         ],
       ),
@@ -173,25 +176,59 @@ class _HeroBanner extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Job type badge
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: _badgeColor(job.jobType),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  _badgeLabel(job.jobType),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.3,
+              // Badges row
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _badgeColor(job.jobType),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      _badgeLabel(job.jobType),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
                   ),
-                ),
+                  if (job.isAiScreeningEnabled) ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF3E8FF),
+                        border: Border.all(color: const Color(0xFFC084FC)),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.auto_awesome, color: Color(0xFF7C3AED), size: 12),
+                          SizedBox(width: 4),
+                          Text(
+                            'Phỏng vấn AI',
+                            style: TextStyle(
+                              color: Color(0xFF6D28D9),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.3,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
               ),
               const SizedBox(height: 8),
               // Job title
@@ -973,9 +1010,10 @@ class _SimilarPositions extends StatelessWidget {
 // ── Sticky apply bar ──────────────────────────────────────────────────────────
 
 class _StickyApplyBar extends StatelessWidget {
-  const _StickyApplyBar({required this.onApply});
+  const _StickyApplyBar({required this.onApply, required this.isAiEnabled});
 
   final VoidCallback onApply;
+  final bool isAiEnabled;
 
   @override
   Widget build(BuildContext context) {
@@ -996,28 +1034,67 @@ class _StickyApplyBar extends StatelessWidget {
           ),
         ],
       ),
-      child: SizedBox(
-        width: double.infinity,
-        height: 52,
-        child: ElevatedButton(
-          onPressed: onApply,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.primary,
-            foregroundColor: Colors.white,
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (isAiEnabled) ...[
+            Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF5F3FF),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: const Color(0xFF7C3AED),
+                  width: 1,
+                ),
+              ),
+              child: const Row(
+                children: [
+                  Icon(
+                    Icons.auto_awesome,
+                    size: 16,
+                    color: Color(0xFF7C3AED),
+                  ),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Lưu ý: Công việc này yêu cầu Phỏng vấn chọn lọc qua AI sau khi gửi CV.',
+                      style: TextStyle(
+                        color: Color(0xFF6D28D9),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: ElevatedButton(
+              onPressed: onApply,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text(
+                'Ứng tuyển ngay',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.3,
+                ),
+              ),
             ),
           ),
-          child: const Text(
-            'Ứng tuyển ngay',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.3,
-            ),
-          ),
-        ),
+        ],
       ),
     );
   }

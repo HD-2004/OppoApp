@@ -44,6 +44,8 @@ class JobPost {
     this.applicants = 0,
     this.views = 0,
     this.visibilityScore = 0,
+    this.isAiScreeningEnabled = false,
+    this.customQuestions = const [],
   });
 
   final String id;
@@ -78,8 +80,14 @@ class JobPost {
   final int applicants;
   final int views;
   final double visibilityScore;
+  final bool isAiScreeningEnabled;
+  final List<String> customQuestions;
 
-  JobPost copyWith({bool? isSaved}) {
+  JobPost copyWith({
+    bool? isSaved,
+    bool? isAiScreeningEnabled,
+    List<String>? customQuestions,
+  }) {
     return JobPost(
       id: id,
       idJob: idJob,
@@ -113,6 +121,8 @@ class JobPost {
       totalSalary: totalSalary,
       startTime: startTime,
       endTime: endTime,
+      isAiScreeningEnabled: isAiScreeningEnabled ?? this.isAiScreeningEnabled,
+      customQuestions: customQuestions ?? this.customQuestions,
     );
   }
 }

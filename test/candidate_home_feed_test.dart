@@ -40,7 +40,7 @@ void main() {
     expect(find.text('Ốp Pờ'), findsOneWidget);
     expect(find.textContaining('Đỗ Nhật'), findsOneWidget);
     expect(find.text('Tìm việc, công ty, bài đăng...'), findsOneWidget);
-    expect(find.text('Nơi Tìm Việc Linh Hoạt'), findsOneWidget);
+    expect(find.text('Nơi Tìm Việc Linh Hoạt'), findsNothing);
     expect(find.text('Việc hợp bạn nhất'), findsOneWidget);
     expect(
       find.text('Top công ty đang tuyển nhiều fresher nhất'),
@@ -48,7 +48,7 @@ void main() {
     );
     expect(find.text('Việc hợp hướng đi'), findsOneWidget);
     expect(find.text('Nhân viên phục vụ'), findsWidgets);
-    expect(find.text('Featured Cafe'), findsOneWidget);
+    expect(find.text('Featured Cafe'), findsNothing);
     expect(find.text('2 việc đang tuyển'), findsOneWidget);
 
     expect(find.byIcon(Icons.favorite_rounded), findsNothing);
@@ -85,7 +85,7 @@ void main() {
         featuredEmployers: const [],
       );
 
-      expect(find.text('Chưa có bài đăng tuyển dụng mới.'), findsOneWidget);
+      expect(find.text('Chưa có bài đăng tuyển dụng mới.'), findsNothing);
       expect(find.text('Việc hợp hướng đi'), findsOneWidget);
       expect(
         find.text('Top công ty đang tuyển nhiều fresher nhất'),
@@ -117,6 +117,7 @@ Future<void> _pumpHome(
           (_) async => recommendations,
         ),
         featuredEmployersProvider.overrideWith((_) async => featuredEmployers),
+        bannersProvider.overrideWith((_) async => const <BannerAd>[]),
         candidateChatsProvider.overrideWithBuild(
           (_, _) => <CandidateApplication>[],
         ),

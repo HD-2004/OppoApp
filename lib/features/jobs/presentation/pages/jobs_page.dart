@@ -8,6 +8,7 @@ import '../../../candidate/data/aws_application_repository.dart';
 import '../../../candidate/domain/application_repository.dart';
 import '../../../candidate/domain/job_post.dart';
 import '../../../candidate/presentation/user_job_detail_screen.dart';
+import '../../../candidate/presentation/ai_screening_screen.dart';
 import '../controllers/jobs_controller.dart';
 import '../widgets/job_card.dart';
 import '../widgets/job_filter_bar.dart';
@@ -137,11 +138,24 @@ class _JobsPageState extends ConsumerState<JobsPage> {
                 final chosen = cvs.firstWhere(
                   (c) => c['id']?.toString() == selectedId,
                 );
-                _submitApplication(
-                  job,
-                  chosen['cvUrl'] ?? chosen['cvS3Key'] ?? '',
-                  chosen['cvFileName'] ?? 'CV.pdf',
-                );
+                final cvUrl = chosen['cvUrl'] ?? chosen['cvS3Key'] ?? '';
+                final cvFilename = chosen['cvFileName'] ?? 'CV.pdf';
+                final cvS3Key = chosen['cvS3Key']?.toString();
+
+                if (job.isAiScreeningEnabled) {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => AIScreeningScreen(
+                        job: job,
+                        cvFileName: cvFilename,
+                        cvUrl: cvUrl,
+                        cvS3Key: cvS3Key,
+                      ),
+                    ),
+                  );
+                } else {
+                  _submitApplication(job, cvUrl, cvFilename);
+                }
               },
               child: const Text('Nộp đơn'),
             ),

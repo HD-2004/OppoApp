@@ -50,9 +50,12 @@ class JobCard extends StatelessWidget {
               children: [
                 if (isUrgent) ...[
                   _UrgentBadge(),
-                  const Spacer(),
-                ] else
-                  const Spacer(),
+                  const SizedBox(width: 8),
+                ],
+                if (job.isAiScreeningEnabled) ...[
+                  _AiInterviewBadge(),
+                ],
+                const Spacer(),
                 Text(
                   salary,
                   style: TextStyle(
@@ -273,6 +276,36 @@ class _InfoRow extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _AiInterviewBadge extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF3E8FF),
+        border: Border.all(color: const Color(0xFFC084FC)),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.auto_awesome, color: Color(0xFF7C3AED), size: 12),
+          SizedBox(width: 3),
+          Text(
+            'Phỏng vấn AI',
+            style: TextStyle(
+              color: Color(0xFF6D28D9),
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 0.2,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -102,6 +102,7 @@ class _FakeApplicationRepository implements ApplicationRepository {
     required String cvUrl,
     required String cvFilename,
     required ApplicationNotificationDetails notification,
+    Map<String, dynamic>? extraFields,
   }) async {}
 
   @override

@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
 
+import '../../../../core/config/s3_asset_config.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../candidate/domain/job_post.dart';
 import '../../../employer_packages/domain/employer_package.dart';
@@ -175,73 +177,6 @@ class HomeSearchBar extends StatelessWidget {
   }
 }
 
-class GenZFeedSection extends StatelessWidget {
-  const GenZFeedSection({
-    super.key,
-    required this.jobs,
-    required this.isLoading,
-    required this.hasError,
-    required this.onRetry,
-    required this.onSeeAll,
-    required this.onJobTap,
-    required this.onApply,
-  });
-
-  final List<JobPost> jobs;
-  final bool isLoading;
-  final bool hasError;
-  final VoidCallback onRetry;
-  final VoidCallback onSeeAll;
-  final ValueChanged<JobPost> onJobTap;
-  final ValueChanged<JobPost> onApply;
-
-  @override
-  Widget build(BuildContext context) {
-    return _SectionShell(
-      title: 'Nơi Tìm Việc Linh Hoạt',
-      trailing: _SeeAllButton(onPressed: onSeeAll),
-      child: Builder(
-        builder: (context) {
-          if (isLoading) return const _HorizontalSkeleton(height: 284);
-          if (hasError) {
-            return EmptyState(
-              icon: Icons.wifi_off_rounded,
-              title: 'Không tải được bảng tin',
-              message: 'Bạn thử tải lại để xem tin tuyển dụng mới nha.',
-              actionLabel: 'Thử lại',
-              onAction: onRetry,
-            );
-          }
-          if (jobs.isEmpty) {
-            return EmptyState(
-              icon: Icons.work_outline_rounded,
-              title: 'Chưa có bài đăng tuyển dụng mới.',
-              message: 'Khi backend có dữ liệu, bảng tin sẽ hiển thị ở đây.',
-              actionLabel: 'Xem việc làm',
-              onAction: onSeeAll,
-            );
-          }
-
-          return SizedBox(
-            height: 286,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 18),
-              itemCount: jobs.length,
-              separatorBuilder: (_, _) => const SizedBox(width: 14),
-              itemBuilder: (_, index) => _FeedCard(
-                job: jobs[index],
-                onTap: () => onJobTap(jobs[index]),
-                onApply: () => onApply(jobs[index]),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
-
 class RecommendedJobsSection extends StatelessWidget {
   const RecommendedJobsSection({
     super.key,
@@ -271,7 +206,7 @@ class RecommendedJobsSection extends StatelessWidget {
           : _SeeAllButton(onPressed: onSeeAll),
       child: Builder(
         builder: (context) {
-          if (isLoading) return const _HorizontalSkeleton(height: 248);
+          if (isLoading) return const _HorizontalSkeleton(height: 310);
           if (hasError) {
             return Padding(
               padding: const EdgeInsets.symmetric(horizontal: 18),
@@ -296,7 +231,7 @@ class RecommendedJobsSection extends StatelessWidget {
           }
 
           return SizedBox(
-            height: 262,
+            height: 310,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 18),
@@ -319,43 +254,138 @@ class RecommendedJobsSection extends StatelessWidget {
   }
 }
 
-class SponsoredBannerSection extends StatelessWidget {
+class SponsoredBannerSection extends StatefulWidget {
   const SponsoredBannerSection({
     super.key,
-    required this.employers,
+    required this.banners,
     required this.isLoading,
-    required this.onViewJobs,
   });
 
-  final List<FeaturedEmployer> employers;
+  final List<BannerAd> banners;
   final bool isLoading;
-  final VoidCallback onViewJobs;
+
+  @override
+  State<SponsoredBannerSection> createState() => _SponsoredBannerSectionState();
+}
+
+class _SponsoredBannerSectionState extends State<SponsoredBannerSection> {
+  late final PageController _pageController;
+  Timer? _timer;
+  int _currentPage = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(viewportFraction: 0.94);
+    _startAutoPlay();
+  }
+
+  void _startAutoPlay() {
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 7), (timer) {
+      final total = _getBannerCount();
+      if (total <= 1) return;
+      _currentPage = (_currentPage + 1) % total;
+      if (_pageController.hasClients) {
+        _pageController.animateToPage(
+          _currentPage,
+          duration: const Duration(milliseconds: 600),
+          curve: Curves.easeInOut,
+        );
+      }
+    });
+  }
+
+  int _getBannerCount() {
+    return widget.banners.isNotEmpty
+        ? widget.banners.length
+        : S3AssetConfig.candidateBanners.length;
+  }
+
+  String _getBannerImageUrl(int index) {
+    if (widget.banners.isNotEmpty) {
+      return widget.banners[index].imageUrl;
+    }
+    return S3AssetConfig.candidateBanners[index];
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _pageController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    if (isLoading) {
+    if (widget.isLoading) {
       return const Padding(
         padding: EdgeInsets.fromLTRB(18, 10, 18, 18),
-        child: _SkeletonBox(height: 136, radius: 24),
+        child: _SkeletonBox(height: 154, radius: 24),
       );
     }
-    if (employers.isEmpty) return const SizedBox.shrink();
+
+    final count = _getBannerCount();
+    if (count == 0) return const SizedBox.shrink();
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 10, 18, 18),
-      child: SizedBox(
-        height: 154,
-        child: PageView.builder(
-          controller: PageController(viewportFraction: 0.94),
-          itemCount: employers.length,
-          itemBuilder: (_, index) => Padding(
-            padding: const EdgeInsets.only(right: 10),
-            child: _SponsoredCard(
-              employer: employers[index],
-              onViewJobs: onViewJobs,
+      child: Column(
+        children: [
+          SizedBox(
+            height: 154,
+            child: PageView.builder(
+              controller: _pageController,
+              itemCount: count,
+              onPageChanged: (index) {
+                setState(() {
+                  _currentPage = index;
+                });
+                _startAutoPlay(); // Reset timer on manual scroll
+              },
+              itemBuilder: (context, index) {
+                final imageUrl = _getBannerImageUrl(index);
+                return Padding(
+                  padding: const EdgeInsets.only(right: 10),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(24),
+                    child: Image.network(
+                      imageUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => Container(
+                        color: AppColors.primarySoft,
+                        child: const Icon(
+                          Icons.image_not_supported_rounded,
+                          color: AppColors.primaryLight,
+                          size: 48,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
             ),
           ),
-        ),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(
+              count,
+              (index) => AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                height: 8,
+                width: _currentPage == index ? 24 : 8,
+                decoration: BoxDecoration(
+                  color: _currentPage == index
+                      ? AppColors.primary
+                      : AppColors.primarySoft,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -433,7 +463,7 @@ class DirectionJobsSection extends StatelessWidget {
       trailing: jobs.isEmpty ? null : _SeeAllButton(onPressed: onSeeAll),
       child: Builder(
         builder: (context) {
-          if (isLoading) return const _HorizontalSkeleton(height: 262);
+          if (isLoading) return const _HorizontalSkeleton(height: 310);
           if (hasError) {
             return Padding(
               padding: const EdgeInsets.symmetric(horizontal: 18),
@@ -458,7 +488,7 @@ class DirectionJobsSection extends StatelessWidget {
           }
 
           return SizedBox(
-            height: 262,
+            height: 310,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 18),
@@ -603,40 +633,80 @@ class JobCard extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          if (job.isQuickJob || job.jobType == JobPostType.urgent)
+                          if (job.isQuickJob || job.jobType == JobPostType.urgent || job.isAiScreeningEnabled)
                             Padding(
                               padding: const EdgeInsets.only(bottom: 6),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 3,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFFFF7ED),
-                                  borderRadius: BorderRadius.circular(6),
-                                  border: Border.all(
-                                    color: const Color(0xFFFED7AA),
-                                  ),
-                                ),
-                                child: const Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.local_fire_department_rounded,
-                                      size: 11,
-                                      color: Color(0xFFF97316),
-                                    ),
-                                    SizedBox(width: 3),
-                                    Text(
-                                      'Tuyển gấp',
-                                      style: TextStyle(
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.w700,
-                                        color: Color(0xFFC2410C),
+                              child: Wrap(
+                                spacing: 6,
+                                runSpacing: 4,
+                                children: [
+                                  if (job.isQuickJob || job.jobType == JobPostType.urgent)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 3,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFFFF7ED),
+                                        borderRadius: BorderRadius.circular(6),
+                                        border: Border.all(
+                                          color: const Color(0xFFFED7AA),
+                                        ),
+                                      ),
+                                      child: const Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            Icons.local_fire_department_rounded,
+                                            size: 11,
+                                            color: Color(0xFFF97316),
+                                          ),
+                                          SizedBox(width: 3),
+                                          Text(
+                                            'Tuyển gấp',
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w700,
+                                              color: Color(0xFFC2410C),
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
-                                  ],
-                                ),
+                                  if (job.isAiScreeningEnabled)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 3,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFF3E8FF),
+                                        borderRadius: BorderRadius.circular(6),
+                                        border: Border.all(
+                                          color: const Color(0xFFC084FC),
+                                        ),
+                                      ),
+                                      child: const Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(
+                                            Icons.auto_awesome,
+                                            size: 11,
+                                            color: Color(0xFF7C3AED),
+                                          ),
+                                          SizedBox(width: 3),
+                                          Text(
+                                            'Phỏng vấn AI',
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w700,
+                                              color: Color(0xFF6D28D9),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                ],
                               ),
                             ),
                           Text(
@@ -894,200 +964,7 @@ class LogoBox extends StatelessWidget {
   }
 }
 
-class _FeedCard extends StatelessWidget {
-  const _FeedCard({
-    required this.job,
-    required this.onTap,
-    required this.onApply,
-  });
 
-  final JobPost job;
-  final VoidCallback onTap;
-  final VoidCallback onApply;
-
-  @override
-  Widget build(BuildContext context) {
-    final companyName = companyNameOf(job);
-    final content = job.description.trim().isEmpty
-        ? job.title.trim()
-        : job.description.trim();
-    return SizedBox(
-      width: 308,
-      child: Material(
-        color: AppColors.cardBackground(context),
-        borderRadius: BorderRadius.circular(24),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(24),
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: AppColors.borderFor(context)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    LogoBox(
-                      name: companyName,
-                      imageUrl: job.employerAvatarUrl,
-                      size: 48,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            companyName,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: AppColors.textPrimaryFor(context),
-                              fontSize: 17,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            job.jobType.label,
-                            style: TextStyle(
-                              color: AppColors.textMutedFor(context),
-                              fontSize: 14,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  content.isEmpty ? 'Không công khai' : content,
-                  maxLines: 5,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: AppColors.textPrimaryFor(context),
-                    fontSize: 17,
-                    height: 1.36,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const Spacer(),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        postedTimeLabel(job.postedAt),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: AppColors.textMutedFor(context),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    FilledButton(
-                      onPressed: onApply,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: AppColors.textOnPrimary,
-                        minimumSize: const Size(0, 36),
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(13),
-                        ),
-                      ),
-                      child: const Text('Ứng tuyển'),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SponsoredCard extends StatelessWidget {
-  const _SponsoredCard({required this.employer, required this.onViewJobs});
-
-  final FeaturedEmployer employer;
-  final VoidCallback onViewJobs;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        gradient: AppColors.brandGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: Row(
-        children: [
-          LogoBox(name: employer.name, imageUrl: employer.logoUrl, size: 68),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  employer.packageTier.title,
-                  style: const TextStyle(
-                    color: AppColors.accentSoft,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 13,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  employer.name,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.textOnPrimary,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
-                    height: 1.12,
-                  ),
-                ),
-                const Spacer(),
-                Text(
-                  employer.activeJobCount == null
-                      ? 'Đang tuyển'
-                      : '${employer.activeJobCount} việc đang tuyển',
-                  style: const TextStyle(
-                    color: AppColors.textOnPrimary,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 10),
-          IconButton(
-            tooltip: 'Xem việc',
-            onPressed: onViewJobs,
-            style: IconButton.styleFrom(
-              backgroundColor: AppColors.textOnPrimary,
-              foregroundColor: AppColors.textPrimary,
-              shape: const CircleBorder(),
-            ),
-            icon: const Icon(Icons.arrow_forward_rounded),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class _HeaderBadgeButton extends StatelessWidget {
   const _HeaderBadgeButton({

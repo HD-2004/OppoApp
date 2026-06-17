@@ -95,3 +95,50 @@ class ShiftBooking(BaseModel):
 class DisputeRequest(BaseModel):
     reason: Literal["no_show", "early_leave", "employer_rejected", "payment_issue", "other"]
     note: str = Field(min_length=5, max_length=500)
+
+
+# Models dành cho AI Screening & Interview
+class CVScreeningRequest(BaseModel):
+    job_description: str
+    cv_text: str
+    cv_url: str | None = None
+
+
+class CVScreeningResponse(BaseModel):
+    score: int = Field(..., description="Điểm số đánh giá từ 0 đến 100")
+    result: str = Field(..., description="Kết quả: pass | review | fail")
+    strengths: list[str] = Field(..., description="Danh sách điểm mạnh của ứng viên")
+    weaknesses: list[str] = Field(..., description="Danh sách điểm yếu hoặc thiếu sót của ứng viên")
+    reason: str = Field(..., description="Lý do chi tiết cho đánh giá")
+
+
+class InterviewSessionStartRequest(BaseModel):
+    job_title: str
+    job_description: str
+    cv_text: str
+    cv_url: str | None = None
+    custom_questions: list[str] = []
+
+
+class InterviewSessionStartResponse(BaseModel):
+    session_id: str
+    question: str
+
+
+class InterviewAnswerRequest(BaseModel):
+    session_id: str
+    answer: str
+
+
+class InterviewReport(BaseModel):
+    total_score: int = Field(..., description="Tổng điểm đánh giá cuộc phỏng vấn từ 0 đến 100")
+    strengths: list[str] = Field(..., description="Danh sách điểm mạnh rút ra từ cuộc phỏng vấn")
+    weaknesses: list[str] = Field(..., description="Danh sách điểm yếu hoặc kỹ năng cần cải thiện")
+    recommend_to_employer: bool = Field(..., description="Có khuyên dùng/gửi CV cho Employer không")
+    reason: str = Field(..., description="Nhận xét chi tiết tổng quan cuộc phỏng vấn")
+
+
+class InterviewAnswerResponse(BaseModel):
+    question: str | None = Field(default=None, description="Câu hỏi tiếp theo từ AI, là None nếu phỏng vấn kết thúc")
+    finished: bool = Field(default=False, description="Đã hoàn thành buổi phỏng vấn hay chưa")
+    report: InterviewReport | None = Field(default=None, description="Báo cáo kết quả chi tiết khi finished là True")

@@ -10,13 +10,31 @@ from .models import (
     Role,
     ShiftBooking,
     UrgentShiftJob,
+    CVScreeningRequest,
+    CVScreeningResponse,
+    InterviewSessionStartRequest,
+    InterviewSessionStartResponse,
+    InterviewAnswerRequest,
+    InterviewAnswerResponse,
 )
 from .repositories import ShiftRepository
 from .services import ShiftService
 from .settings import get_settings
+from .ai_recruitment import AIRecruitmentService
+
+from fastapi.middleware.cors import CORSMiddleware
 
 settings = get_settings()
 app = FastAPI(title=settings.app_name)
+
+# Cho phép tất cả các nguồn kết nối để phát triển local (CORS)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.get("/health")
@@ -98,6 +116,22 @@ async def dispute_booking(
     require_role(principal, Role.worker, Role.employer)
     _ = payload
     return await service.dispute(booking_id)
+
+
+# Endpoints phục vụ AI Tuyển dụng (Vòng 1 & Vòng 2)
+@app.post("/api/v1/cv/screen", response_model=CVScreeningResponse)
+async def api_screen_cv(payload: CVScreeningRequest) -> CVScreeningResponse:
+    return AIRecruitmentService.screen_cv(payload.job_description, payload.cv_text, payload.cv_url)
+
+
+@app.post("/api/v1/interview/start", response_model=InterviewSessionStartResponse)
+async def api_start_interview(payload: InterviewSessionStartRequest) -> InterviewSessionStartResponse:
+    return AIRecruitmentService.start_interview(payload)
+
+
+@app.post("/api/v1/interview/respond", response_model=InterviewAnswerResponse)
+async def api_respond_interview(payload: InterviewAnswerRequest) -> InterviewAnswerResponse:
+    return AIRecruitmentService.respond_interview(payload)
 
 
 handler = Mangum(app)
