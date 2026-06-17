@@ -59,7 +59,6 @@ class _CandidateHomePageState extends ConsumerState<CandidateHomePage> {
   Future<void> _onRefresh() async {
     ref.invalidate(activeQuickJobsProvider);
     ref.invalidate(activeJobsProvider);
-    ref.invalidate(featuredEmployersProvider);
     ref.invalidate(personalizedJobRecommendationsProvider);
     ref.invalidate(bannersProvider);
 
@@ -77,14 +76,9 @@ class _CandidateHomePageState extends ConsumerState<CandidateHomePage> {
           .read(activeQuickJobsProvider.future)
           .catchError((_) => const <JobPost>[]),
       ref
-          .read(featuredEmployersProvider.future)
-          .catchError((_) => const <FeaturedEmployer>[]),
-      ref
           .read(personalizedJobRecommendationsProvider.future)
           .catchError((_) => const <JobRecommendation>[]),
-      ref
-          .read(bannersProvider.future)
-          .catchError((_) => const <BannerAd>[]),
+      ref.read(bannersProvider.future).catchError((_) => const <BannerAd>[]),
     ]);
   }
 
@@ -194,10 +188,12 @@ class _CandidateHomePageState extends ConsumerState<CandidateHomePage> {
                       final chosen = cvs.firstWhere(
                         (cv) => cv['id']?.toString() == selectedId,
                       );
-                      final cvUrl = chosen['cvUrl']?.toString() ??
+                      final cvUrl =
+                          chosen['cvUrl']?.toString() ??
                           chosen['cvS3Key']?.toString() ??
                           '';
-                      final cvFilename = chosen['cvFileName']?.toString() ?? 'CV.pdf';
+                      final cvFilename =
+                          chosen['cvFileName']?.toString() ?? 'CV.pdf';
                       final cvS3Key = chosen['cvS3Key']?.toString();
 
                       if (job.isAiScreeningEnabled) {

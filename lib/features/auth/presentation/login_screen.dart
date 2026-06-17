@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/errors/auth_failure.dart';
 import '../../../core/localization/app_localizations.dart';
+import '../../candidate/presentation/policy_terms_screen.dart';
 import '../application/auth_controller.dart';
 import 'auth_form_fields.dart';
 import 'widgets/auth_colors.dart';
@@ -200,10 +201,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     label: 'Google',
                     iconText: 'G',
                     accentColor: const Color(0xFFE04F3D),
-                    isLoading:
-                        _socialProviderSubmitting == AuthProvider.google,
-                    onPressed: _socialProviderSubmitting == null &&
-                            !_isSubmitting
+                    isLoading: _socialProviderSubmitting == AuthProvider.google,
+                    onPressed:
+                        _socialProviderSubmitting == null && !_isSubmitting
                         ? () => _submitSocial(AuthProvider.google)
                         : null,
                   ),
@@ -216,6 +216,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               actionText: 'Đăng ký ngay',
               onPressed: () => context.go('/register'),
             ),
+            const SizedBox(height: 4),
+            const PolicyInlineLinks(),
             const SizedBox(height: 8),
           ],
         ),

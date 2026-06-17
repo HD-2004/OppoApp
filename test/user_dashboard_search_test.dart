@@ -40,7 +40,7 @@ void main() {
 
     expect(find.text('Tìm công việc mơ ước của bạn'), findsOneWidget);
     expect(find.text('Công việc tiêu chuẩn'), findsOneWidget);
-    expect(find.text('Công việc Tuyển gấp'), findsOneWidget);
+    expect(find.text('Công việc tuyển gấp'), findsOneWidget);
     expect(find.text('Công việc đã lưu'), findsOneWidget);
     expect(find.byIcon(Icons.arrow_back), findsNothing);
 

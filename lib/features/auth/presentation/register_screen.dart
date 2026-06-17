@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/errors/auth_failure.dart';
 import '../../../core/localization/app_localizations.dart';
 import '../../../shared/domain/app_role.dart';
+import '../../candidate/presentation/policy_terms_screen.dart';
 import '../application/auth_controller.dart';
 import '../data/auth_repository.dart';
 import 'auth_form_fields.dart';
@@ -306,6 +307,8 @@ class _RegisterFormStep extends StatelessWidget {
             actionText: 'Đăng nhập',
             onPressed: () => context.go('/login'),
           ),
+          const SizedBox(height: 4),
+          const PolicyInlineLinks(),
           const SizedBox(height: 8),
         ],
       ),

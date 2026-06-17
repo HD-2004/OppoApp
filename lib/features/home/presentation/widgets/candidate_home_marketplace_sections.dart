@@ -259,10 +259,14 @@ class SponsoredBannerSection extends StatefulWidget {
     super.key,
     required this.banners,
     required this.isLoading,
+    this.autoSlideInterval = const Duration(seconds: 4),
+    this.slideAnimationDuration = const Duration(milliseconds: 450),
   });
 
   final List<BannerAd> banners;
   final bool isLoading;
+  final Duration autoSlideInterval;
+  final Duration slideAnimationDuration;
 
   @override
   State<SponsoredBannerSection> createState() => _SponsoredBannerSectionState();
@@ -270,123 +274,233 @@ class SponsoredBannerSection extends StatefulWidget {
 
 class _SponsoredBannerSectionState extends State<SponsoredBannerSection> {
   late final PageController _pageController;
-  Timer? _timer;
+  Timer? _autoSlideTimer;
   int _currentPage = 0;
 
   @override
   void initState() {
     super.initState();
     _pageController = PageController(viewportFraction: 0.94);
-    _startAutoPlay();
+    _syncAutoSlideTimer();
   }
 
-  void _startAutoPlay() {
-    _timer?.cancel();
-    _timer = Timer.periodic(const Duration(seconds: 7), (timer) {
-      final total = _getBannerCount();
-      if (total <= 1) return;
-      _currentPage = (_currentPage + 1) % total;
-      if (_pageController.hasClients) {
-        _pageController.animateToPage(
-          _currentPage,
-          duration: const Duration(milliseconds: 600),
-          curve: Curves.easeInOut,
-        );
+  @override
+  void didUpdateWidget(covariant SponsoredBannerSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_bannerCount != _bannerCountFor(oldWidget) ||
+        widget.autoSlideInterval != oldWidget.autoSlideInterval) {
+      if (_currentPage >= _bannerCount) {
+        _currentPage = 0;
+        if (_pageController.hasClients) {
+          _pageController.jumpToPage(0);
+        }
       }
-    });
+      _syncAutoSlideTimer();
+    }
   }
 
-  int _getBannerCount() {
-    return widget.banners.isNotEmpty
-        ? widget.banners.length
-        : S3AssetConfig.candidateBanners.length;
+  @override
+  void dispose() {
+    _autoSlideTimer?.cancel();
+    _pageController.dispose();
+    super.dispose();
   }
 
-  String _getBannerImageUrl(int index) {
+  int get _bannerCount => widget.banners.isNotEmpty
+      ? widget.banners.length
+      : S3AssetConfig.candidateBanners.length;
+
+  int _bannerCountFor(SponsoredBannerSection widget) =>
+      widget.banners.isNotEmpty
+      ? widget.banners.length
+      : S3AssetConfig.candidateBanners.length;
+
+  String _bannerImageUrl(int index) {
     if (widget.banners.isNotEmpty) {
       return widget.banners[index].imageUrl;
     }
     return S3AssetConfig.candidateBanners[index];
   }
 
-  @override
-  void dispose() {
-    _timer?.cancel();
-    _pageController.dispose();
-    super.dispose();
+  void _syncAutoSlideTimer() {
+    _autoSlideTimer?.cancel();
+    _autoSlideTimer = null;
+    if (_bannerCount <= 1) return;
+    _autoSlideTimer = Timer.periodic(widget.autoSlideInterval, (_) {
+      if (!mounted || !_pageController.hasClients) return;
+      final nextPage = (_currentPage + 1) % _bannerCount;
+      _pageController.animateToPage(
+        nextPage,
+        duration: widget.slideAnimationDuration,
+        curve: Curves.easeOutCubic,
+      );
+      _currentPage = nextPage;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     if (widget.isLoading) {
       return const Padding(
-        padding: EdgeInsets.fromLTRB(18, 10, 18, 18),
-        child: _SkeletonBox(height: 154, radius: 24),
+        padding: EdgeInsets.fromLTRB(18, 12, 18, 20),
+        child: _SkeletonBox(height: 230, radius: 22),
       );
     }
 
-    final count = _getBannerCount();
+    final count = _bannerCount;
     if (count == 0) return const SizedBox.shrink();
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 10, 18, 18),
-      child: Column(
+      padding: const EdgeInsets.fromLTRB(18, 12, 18, 20),
+      child: Stack(
+        alignment: Alignment.bottomCenter,
         children: [
           SizedBox(
-            height: 154,
+            height: 230,
             child: PageView.builder(
+              key: const Key('featured-employer-banner-slide-view'),
               controller: _pageController,
               itemCount: count,
               onPageChanged: (index) {
-                setState(() {
-                  _currentPage = index;
-                });
-                _startAutoPlay(); // Reset timer on manual scroll
+                setState(() => _currentPage = index);
+                _syncAutoSlideTimer();
               },
               itemBuilder: (context, index) {
-                final imageUrl = _getBannerImageUrl(index);
                 return Padding(
                   padding: const EdgeInsets.only(right: 10),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(24),
-                    child: Image.network(
-                      imageUrl,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => Container(
-                        color: AppColors.primarySoft,
-                        child: const Icon(
-                          Icons.image_not_supported_rounded,
-                          color: AppColors.primaryLight,
-                          size: 48,
-                        ),
-                      ),
-                    ),
-                  ),
+                  child: _CandidateBannerCard(imageUrl: _bannerImageUrl(index)),
                 );
               },
             ),
           ),
-          const SizedBox(height: 10),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(
-              count,
-              (index) => AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                margin: const EdgeInsets.symmetric(horizontal: 4),
-                height: 8,
-                width: _currentPage == index ? 24 : 8,
-                decoration: BoxDecoration(
-                  color: _currentPage == index
-                      ? AppColors.primary
-                      : AppColors.primarySoft,
-                  borderRadius: BorderRadius.circular(4),
-                ),
+          if (count > 1)
+            Positioned(
+              bottom: 12,
+              child: _BannerDots(
+                key: const Key('featured-employer-banner-dots'),
+                count: count,
+                activeIndex: _currentPage,
               ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CandidateBannerCard extends StatelessWidget {
+  const _CandidateBannerCard({required this.imageUrl});
+
+  final String imageUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(22),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.network(
+            imageUrl,
+            fit: BoxFit.cover,
+            errorBuilder: (_, _, _) => const _CandidateBannerFallback(),
+          ),
+          const Positioned(left: 18, top: 16, child: _RecommendationBadge()),
+        ],
+      ),
+    );
+  }
+}
+
+class _CandidateBannerFallback extends StatelessWidget {
+  const _CandidateBannerFallback();
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: const [
+            Color(0xFF2B0D05),
+            Color(0xFF8A4F12),
+            AppColors.primary,
+          ],
+        ),
+      ),
+      child: Center(
+        child: Icon(
+          Icons.image_not_supported_rounded,
+          color: Colors.white.withValues(alpha: 0.55),
+          size: 48,
+        ),
+      ),
+    );
+  }
+}
+
+class _RecommendationBadge extends StatelessWidget {
+  const _RecommendationBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.62),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.local_fire_department_rounded,
+            color: Color(0xFFFF8A3D),
+            size: 16,
+          ),
+          SizedBox(width: 4),
+          Text(
+            'Đề xuất',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 13,
+              fontWeight: FontWeight.w900,
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _BannerDots extends StatelessWidget {
+  const _BannerDots({
+    super.key,
+    required this.count,
+    required this.activeIndex,
+  });
+
+  final int count;
+  final int activeIndex;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(count, (index) {
+        final active = index == activeIndex;
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          margin: const EdgeInsets.symmetric(horizontal: 4),
+          width: active ? 26 : 8,
+          height: 8,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: active ? 0.96 : 0.48),
+            borderRadius: BorderRadius.circular(999),
+          ),
+        );
+      }),
     );
   }
 }
@@ -633,14 +747,17 @@ class JobCard extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          if (job.isQuickJob || job.jobType == JobPostType.urgent || job.isAiScreeningEnabled)
+                          if (job.isQuickJob ||
+                              job.jobType == JobPostType.urgent ||
+                              job.isAiScreeningEnabled)
                             Padding(
                               padding: const EdgeInsets.only(bottom: 6),
                               child: Wrap(
                                 spacing: 6,
                                 runSpacing: 4,
                                 children: [
-                                  if (job.isQuickJob || job.jobType == JobPostType.urgent)
+                                  if (job.isQuickJob ||
+                                      job.jobType == JobPostType.urgent)
                                     Container(
                                       padding: const EdgeInsets.symmetric(
                                         horizontal: 8,
@@ -963,8 +1080,6 @@ class LogoBox extends StatelessWidget {
     );
   }
 }
-
-
 
 class _HeaderBadgeButton extends StatelessWidget {
   const _HeaderBadgeButton({

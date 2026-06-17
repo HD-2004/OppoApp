@@ -11,6 +11,7 @@ import 'package:oppo_temp_jobs/features/candidate/notifications/domain/notificat
 import 'package:oppo_temp_jobs/features/employer_packages/application/featured_employer_package_providers.dart';
 import 'package:oppo_temp_jobs/features/employer_packages/domain/employer_package.dart';
 import 'package:oppo_temp_jobs/features/home/presentation/pages/candidate_home_page.dart';
+import 'package:oppo_temp_jobs/features/home/presentation/widgets/candidate_home_marketplace_sections.dart';
 import 'package:oppo_temp_jobs/features/messaging/application/messaging_providers.dart';
 import 'package:oppo_temp_jobs/features/messaging/domain/candidate_application.dart';
 import 'package:oppo_temp_jobs/features/recommendations/application/job_recommendation_providers.dart';
@@ -27,14 +28,7 @@ void main() {
       recommendations: [
         JobRecommendation(job: _job, matchScore: 72, reasons: const []),
       ],
-      featuredEmployers: const [
-        FeaturedEmployer(
-          id: 'featured-1',
-          name: 'Featured Cafe',
-          packageTier: EmployerPackageTier.premium,
-          activeJobCount: 3,
-        ),
-      ],
+      banners: const [_firstBanner],
     );
 
     expect(find.text('Ốp Pờ'), findsOneWidget);
@@ -50,7 +44,6 @@ void main() {
     expect(find.text('Nhân viên phục vụ'), findsWidgets);
     expect(find.text('Featured Cafe'), findsNothing);
     expect(find.text('2 việc đang tuyển'), findsOneWidget);
-
     expect(find.byIcon(Icons.favorite_rounded), findsNothing);
     expect(find.byIcon(Icons.share_rounded), findsNothing);
     expect(find.byIcon(Icons.comment_rounded), findsNothing);
@@ -63,7 +56,7 @@ void main() {
         tester,
         standardJobs: [_job],
         recommendations: const [],
-        featuredEmployers: const [],
+        banners: const [],
       );
 
       expect(
@@ -82,7 +75,7 @@ void main() {
         tester,
         standardJobs: const [],
         recommendations: const [],
-        featuredEmployers: const [],
+        banners: const [],
       );
 
       expect(find.text('Chưa có bài đăng tuyển dụng mới.'), findsNothing);
@@ -94,15 +87,51 @@ void main() {
       expect(find.text('Featured Cafe'), findsNothing);
     },
   );
+
+  testWidgets('sponsored employer banner automatically advances slides', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SponsoredBannerSection(
+            banners: const [_firstBanner, _secondBanner],
+            isLoading: false,
+            autoSlideInterval: const Duration(milliseconds: 500),
+            slideAnimationDuration: const Duration(milliseconds: 80),
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    expect(find.text('Đề xuất'), findsWidgets);
+    expect(
+      find.byKey(const Key('featured-employer-banner-dots')),
+      findsOneWidget,
+    );
+    final firstPageView = tester.widget<PageView>(
+      find.byKey(const Key('featured-employer-banner-slide-view')),
+    );
+    expect(firstPageView.controller?.page, closeTo(0, 0.01));
+
+    await tester.pump(const Duration(milliseconds: 501));
+    await tester.pump(const Duration(milliseconds: 80));
+
+    final secondPageView = tester.widget<PageView>(
+      find.byKey(const Key('featured-employer-banner-slide-view')),
+    );
+    expect(secondPageView.controller?.page, closeTo(1, 0.01));
+  });
 }
 
 Future<void> _pumpHome(
   WidgetTester tester, {
   required List<JobPost> standardJobs,
   required List<JobRecommendation> recommendations,
-  required List<FeaturedEmployer> featuredEmployers,
+  required List<BannerAd> banners,
 }) async {
-  await tester.binding.setSurfaceSize(const Size(430, 1800));
+  await tester.binding.setSurfaceSize(const Size(430, 2200));
   addTearDown(() => tester.binding.setSurfaceSize(null));
 
   await tester.pumpWidget(
@@ -116,8 +145,7 @@ Future<void> _pumpHome(
         personalizedJobRecommendationsProvider.overrideWith(
           (_) async => recommendations,
         ),
-        featuredEmployersProvider.overrideWith((_) async => featuredEmployers),
-        bannersProvider.overrideWith((_) async => const <BannerAd>[]),
+        bannersProvider.overrideWith((_) async => banners),
         candidateChatsProvider.overrideWithBuild(
           (_, _) => <CandidateApplication>[],
         ),
@@ -153,6 +181,18 @@ const _candidateUser = AuthUserProfile(
   fullName: 'Đỗ Nhật',
   kycCompleted: true,
   profileCompleted: true,
+);
+
+const _firstBanner = BannerAd(
+  bannerId: 'banner-1',
+  title: 'First Cafe',
+  imageUrl: 'https://example.com/banner-1.jpg',
+);
+
+const _secondBanner = BannerAd(
+  bannerId: 'banner-2',
+  title: 'Second Bistro',
+  imageUrl: 'https://example.com/banner-2.jpg',
 );
 
 final _job = JobPost(

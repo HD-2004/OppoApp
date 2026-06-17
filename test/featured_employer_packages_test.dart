@@ -24,6 +24,7 @@ void main() {
             [{
               "employerId": "employer-1",
               "companyName": "Op Po Cafe",
+              "bannerImageUrl": "https://example.test/banner.jpg",
               "packageName": "Top Spotlight",
               "status": "active",
               "approvalStatus": "approved",
@@ -63,6 +64,7 @@ void main() {
     final plans = await repository.getAvailablePackages();
 
     expect(employers.single.name, 'Op Po Cafe');
+    expect(employers.single.bannerImageUrl, 'https://example.test/banner.jpg');
     expect(employers.single.packageTier, EmployerPackageTier.enterprise);
     expect(plans.single.tier, EmployerPackageTier.premium);
     expect(plans.single.benefits, ['Ưu tiên tìm kiếm']);

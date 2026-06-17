@@ -54,6 +54,14 @@ class ApiFeaturedEmployerPackageRepository
             ? item['companyName'].toString().trim()
             : 'Nhà tuyển dụng',
         logoUrl: item['companyLogo']?.toString() ?? item['logoUrl']?.toString(),
+        bannerImageUrl:
+            item['bannerImageUrl']?.toString() ??
+            item['bannerUrl']?.toString() ??
+            item['bannerImage']?.toString() ??
+            item['companyBanner']?.toString() ??
+            item['promotionalBanner']?.toString() ??
+            item['adImageUrl']?.toString() ??
+            item['imageUrl']?.toString(),
         packageTier: tier,
       );
     }

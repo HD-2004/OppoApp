@@ -8,6 +8,7 @@ import 'change_password_screen.dart';
 import 'delete_account_request_screen.dart';
 import 'language_selection_screen.dart';
 import 'notification_preferences_screen.dart';
+import 'policy_terms_screen.dart';
 import 'theme_mode_screen.dart';
 import 'widgets/setting_section.dart';
 import 'widgets/setting_tile.dart';
@@ -79,6 +80,17 @@ class UserSettingsScreen extends ConsumerWidget {
                   title: strings.notificationPreferences,
                   onTap: () =>
                       _push(context, const NotificationPreferencesScreen()),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            SettingSection(
+              title: strings.text('policyTerms'),
+              children: [
+                SettingTile(
+                  icon: Icons.description_outlined,
+                  title: strings.text('policyTerms'),
+                  onTap: () => _push(context, const PolicyTermsScreen()),
                 ),
               ],
             ),

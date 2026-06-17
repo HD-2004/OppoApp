@@ -86,6 +86,7 @@ class FeaturedEmployer {
     required this.name,
     required this.packageTier,
     this.logoUrl,
+    this.bannerImageUrl,
     this.rating,
     this.activeJobCount,
     this.distanceLabel,
@@ -95,6 +96,7 @@ class FeaturedEmployer {
   final String name;
   final EmployerPackageTier packageTier;
   final String? logoUrl;
+  final String? bannerImageUrl;
   final double? rating;
   final int? activeJobCount;
   final String? distanceLabel;

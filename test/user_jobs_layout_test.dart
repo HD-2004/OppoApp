@@ -75,7 +75,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Loại công việc'), findsOneWidget);
-    expect(find.text('Công việc tiêu chuẩn'), findsOneWidget);
+    expect(find.text('Công việc'), findsOneWidget);
     expect(find.text('Tìm thấy 2 công việc phù hợp'), findsOneWidget);
 
     await tester.tap(find.text('Loại công việc'));

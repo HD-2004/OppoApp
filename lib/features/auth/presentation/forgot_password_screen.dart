@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/errors/auth_failure.dart';
 import '../../../core/localization/app_localizations.dart';
+import '../../candidate/presentation/policy_terms_screen.dart';
 import '../application/auth_controller.dart';
 import 'auth_form_fields.dart';
 import 'widgets/auth_header.dart';
@@ -160,6 +161,8 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
               onPressed: () => context.go('/login'),
               child: Text(l10n.text('backToSignIn')),
             ),
+            const SizedBox(height: 4),
+            const PolicyInlineLinks(),
           ],
         ),
       ),

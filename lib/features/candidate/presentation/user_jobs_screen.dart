@@ -822,7 +822,7 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
                             ),
                             const SizedBox(height: 6),
                             Text(
-                              'Hơn ${standardJobs.length} công việc tiêu chuẩn đang chờ bạn khám phá',
+                              'Hơn ${standardJobs.length} công việc đang chờ bạn khám phá',
                               style: textTheme.bodyMedium?.copyWith(
                                 color: Colors.white.withValues(alpha: 0.9),
                                 fontWeight: FontWeight.w500,
@@ -1354,7 +1354,7 @@ class _JobCategoryTabsState extends State<_JobCategoryTabs> {
     final selectedJobTypeTab = widget.activeTab == 1 ? 1 : 0;
     final selectedLabel = selectedJobTypeTab == 1
         ? 'Công việc Tuyển gấp'
-        : 'Công việc tiêu chuẩn';
+        : 'Công việc';
     final selectedIcon = selectedJobTypeTab == 1
         ? Icons.flash_on_outlined
         : Icons.work_outline;
@@ -1620,7 +1620,7 @@ class _JobTypeDropdownPanel extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           _JobTypeOption(
-            label: 'Công việc tiêu chuẩn',
+            label: 'Công việc',
             count: standardCount,
             icon: Icons.work_outline,
             isActive: activeTab == 0,

@@ -9,6 +9,7 @@ import '../features/auth/presentation/login_screen.dart';
 import '../features/auth/presentation/register_screen.dart';
 import '../features/auth/presentation/reset_password_screen.dart';
 import '../features/candidate/presentation/kyc_verification_screen.dart';
+import '../features/candidate/presentation/policy_terms_screen.dart';
 import '../features/candidate/presentation/update_profile_screen.dart';
 import '../features/candidate/presentation/user_dashboard_screen.dart';
 import '../features/home/home_screen.dart';
@@ -29,6 +30,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final value =
           authState.asData?.value ?? const AuthState.unauthenticated();
       final location = state.matchedLocation;
+      final isPolicyRoute =
+          location == '/policies' ||
+          location == '/policies/:slug' ||
+          location.startsWith('/policies/');
       final isAuthRoute =
           location == '/splash' ||
           location == '/intro' ||
@@ -41,7 +46,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           location == '/reset-password/new-password';
 
       if (value.status == AuthStatus.unauthenticated) {
-        return isAuthRoute ? null : '/login';
+        return isAuthRoute || isPolicyRoute ? null : '/login';
       }
 
       if (value.status == AuthStatus.unconfirmed) {
@@ -122,6 +127,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/missing-role',
         redirect: (context, state) => '/candidate',
+      ),
+      GoRoute(
+        path: '/policies',
+        builder: (context, state) => const PolicyTermsScreen(),
+      ),
+      GoRoute(
+        path: '/policies/:slug',
+        builder: (context, state) {
+          return PolicyDetailScreen(slug: state.pathParameters['slug']);
+        },
       ),
       GoRoute(
         path: '/candidate',
