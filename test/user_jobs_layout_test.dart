@@ -75,12 +75,13 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Loại công việc'), findsOneWidget);
-    expect(find.text('Công việc'), findsOneWidget);
+    expect(find.text('Công việc tiêu chuẩn'), findsNothing);
     expect(find.text('Tìm thấy 2 công việc phù hợp'), findsOneWidget);
 
     await tester.tap(find.text('Loại công việc'));
     await tester.pumpAndSettle();
 
+    expect(find.text('Công việc tiêu chuẩn'), findsOneWidget);
     expect(find.text('Công việc Tuyển gấp'), findsOneWidget);
 
     await tester.tap(find.text('Công việc Tuyển gấp'));
@@ -128,7 +129,7 @@ void main() {
 
     expect(horizontalScrollViews, isEmpty);
     expect(find.text('Loại công việc'), findsOneWidget);
-    expect(find.text('Công việc tiêu chuẩn'), findsOneWidget);
+    expect(find.text('Công việc tiêu chuẩn'), findsNothing);
     expect(find.byKey(const Key('saved-jobs-button')), findsOneWidget);
     expect(find.byKey(const Key('saved-jobs-badge')), findsOneWidget);
     expect(find.text('2'), findsOneWidget);

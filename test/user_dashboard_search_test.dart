@@ -39,9 +39,9 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
 
     expect(find.text('Tìm công việc mơ ước của bạn'), findsOneWidget);
-    expect(find.text('Công việc tiêu chuẩn'), findsOneWidget);
-    expect(find.text('Công việc tuyển gấp'), findsOneWidget);
-    expect(find.text('Công việc đã lưu'), findsOneWidget);
+    expect(find.text('Loại công việc'), findsOneWidget);
+    expect(find.text('Công việc tiêu chuẩn'), findsNothing);
+    expect(find.text('Công việc Tuyển gấp'), findsNothing);
     expect(find.byIcon(Icons.arrow_back), findsNothing);
 
     final homeNavLabel = tester.widget<Text>(find.text('Trang chủ'));

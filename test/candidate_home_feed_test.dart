@@ -40,7 +40,7 @@ void main() {
       find.text('Top công ty đang tuyển nhiều fresher nhất'),
       findsOneWidget,
     );
-    expect(find.text('Việc hợp hướng đi'), findsOneWidget);
+    expect(find.text('Việc hợp hướng đi'), findsNothing);
     expect(find.text('Nhân viên phục vụ'), findsWidgets);
     expect(find.text('Featured Cafe'), findsNothing);
     expect(find.text('2 việc đang tuyển'), findsOneWidget);
@@ -79,7 +79,8 @@ void main() {
       );
 
       expect(find.text('Chưa có bài đăng tuyển dụng mới.'), findsNothing);
-      expect(find.text('Việc hợp hướng đi'), findsOneWidget);
+      expect(find.text('Việc hợp hướng đi'), findsNothing);
+      expect(find.text('Chưa có việc để hiển thị.'), findsNothing);
       expect(
         find.text('Top công ty đang tuyển nhiều fresher nhất'),
         findsNothing,

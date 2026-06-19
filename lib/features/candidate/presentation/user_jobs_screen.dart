@@ -1352,9 +1352,6 @@ class _JobCategoryTabsState extends State<_JobCategoryTabs> {
   @override
   Widget build(BuildContext context) {
     final selectedJobTypeTab = widget.activeTab == 1 ? 1 : 0;
-    final selectedLabel = selectedJobTypeTab == 1
-        ? 'Công việc Tuyển gấp'
-        : 'Công việc';
     final selectedIcon = selectedJobTypeTab == 1
         ? Icons.flash_on_outlined
         : Icons.work_outline;
@@ -1366,7 +1363,6 @@ class _JobCategoryTabsState extends State<_JobCategoryTabs> {
           children: [
             Expanded(
               child: _JobTypeDropdownButton(
-                label: selectedLabel,
                 icon: selectedIcon,
                 isExpanded: _isExpanded,
                 isActive: widget.activeTab != 2,
@@ -1397,14 +1393,12 @@ class _JobCategoryTabsState extends State<_JobCategoryTabs> {
 
 class _JobTypeDropdownButton extends StatelessWidget {
   const _JobTypeDropdownButton({
-    required this.label,
     required this.icon,
     required this.isExpanded,
     required this.isActive,
     required this.onTap,
   });
 
-  final String label;
   final IconData icon;
   final bool isExpanded;
   final bool isActive;
@@ -1415,9 +1409,6 @@ class _JobTypeDropdownButton extends StatelessWidget {
     final theme = Theme.of(context);
     final textTheme = theme.textTheme;
     final foregroundColor = isActive ? Colors.white : AppColors.primary;
-    final mutedColor = isActive
-        ? Colors.white.withValues(alpha: 0.82)
-        : theme.colorScheme.onSurfaceVariant;
 
     return Material(
       color: Colors.transparent,
@@ -1450,30 +1441,14 @@ class _JobTypeDropdownButton extends StatelessWidget {
                 Icon(icon, color: foregroundColor, size: 22),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'Loại công việc',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: textTheme.labelMedium?.copyWith(
-                          color: mutedColor,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: textTheme.bodyLarge?.copyWith(
-                          color: foregroundColor,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ],
+                  child: Text(
+                    'Loại công việc',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: textTheme.bodyLarge?.copyWith(
+                      color: foregroundColor,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -1620,7 +1595,7 @@ class _JobTypeDropdownPanel extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           _JobTypeOption(
-            label: 'Công việc',
+            label: 'Công việc tiêu chuẩn',
             count: standardCount,
             icon: Icons.work_outline,
             isActive: activeTab == 0,

@@ -302,10 +302,6 @@ class _CandidateHomePageState extends ConsumerState<CandidateHomePage> {
     final dataLoading =
         (standardJobsAsync.isLoading || quickJobsAsync.isLoading) &&
         allJobs.isEmpty;
-    final dataError =
-        (standardJobsAsync.hasError || quickJobsAsync.hasError) &&
-        allJobs.isEmpty;
-
     return Scaffold(
       backgroundColor: AppColors.background(context),
       drawer: CandidateMenuDrawer(
@@ -380,22 +376,6 @@ class _CandidateHomePageState extends ConsumerState<CandidateHomePage> {
                   companies: topCompanies.take(5).toList(growable: false),
                   isLoading: dataLoading,
                   onSeeAll: widget.onSeeAllJobsTap,
-                ),
-              ),
-            ),
-            SliverToBoxAdapter(
-              child: _PageWidth(
-                child: DirectionJobsSection(
-                  jobs: filteredJobs.take(8).toList(growable: false),
-                  isLoading: dataLoading,
-                  hasError: dataError,
-                  onRetry: () {
-                    ref.invalidate(activeJobsProvider);
-                    ref.invalidate(activeQuickJobsProvider);
-                  },
-                  onSeeAll: widget.onSeeAllJobsTap,
-                  onJobTap: _openJobDetail,
-                  onApply: (job) => _handleApply(job, user),
                 ),
               ),
             ),
