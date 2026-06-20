@@ -302,7 +302,7 @@ class _SearchBar extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
       child: Container(
-        height: 44,
+        height: 72,
         decoration: BoxDecoration(
           color: AppColors.fieldFill(context),
           borderRadius: BorderRadius.circular(12),
@@ -320,6 +320,7 @@ class _SearchBar extends StatelessWidget {
               child: TextField(
                 controller: controller,
                 onChanged: onChanged,
+                textAlignVertical: TextAlignVertical.center,
                 decoration: InputDecoration(
                   hintText: 'Tìm kiếm cuộc trò chuyện...',
                   hintStyle: TextStyle(
@@ -328,7 +329,7 @@ class _SearchBar extends StatelessWidget {
                   ),
                   border: InputBorder.none,
                   isDense: true,
-                  contentPadding: EdgeInsets.zero,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 18),
                 ),
                 style: TextStyle(
                   fontSize: 14,
