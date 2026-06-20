@@ -1247,6 +1247,7 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
                                   final isSaved = _isJobSaved(job, savedJobIds);
                                   return JobPostCard(
                                     job: job,
+                                    layout: JobCardLayout.list,
                                     distance: _jobDistances[job.id],
                                     isSaved: isSaved,
                                     onDetailsPressed: () => _openDetails(job),
@@ -1258,22 +1259,15 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
                                   );
                                 },
                               )
-                            : GridView.builder(
-                                shrinkWrap: true,
-                                physics: const NeverScrollableScrollPhysics(),
-                                gridDelegate:
-                                    const SliverGridDelegateWithFixedCrossAxisCount(
-                                      crossAxisCount: 2,
-                                      crossAxisSpacing: 12,
-                                      mainAxisSpacing: 12,
-                                      childAspectRatio: 0.72,
-                                    ),
-                                itemCount: filteredJobs.length,
-                                itemBuilder: (context, index) {
-                                  final job = filteredJobs[index];
+                            : _JobMasonryGrid(
+                                jobs: filteredJobs,
+                                crossAxisCount: 2,
+                                spacing: 12,
+                                itemBuilder: (context, job) {
                                   final isSaved = _isJobSaved(job, savedJobIds);
                                   return JobPostCard(
                                     job: job,
+                                    layout: JobCardLayout.grid,
                                     distance: _jobDistances[job.id],
                                     isSaved: isSaved,
                                     onDetailsPressed: () => _openDetails(job),
@@ -1701,4 +1695,54 @@ bool _sameStringList(List<String> a, List<String> b) {
     }
   }
   return true;
+}
+
+/// A dependency-free masonry grid: cards keep their natural height instead of
+/// being forced into a uniform aspect ratio. Items are distributed across
+/// [crossAxisCount] columns in round-robin order, and each column is a
+/// [Column] whose children size themselves to their content.
+class _JobMasonryGrid extends StatelessWidget {
+  const _JobMasonryGrid({
+    required this.jobs,
+    required this.itemBuilder,
+    this.crossAxisCount = 2,
+    this.spacing = 12,
+  });
+
+  final List<JobPost> jobs;
+  final Widget Function(BuildContext context, JobPost job) itemBuilder;
+  final int crossAxisCount;
+  final double spacing;
+
+  @override
+  Widget build(BuildContext context) {
+    if (jobs.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final columns = List.generate(crossAxisCount, (_) => <JobPost>[]);
+    for (var i = 0; i < jobs.length; i++) {
+      columns[i % crossAxisCount].add(jobs[i]);
+    }
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (var col = 0; col < crossAxisCount; col++) ...[
+          if (col > 0) SizedBox(width: spacing),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (var row = 0; row < columns[col].length; row++) ...[
+                  if (row > 0) SizedBox(height: spacing),
+                  itemBuilder(context, columns[col][row]),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
 }

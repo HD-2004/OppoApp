@@ -4,12 +4,18 @@ import 'package:oppo_temp_jobs/core/theme/app_colors.dart';
 
 import '../../domain/job_post.dart';
 
+/// Controls how a [JobPostCard] sizes and clamps its content depending on
+/// where it is rendered. `grid` is the compact two-column masonry layout,
+/// while `list`/`feed` are the full-width vertical layouts.
+enum JobCardLayout { grid, list, feed }
+
 class JobPostCard extends StatelessWidget {
   const JobPostCard({
     super.key,
     required this.job,
     required this.onDetailsPressed,
     required this.onApplyPressed,
+    this.layout = JobCardLayout.list,
     this.distance,
     this.isApplying = false,
     this.isSaved = false,
@@ -17,12 +23,15 @@ class JobPostCard extends StatelessWidget {
   });
 
   final JobPost job;
+  final JobCardLayout layout;
   final VoidCallback onDetailsPressed;
   final VoidCallback? onApplyPressed;
   final double? distance;
   final bool isApplying;
   final bool isSaved;
   final VoidCallback? onSavePressed;
+
+  bool get _isGrid => layout == JobCardLayout.grid;
 
   String _postedTimeLabel(DateTime postedAt) {
     if (postedAt.millisecondsSinceEpoch == 0) {
@@ -53,6 +62,17 @@ class JobPostCard extends StatelessWidget {
     final location = _location(job, distance);
     final salary = _salary(job);
 
+    final isGrid = _isGrid;
+    final padding = isGrid ? 14.0 : 16.0;
+    final avatarSize = isGrid ? 40.0 : 44.0;
+    final headerSpacing = isGrid ? 12.0 : 16.0;
+    final infoSpacing = isGrid ? 12.0 : 14.0;
+    final buttonSpacing = isGrid ? 14.0 : 18.0;
+    final buttonHeight = isGrid ? 44.0 : 50.0;
+    // Grid cards live in narrow columns, so clamp long values to keep the
+    // masonry tidy. List/feed cards have full width and can show more.
+    final infoValueMaxLines = isGrid ? 2 : 3;
+
     return Card(
       margin: EdgeInsets.zero,
       color: theme.colorScheme.surface,
@@ -68,14 +88,15 @@ class JobPostCard extends StatelessWidget {
         onTap: onDetailsPressed,
         borderRadius: BorderRadius.circular(20),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(padding),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
               Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  _CompanyMark(companyName: companyName),
+                  _CompanyMark(companyName: companyName, size: avatarSize),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
@@ -94,6 +115,8 @@ class JobPostCard extends StatelessWidget {
                           const SizedBox(height: 2),
                           Text(
                             postedTime,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: textTheme.bodySmall?.copyWith(
                               color: theme.colorScheme.onSurfaceVariant,
                               fontWeight: FontWeight.w500,
@@ -107,17 +130,20 @@ class JobPostCard extends StatelessWidget {
                   _SaveJobButton(isSaved: isSaved, onPressed: onSavePressed),
                 ],
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: headerSpacing),
               Text(
                 job.title.trim(),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
                 style: textTheme.titleMedium?.copyWith(
                   color: theme.colorScheme.onSurface,
                   fontWeight: FontWeight.w800,
                   height: 1.25,
                 ),
               ),
-              const SizedBox(height: 14),
+              SizedBox(height: infoSpacing),
               _JobInfoColumn(
+                valueMaxLines: infoValueMaxLines,
                 rows: [
                   if (requirements.isNotEmpty)
                     _JobInfoRowData(
@@ -151,10 +177,10 @@ class JobPostCard extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 18),
+              SizedBox(height: buttonSpacing),
               SizedBox(
                 width: double.infinity,
-                height: 50,
+                height: buttonHeight,
                 child: FilledButton(
                   onPressed: isApplying ? null : onApplyPressed,
                   style: FilledButton.styleFrom(
@@ -224,9 +250,10 @@ class _SaveJobButton extends StatelessWidget {
 }
 
 class _CompanyMark extends StatelessWidget {
-  const _CompanyMark({required this.companyName});
+  const _CompanyMark({required this.companyName, this.size = 44});
 
   final String companyName;
+  final double size;
 
   @override
   Widget build(BuildContext context) {
@@ -234,8 +261,8 @@ class _CompanyMark extends StatelessWidget {
     final initial = companyName.characters.first.toUpperCase();
 
     return Container(
-      width: 44,
-      height: 44,
+      width: size,
+      height: size,
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceContainerHighest,
@@ -254,16 +281,17 @@ class _CompanyMark extends StatelessWidget {
 }
 
 class _JobInfoColumn extends StatelessWidget {
-  const _JobInfoColumn({required this.rows});
+  const _JobInfoColumn({required this.rows, this.valueMaxLines = 3});
 
   final List<_JobInfoRowData> rows;
+  final int valueMaxLines;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
         for (var index = 0; index < rows.length; index++) ...[
-          _JobInfoRow(data: rows[index]),
+          _JobInfoRow(data: rows[index], valueMaxLines: valueMaxLines),
           if (index < rows.length - 1) const SizedBox(height: 10),
         ],
       ],
@@ -272,9 +300,10 @@ class _JobInfoColumn extends StatelessWidget {
 }
 
 class _JobInfoRow extends StatelessWidget {
-  const _JobInfoRow({required this.data});
+  const _JobInfoRow({required this.data, this.valueMaxLines = 3});
 
   final _JobInfoRowData data;
+  final int valueMaxLines;
 
   @override
   Widget build(BuildContext context) {
@@ -297,6 +326,8 @@ class _JobInfoRow extends StatelessWidget {
             children: [
               Text(
                 data.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.labelSmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                   fontWeight: FontWeight.w600,
@@ -305,6 +336,8 @@ class _JobInfoRow extends StatelessWidget {
               const SizedBox(height: 2),
               Text(
                 data.value,
+                maxLines: valueMaxLines,
+                overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: data.emphasized
                       ? AppColors.primary

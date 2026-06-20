@@ -144,7 +144,7 @@ class _UserHomeFeedScreenState extends ConsumerState<UserHomeFeedScreen> {
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
                   ),
-                   onPressed: () {
+                  onPressed: () {
                     Navigator.of(ctx).pop();
                     final chosen = cvList.firstWhere(
                       (c) => c['id']?.toString() == selectedCvId,
@@ -380,6 +380,7 @@ class _UserHomeFeedScreenState extends ConsumerState<UserHomeFeedScreen> {
                 final job = jobs[index - 3];
                 return JobPostCard(
                   job: job,
+                  layout: JobCardLayout.feed,
                   onDetailsPressed: () => _openDetails(job),
                   onApplyPressed: () => _handleApply(job, user),
                 );
