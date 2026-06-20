@@ -106,6 +106,10 @@ class AuthService {
   }) async {
     await _ensureConfigured();
 
+    if (!hasHostedUiConfig) {
+      throw AuthFailure.socialSignInConfiguration;
+    }
+
     try {
       final existingSession = await Amplify.Auth.fetchAuthSession();
       if (existingSession.isSignedIn) {

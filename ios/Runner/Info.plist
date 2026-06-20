@@ -70,5 +70,21 @@
 	<string>Ứng dụng cần quyền sử dụng camera để chụp ảnh eKYC xác thực khuôn mặt.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Ứng dụng cần quyền truy cập thư viện ảnh để tải ảnh CCCD/CMND xác thực eKYC.</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.oppo.tempjobs.auth</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<!-- Cognito Hosted UI federated sign-in (Google) redirect scheme.
+				     Must match COGNITO_REDIRECT_SCHEME and the Cognito App Client
+				     Allowed callback/sign-out URLs. -->
+				<string>com.oppo.tempjobs</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/config/s3_asset_config.dart';
+import '../../../../shared/presentation/widgets/network_asset_image.dart';
 import 'auth_colors.dart';
 
 class AuthHeader extends StatelessWidget {
@@ -40,7 +42,7 @@ class AuthHeader extends StatelessWidget {
             ],
           ),
           child: icon == null
-              ? _OppoLogoMark(size: compact ? 78 : 92)
+              ? _OppoLogo(size: compact ? 78 : 92)
               : Icon(
                   icon,
                   color: isDark ? AuthColors.accent : AuthColors.primary,
@@ -87,6 +89,24 @@ class AuthHeader extends StatelessWidget {
           ),
         ],
       ],
+    );
+  }
+}
+
+class _OppoLogo extends StatelessWidget {
+  const _OppoLogo({required this.size});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    // Real brand logo stored on S3. Falls back to the drawn mark if the
+    // image fails to load or is still loading.
+    return NetworkAssetImage(
+      url: S3AssetConfig.logo,
+      fit: BoxFit.contain,
+      semanticLabel: 'Logo Ốp Pờ',
+      placeholder: _OppoLogoMark(size: size),
     );
   }
 }

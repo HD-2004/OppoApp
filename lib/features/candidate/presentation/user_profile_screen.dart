@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/localization/app_localizations.dart';
 import '../../../core/theme/app_colors.dart';
@@ -1105,6 +1106,48 @@ class _CvSectionState extends ConsumerState<_CvSection> {
     }
   }
 
+  Future<void> _openCv(Map<String, dynamic> cv) async {
+    final rawUrl = (cv['cvUrl'] ?? cv['cvS3Key'] ?? '').toString().trim();
+    if (rawUrl.isEmpty) {
+      setState(() {
+        _error = 'Không tìm thấy đường dẫn CV để mở.';
+        _success = null;
+      });
+      return;
+    }
+
+    final uri = Uri.tryParse(rawUrl);
+    if (uri == null || !uri.hasScheme || !uri.isAbsolute) {
+      setState(() {
+        _error = 'Đường dẫn CV không hợp lệ.';
+        _success = null;
+      });
+      return;
+    }
+
+    setState(() {
+      _error = null;
+      _success = null;
+    });
+
+    try {
+      final launched = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
+      if (!launched && mounted) {
+        setState(() {
+          _error = 'Không thể mở CV. Vui lòng thử lại.';
+        });
+      }
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _error = 'Không thể mở CV. Vui lòng kiểm tra kết nối và thử lại.';
+      });
+    }
+  }
+
   Future<void> _deleteCv(Map<String, dynamic> cv) async {
     final userId = widget.userId;
     if (userId == null || userId.isEmpty) return;
@@ -1195,60 +1238,78 @@ class _CvSectionState extends ConsumerState<_CvSection> {
           final uploadedAt = cv['cvUploadDate']?.toString() ?? '';
           return Container(
             margin: const EdgeInsets.only(bottom: 10),
-            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: const Color(0xFFF9FAFB),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: const Color(0xFFE5E7EB)),
             ),
-            child: Row(
-              children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF2563EB),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(
-                    Icons.description_rounded,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => _openCv(cv),
+                borderRadius: BorderRadius.circular(12),
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Row(
                     children: [
-                      Text(
-                        fileName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF1E293B),
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF2563EB),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(
+                          Icons.description_rounded,
+                          color: Colors.white,
                         ),
                       ),
-                      if (uploadedAt.isNotEmpty)
-                        Text(
-                          'Tải lên: ${_formatDate(uploadedAt)}',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Color(0xFF64748B),
-                          ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              fileName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF1E293B),
+                              ),
+                            ),
+                            if (uploadedAt.isNotEmpty)
+                              Text(
+                                'Tải lên: ${_formatDate(uploadedAt)}',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Color(0xFF64748B),
+                                ),
+                              ),
+                          ],
                         ),
+                      ),
+                      IconButton(
+                        tooltip: 'Xem CV',
+                        onPressed: () => _openCv(cv),
+                        icon: const Icon(
+                          Icons.visibility_outlined,
+                          color: Color(0xFF2563EB),
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'Xóa CV',
+                        onPressed: () => _deleteCv(cv),
+                        icon: const Icon(
+                          Icons.delete_outline_rounded,
+                          color: Color(0xFFDC2626),
+                        ),
+                      ),
                     ],
                   ),
                 ),
-                IconButton(
-                  onPressed: () => _deleteCv(cv),
-                  icon: const Icon(
-                    Icons.delete_outline_rounded,
-                    color: Color(0xFFDC2626),
-                  ),
-                ),
-              ],
+              ),
             ),
           );
         }),

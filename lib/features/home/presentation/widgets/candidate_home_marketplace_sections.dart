@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
@@ -263,6 +264,13 @@ class SponsoredBannerSection extends StatefulWidget {
     this.slideAnimationDuration = const Duration(milliseconds: 450),
   });
 
+  /// Standard ad-banner aspect ratio (width : height). Banners are a fixed ad
+  /// slot, so the frame keeps this ratio and derives its height from the
+  /// available phone width — staying correct across all screen sizes without a
+  /// hardcoded pixel height. Images uploaded by employers should target this
+  /// ratio so they display full-bleed without cropping.
+  static const double bannerAspectRatio = 16 / 9;
+
   final List<BannerAd> banners;
   final bool isLoading;
   final Duration autoSlideInterval;
@@ -340,49 +348,57 @@ class _SponsoredBannerSectionState extends State<SponsoredBannerSection> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.isLoading) {
-      return const Padding(
-        padding: EdgeInsets.fromLTRB(18, 12, 18, 20),
-        child: _SkeletonBox(height: 230, radius: 22),
-      );
-    }
-
     final count = _bannerCount;
-    if (count == 0) return const SizedBox.shrink();
+    if (!widget.isLoading && count == 0) return const SizedBox.shrink();
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 12, 18, 20),
-      child: Stack(
-        alignment: Alignment.bottomCenter,
-        children: [
-          SizedBox(
-            height: 230,
-            child: PageView.builder(
-              key: const Key('featured-employer-banner-slide-view'),
-              controller: _pageController,
-              itemCount: count,
-              onPageChanged: (index) {
-                setState(() => _currentPage = index);
-                _syncAutoSlideTimer();
-              },
-              itemBuilder: (context, index) {
-                return Padding(
-                  padding: const EdgeInsets.only(right: 10),
-                  child: _CandidateBannerCard(imageUrl: _bannerImageUrl(index)),
-                );
-              },
-            ),
-          ),
-          if (count > 1)
-            Positioned(
-              bottom: 12,
-              child: _BannerDots(
-                key: const Key('featured-employer-banner-dots'),
-                count: count,
-                activeIndex: _currentPage,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // Derive the banner height from the actual available width so the
+          // frame matches the phone size on every device (no fixed height).
+          final bannerHeight =
+              constraints.maxWidth / SponsoredBannerSection.bannerAspectRatio;
+
+          if (widget.isLoading) {
+            return _SkeletonBox(height: bannerHeight, radius: 22);
+          }
+
+          return Stack(
+            alignment: Alignment.bottomCenter,
+            children: [
+              SizedBox(
+                height: bannerHeight,
+                child: PageView.builder(
+                  key: const Key('featured-employer-banner-slide-view'),
+                  controller: _pageController,
+                  itemCount: count,
+                  onPageChanged: (index) {
+                    setState(() => _currentPage = index);
+                    _syncAutoSlideTimer();
+                  },
+                  itemBuilder: (context, index) {
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 10),
+                      child: _CandidateBannerCard(
+                        imageUrl: _bannerImageUrl(index),
+                      ),
+                    );
+                  },
+                ),
               ),
-            ),
-        ],
+              if (count > 1)
+                Positioned(
+                  bottom: 12,
+                  child: _BannerDots(
+                    key: const Key('featured-employer-banner-dots'),
+                    count: count,
+                    activeIndex: _currentPage,
+                  ),
+                ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -400,9 +416,24 @@ class _CandidateBannerCard extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
+          // Blurred fill of the same image so the empty space around a
+          // letterboxed banner is never an ugly black bar — keeps the frame
+          // full while the real image is shown uncropped on top.
           Image.network(
             imageUrl,
             fit: BoxFit.cover,
+            errorBuilder: (_, _, _) => const _CandidateBannerFallback(),
+          ),
+          ClipRect(
+            child: BackdropFilter(
+              filter: ui.ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+              child: Container(color: Colors.black.withValues(alpha: 0.18)),
+            ),
+          ),
+          // The actual banner shown in full (no cropping, no distortion).
+          Image.network(
+            imageUrl,
+            fit: BoxFit.contain,
             errorBuilder: (_, _, _) => const _CandidateBannerFallback(),
           ),
           const Positioned(left: 18, top: 16, child: _RecommendationBadge()),
