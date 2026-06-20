@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../employer/presentation/company_profile_screen.dart';
+import '../application/jobs_providers.dart';
 import '../domain/job_post.dart';
 import '../data/aws_job_repository.dart';
 
@@ -104,7 +105,13 @@ class _UserJobDetailScreenState extends ConsumerState<UserJobDetailScreen> {
                     _SimilarPositions(job: widget.job),
 
                     // Bottom spacing cho sticky button
-                    SizedBox(height: widget.showApplyButton ? 100 : 24),
+                    // Khi bật phỏng vấn AI, thanh đáy cao hơn (có thêm khối lưu ý)
+                    // nên cần chừa nhiều khoảng đệm hơn để không che nội dung.
+                    SizedBox(
+                      height: widget.showApplyButton
+                          ? (widget.job.isAiScreeningEnabled ? 180 : 110)
+                          : 24,
+                    ),
                   ],
                 ),
               ),
@@ -213,7 +220,11 @@ class _HeroBanner extends StatelessWidget {
                       child: const Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.auto_awesome, color: Color(0xFF7C3AED), size: 12),
+                          Icon(
+                            Icons.auto_awesome,
+                            color: Color(0xFF7C3AED),
+                            size: 12,
+                          ),
                           SizedBox(width: 4),
                           Text(
                             'Phỏng vấn AI',
@@ -942,17 +953,33 @@ class _CompanyIconFallback extends StatelessWidget {
 }
 
 // ── Similar positions ─────────────────────────────────────────────────────────
-// Derive từ tags/location của job thật — không hardcode
+// Derive từ dữ liệu thật (activeJobs + activeQuickJobs) — không hardcode/mock.
+// Xếp hạng theo cùng nhà tuyển dụng / địa điểm / loại việc / tags / tiêu đề.
 
-class _SimilarPositions extends StatelessWidget {
+class _SimilarPositions extends ConsumerWidget {
   const _SimilarPositions({required this.job});
 
   final JobPost job;
 
+  static const int _maxItems = 5;
+
   @override
-  Widget build(BuildContext context) {
-    // App-only similar jobs area: keep a clear empty state until this screen
-    // receives a list of related jobs from its caller.
+  Widget build(BuildContext context, WidgetRef ref) {
+    final activeJobs = ref.watch(activeJobsProvider);
+    final activeQuickJobs = ref.watch(activeQuickJobsProvider);
+
+    // Hợp nhất hai nguồn dữ liệu thật khi cả hai đã sẵn sàng.
+    final List<JobPost> all = [
+      ...activeJobs.maybeWhen(data: (d) => d, orElse: () => const <JobPost>[]),
+      ...activeQuickJobs.maybeWhen(
+        data: (d) => d,
+        orElse: () => const <JobPost>[],
+      ),
+    ];
+
+    final isLoading = activeJobs.isLoading || activeQuickJobs.isLoading;
+    final related = _findRelated(job, all);
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
       child: Column(
@@ -968,37 +995,199 @@ class _SimilarPositions extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF9FAFB),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: const Color(0xFFE5E7EB)),
-            ),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.work_outline_rounded,
-                  size: 16,
-                  color: Color(0xFF9CA3AF),
+          if (isLoading && related.isEmpty)
+            const _SimilarLoading()
+          else if (related.isEmpty)
+            const _SimilarEmpty()
+          else
+            ...related.map(
+              (item) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: _SimilarJobRow(
+                  job: item,
+                  onTap: () => _openJob(context, item),
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Xem thêm việc làm tại ${job.location.split(',').first.trim()}',
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  void _openJob(BuildContext context, JobPost target) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => UserJobDetailScreen(
+          job: target,
+          onApplyPressed: () => Navigator.of(context).pop(),
+        ),
+      ),
+    );
+  }
+
+  /// Lọc + xếp hạng tin tương tự từ danh sách thật `all` (không phát sinh dữ liệu).
+  List<JobPost> _findRelated(JobPost seed, List<JobPost> all) {
+    final scored = <({JobPost job, int score})>[];
+    final seedTags = seed.tags
+        .map(_normalize)
+        .where((t) => t.isNotEmpty)
+        .toSet();
+
+    for (final candidate in all) {
+      if (candidate.idJob == seed.idJob) continue; // loại chính tin gốc
+
+      var score = 0;
+      if (candidate.employerId == seed.employerId &&
+          seed.employerId.isNotEmpty) {
+        score += 50;
+      }
+      if (candidate.jobType == seed.jobType) score += 15;
+      if (_textsOverlap(candidate.location, seed.location)) score += 10;
+
+      final candidateTags = candidate.tags
+          .map(_normalize)
+          .where((t) => t.isNotEmpty)
+          .toSet();
+      final sharedTags = candidateTags.intersection(seedTags).length;
+      score += 5 * sharedTags;
+
+      if (_textsOverlap(candidate.title, seed.title)) score += 8;
+
+      if (score > 0) scored.add((job: candidate, score: score));
+    }
+
+    scored.sort((a, b) {
+      final byScore = b.score.compareTo(a.score);
+      if (byScore != 0) return byScore;
+      return b.job.postedAt.compareTo(a.job.postedAt);
+    });
+
+    return scored.take(_maxItems).map((e) => e.job).toList(growable: false);
+  }
+
+  String _normalize(String value) => value.toLowerCase().trim();
+
+  /// Trùng lặp token (>= 3 ký tự) giữa hai chuỗi sau khi chuẩn hóa.
+  bool _textsOverlap(String left, String right) {
+    final leftTokens = _tokenize(left);
+    final rightTokens = _tokenize(right).toSet();
+    return leftTokens.any(
+      (token) => token.length >= 3 && rightTokens.contains(token),
+    );
+  }
+
+  List<String> _tokenize(String value) => _normalize(
+    value,
+  ).split(RegExp(r'[^a-z0-9à-ỹ]+')).where((t) => t.isNotEmpty).toList();
+}
+
+class _SimilarJobRow extends StatelessWidget {
+  const _SimilarJobRow({required this.job, required this.onTap});
+
+  final JobPost job;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF9FAFB),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: const Color(0xFFE5E7EB)),
+        ),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.work_outline_rounded,
+              size: 16,
+              color: Color(0xFF9CA3AF),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    job.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontSize: 13,
                       color: AppColors.primary,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                ),
-                const Icon(
-                  Icons.arrow_forward_ios_rounded,
-                  size: 12,
-                  color: Color(0xFF9CA3AF),
-                ),
-              ],
+                  const SizedBox(height: 2),
+                  Text(
+                    job.location.split(',').first.trim(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF6B7280),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Icon(
+              Icons.arrow_forward_ios_rounded,
+              size: 12,
+              color: Color(0xFF9CA3AF),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SimilarLoading extends StatelessWidget {
+  const _SimilarLoading();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 18),
+      alignment: Alignment.center,
+      child: const SizedBox(
+        height: 18,
+        width: 18,
+        child: CircularProgressIndicator(strokeWidth: 2),
+      ),
+    );
+  }
+}
+
+class _SimilarEmpty extends StatelessWidget {
+  const _SimilarEmpty();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF9FAFB),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: const Row(
+        children: [
+          Icon(Icons.work_outline_rounded, size: 16, color: Color(0xFF9CA3AF)),
+          SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Chưa có vị trí tương tự',
+              style: TextStyle(
+                fontSize: 13,
+                color: Color(0xFF6B7280),
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
         ],
@@ -1044,18 +1233,11 @@ class _StickyApplyBar extends StatelessWidget {
               decoration: BoxDecoration(
                 color: const Color(0xFFF5F3FF),
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: const Color(0xFF7C3AED),
-                  width: 1,
-                ),
+                border: Border.all(color: const Color(0xFF7C3AED), width: 1),
               ),
               child: const Row(
                 children: [
-                  Icon(
-                    Icons.auto_awesome,
-                    size: 16,
-                    color: Color(0xFF7C3AED),
-                  ),
+                  Icon(Icons.auto_awesome, size: 16, color: Color(0xFF7C3AED)),
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
