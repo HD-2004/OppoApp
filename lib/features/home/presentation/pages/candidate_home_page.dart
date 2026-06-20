@@ -102,6 +102,41 @@ class _CandidateHomePageState extends ConsumerState<CandidateHomePage> {
     );
   }
 
+  /// Opens the recruiting post linked to a tapped banner. The job is resolved
+  /// from real, already-loaded job data — never fabricated. If the banner has
+  /// no resolvable job, the user is informed instead of showing fake content.
+  void _openBannerJob(BannerAd banner, List<JobPost> allJobs) {
+    final jobId = banner.jobId?.trim() ?? '';
+    final employerId = banner.employerId?.trim() ?? '';
+
+    JobPost? match;
+    if (jobId.isNotEmpty) {
+      for (final job in allJobs) {
+        if (job.idJob == jobId || job.id == jobId) {
+          match = job;
+          break;
+        }
+      }
+    }
+    // Fall back to the employer's most recent active post when the banner only
+    // links a company (still real data, just a broader target).
+    if (match == null && employerId.isNotEmpty) {
+      for (final job in allJobs) {
+        if (job.employerId == employerId) {
+          match = job;
+          break;
+        }
+      }
+    }
+
+    if (match != null) {
+      _openJobDetail(match);
+      return;
+    }
+
+    _showMessage('Tin tuyển dụng cho banner này hiện không khả dụng.');
+  }
+
   Future<void> _handleApply(JobPost job, AuthUserProfile? user) async {
     if (user == null) {
       _showMessage('Vui lòng đăng nhập để ứng tuyển.');
@@ -351,6 +386,7 @@ class _CandidateHomePageState extends ConsumerState<CandidateHomePage> {
                 child: SponsoredBannerSection(
                   banners: bannersAsync.value ?? const <BannerAd>[],
                   isLoading: bannersAsync.isLoading,
+                  onBannerTap: (banner) => _openBannerJob(banner, allJobs),
                 ),
               ),
             ),

@@ -108,6 +108,8 @@ class BannerAd {
     required this.title,
     required this.imageUrl,
     this.linkUrl,
+    this.jobId,
+    this.employerId,
     this.order = 999.0,
     this.isActive = true,
   });
@@ -116,18 +118,47 @@ class BannerAd {
   final String title;
   final String imageUrl;
   final String? linkUrl;
+
+  /// Id of the job post this banner promotes. Populated by the employer/admin
+  /// when the package banner is created. Null when the banner is not linked to
+  /// a specific job.
+  final String? jobId;
+
+  /// Id of the employer that purchased the banner package.
+  final String? employerId;
   final double order;
   final bool isActive;
 
+  /// Whether this banner points to a concrete job post the app can open.
+  bool get hasJobLink => (jobId?.trim().isNotEmpty ?? false);
+
   factory BannerAd.fromJson(Map<String, dynamic> json) {
+    String? firstNonEmpty(List<String> keys) {
+      for (final key in keys) {
+        final value = json[key]?.toString().trim();
+        if (value != null && value.isNotEmpty) {
+          return value;
+        }
+      }
+      return null;
+    }
+
     return BannerAd(
       bannerId: json['bannerId']?.toString() ?? '',
       title: json['title']?.toString() ?? '',
       imageUrl: json['imageUrl']?.toString() ?? '',
       linkUrl: json['linkUrl']?.toString(),
+      // Read whatever linking key the backend provides — never fabricated.
+      jobId: firstNonEmpty([
+        'jobId',
+        'jobPostId',
+        'postId',
+        'relatedJobId',
+        'targetJobId',
+      ]),
+      employerId: firstNonEmpty(['employerId', 'companyId', 'ownerId']),
       order: (json['order'] as num?)?.toDouble() ?? 999.0,
       isActive: json['isActive'] as bool? ?? true,
     );
   }
 }
-

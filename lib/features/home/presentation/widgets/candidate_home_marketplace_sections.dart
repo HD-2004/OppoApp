@@ -260,6 +260,7 @@ class SponsoredBannerSection extends StatefulWidget {
     super.key,
     required this.banners,
     required this.isLoading,
+    this.onBannerTap,
     this.autoSlideInterval = const Duration(seconds: 4),
     this.slideAnimationDuration = const Duration(milliseconds: 450),
   });
@@ -273,6 +274,10 @@ class SponsoredBannerSection extends StatefulWidget {
 
   final List<BannerAd> banners;
   final bool isLoading;
+
+  /// Invoked when a banner backed by real data is tapped. Null for fallback
+  /// banners that have no associated [BannerAd].
+  final ValueChanged<BannerAd>? onBannerTap;
   final Duration autoSlideInterval;
   final Duration slideAnimationDuration;
 
@@ -330,6 +335,15 @@ class _SponsoredBannerSectionState extends State<SponsoredBannerSection> {
     return S3AssetConfig.candidateBanners[index];
   }
 
+  /// The real banner at [index], or null when showing fallback assets that
+  /// have no backing [BannerAd].
+  BannerAd? _bannerAt(int index) {
+    if (widget.banners.isNotEmpty && index < widget.banners.length) {
+      return widget.banners[index];
+    }
+    return null;
+  }
+
   void _syncAutoSlideTimer() {
     _autoSlideTimer?.cancel();
     _autoSlideTimer = null;
@@ -378,10 +392,14 @@ class _SponsoredBannerSectionState extends State<SponsoredBannerSection> {
                     _syncAutoSlideTimer();
                   },
                   itemBuilder: (context, index) {
+                    final banner = _bannerAt(index);
                     return Padding(
                       padding: const EdgeInsets.only(right: 10),
                       child: _CandidateBannerCard(
                         imageUrl: _bannerImageUrl(index),
+                        onTap: (banner != null && widget.onBannerTap != null)
+                            ? () => widget.onBannerTap!(banner)
+                            : null,
                       ),
                     );
                   },
@@ -405,13 +423,14 @@ class _SponsoredBannerSectionState extends State<SponsoredBannerSection> {
 }
 
 class _CandidateBannerCard extends StatelessWidget {
-  const _CandidateBannerCard({required this.imageUrl});
+  const _CandidateBannerCard({required this.imageUrl, this.onTap});
 
   final String imageUrl;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
+    final card = ClipRRect(
       borderRadius: BorderRadius.circular(22),
       child: Stack(
         fit: StackFit.expand,
@@ -438,6 +457,19 @@ class _CandidateBannerCard extends StatelessWidget {
           ),
           const Positioned(left: 18, top: 16, child: _RecommendationBadge()),
         ],
+      ),
+    );
+
+    if (onTap == null) {
+      return card;
+    }
+
+    return Material(
+      type: MaterialType.transparency,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(22),
+        child: card,
       ),
     );
   }
