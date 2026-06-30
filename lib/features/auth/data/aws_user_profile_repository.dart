@@ -13,6 +13,7 @@ Map<String, dynamic> buildProfileCreatePayload({
   required String fullName,
   required AppRole? role,
   required DateTime createdAt,
+  String? dateOfBirth,
 }) {
   final now = createdAt.toIso8601String();
   return {
@@ -20,6 +21,8 @@ Map<String, dynamic> buildProfileCreatePayload({
     'email': email.trim(),
     'fullName': fullName.trim(),
     'role': (role ?? AppRole.candidate).cognitoValue,
+    if (dateOfBirth?.trim().isNotEmpty == true)
+      'dateOfBirth': dateOfBirth!.trim(),
     'kycCompleted': false,
     'profileCompleted': false,
     'createdAt': now,
@@ -123,17 +126,25 @@ class AwsUserProfileRepository implements UserProfileRepository {
     required String email,
     required String fullName,
     required AppRole? role,
+    String? dateOfBirth,
   }) async {
     // 1. Check if profile already exists in DynamoDB
     final existing = await getByUserId(userId);
     if (existing != null) {
       // If email or fullName are empty in the profile but available in cognito, update them
+      final shouldFillDateOfBirth =
+          (existing.dateOfBirth == null || existing.dateOfBirth!.isEmpty) &&
+          dateOfBirth?.trim().isNotEmpty == true;
       if ((existing.fullName.isEmpty && fullName.isNotEmpty) ||
-          (existing.email.isEmpty && email.isNotEmpty)) {
+          (existing.email.isEmpty && email.isNotEmpty) ||
+          shouldFillDateOfBirth) {
         return updateProfileCompleted(
           userId: userId,
           completed: existing.profileCompleted,
           fullName: existing.fullName.isEmpty ? fullName : existing.fullName,
+          dateOfBirth: shouldFillDateOfBirth
+              ? dateOfBirth
+              : existing.dateOfBirth,
         );
       }
       return existing;
@@ -146,6 +157,7 @@ class AwsUserProfileRepository implements UserProfileRepository {
       email: email,
       fullName: fullName,
       role: role,
+      dateOfBirth: dateOfBirth,
       createdAt: DateTime.now(),
     );
 

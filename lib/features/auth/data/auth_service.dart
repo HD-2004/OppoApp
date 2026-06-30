@@ -38,6 +38,7 @@ class AuthService {
     required String password,
     required String fullName,
     required String role,
+    required String dateOfBirth,
   }) async {
     await _ensureConfigured();
 
@@ -45,6 +46,7 @@ class AuthService {
       final userAttributes = <AuthUserAttributeKey, String>{
         AuthUserAttributeKey.email: email.trim(),
         AuthUserAttributeKey.name: fullName.trim(),
+        AuthUserAttributeKey.birthdate: dateOfBirth.trim(),
         if (useCognitoCustomRoleAttribute)
           const CognitoUserAttributeKey.custom('role'): role,
       };
@@ -240,12 +242,16 @@ class AuthService {
     final attributes = await fetchUserAttributes();
     String email = '';
     String fullName = '';
+    String? dateOfBirth;
     for (final attribute in attributes) {
       if (attribute.userAttributeKey.key == 'email') {
         email = attribute.value;
       }
       if (attribute.userAttributeKey.key == 'name') {
         fullName = attribute.value;
+      }
+      if (attribute.userAttributeKey.key == 'birthdate') {
+        dateOfBirth = attribute.value;
       }
     }
 
@@ -257,6 +263,7 @@ class AuthService {
       fullName: fullName,
       kycCompleted: false,
       profileCompleted: false,
+      dateOfBirth: dateOfBirth,
     );
   }
 

@@ -6,11 +6,13 @@ class PendingRegistrationProfile {
     required this.email,
     required this.fullName,
     required this.role,
+    required this.dateOfBirth,
   });
 
   final String email;
   final String fullName;
   final AppRole role;
+  final String dateOfBirth;
 }
 
 abstract class UserProfileRepository {
@@ -26,6 +28,7 @@ abstract class UserProfileRepository {
     required String email,
     required String fullName,
     required AppRole? role,
+    String? dateOfBirth,
   });
 
   Future<AuthUserProfile> updateKycCompleted({

@@ -3,6 +3,9 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:oppo_temp_jobs/core/localization/app_localizations.dart';
+import 'package:oppo_temp_jobs/features/auth/application/auth_controller.dart';
+import 'package:oppo_temp_jobs/features/auth/data/auth_repository.dart';
+import 'package:oppo_temp_jobs/features/auth/domain/auth_state.dart';
 import 'package:oppo_temp_jobs/features/auth/presentation/confirm_signup_screen.dart';
 import 'package:oppo_temp_jobs/features/auth/presentation/forgot_password_screen.dart';
 import 'package:oppo_temp_jobs/features/auth/presentation/login_screen.dart';
@@ -68,8 +71,68 @@ void main() {
     expect(find.text('Tạo tài khoản ứng viên'), findsOneWidget);
     expect(find.text('Nhà tuyển dụng'), findsNothing);
     expect(find.text('Tạo tài khoản'), findsWidgets);
+    expect(find.text('Ngày sinh'), findsOneWidget);
     expect(find.text('Tối thiểu 8 ký tự'), findsOneWidget);
     expect(find.text('Có ký tự đặc biệt'), findsOneWidget);
+  });
+
+  testWidgets('register blocks candidates under 18 before sign up', (
+    tester,
+  ) async {
+    final spyController = _SpyAuthController();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [authControllerProvider.overrideWith(() => spyController)],
+        child: MaterialApp(
+          locale: const Locale('vi'),
+          theme: ThemeData(useMaterial3: true),
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: const RegisterScreen(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Họ và tên'),
+      'Nguyen An',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Email'),
+      'candidate@example.com',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Mật khẩu'),
+      'Password1!',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Xác nhận mật khẩu'),
+      'Password1!',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Ngày sinh'),
+      '2008-06-30',
+    );
+    await tester.pump();
+
+    await tester.ensureVisible(
+      find.widgetWithText(FilledButton, 'Tạo tài khoản'),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Tạo tài khoản'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Ứng dụng chỉ dành cho ứng viên từ 18 tuổi trở lên.'),
+      findsOneWidget,
+    );
+    expect(spyController.registerCount, 0);
   });
 
   testWidgets('register only shows Google hosted UI sign up', (tester) async {
@@ -122,4 +185,20 @@ void main() {
     expect(find.widgetWithText(TextFormField, 'Mật khẩu mới'), findsNothing);
     expect(find.text('Độ mạnh mật khẩu'), findsNothing);
   });
+}
+
+class _SpyAuthController extends AuthController {
+  int registerCount = 0;
+  RegisterRequest? lastRequest;
+
+  @override
+  Future<AuthState> build() async {
+    return const AuthState.unauthenticated();
+  }
+
+  @override
+  Future<void> register(RegisterRequest request) async {
+    registerCount++;
+    lastRequest = request;
+  }
 }

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:oppo_temp_jobs/core/theme/app_colors.dart';
 
 import '../../domain/job_post.dart';
+import '../../domain/job_recruitment_window.dart';
 
 /// Controls how a [JobPostCard] sizes and clamps its content depending on
 /// where it is rendered. `grid` is the compact two-column masonry layout,
@@ -58,9 +59,11 @@ class JobPostCard extends StatelessWidget {
     final companyName = _companyName(job);
     final postedTime = _postedTimeLabel(job.postedAt);
     final requirements = _requirements(job);
-    final shiftTime = _shiftTime(job);
+    final recruitmentWindow = recruitmentWindowValue(job);
     final location = _location(job, distance);
     final salary = _salary(job);
+    final isRecruitable = isJobPostRecruitable(job);
+    final isExpired = isJobPostExpired(job);
 
     final isGrid = _isGrid;
     final padding = isGrid ? 14.0 : 16.0;
@@ -157,12 +160,11 @@ class JobPostCard extends StatelessWidget {
                       value: location,
                       icon: Icons.location_on_outlined,
                     ),
-                  if (shiftTime.isNotEmpty)
-                    _JobInfoRowData(
-                      label: 'Thời gian',
-                      value: shiftTime,
-                      icon: Icons.schedule_rounded,
-                    ),
+                  _JobInfoRowData(
+                    label: 'Tuyển dụng',
+                    value: recruitmentWindow,
+                    icon: Icons.calendar_month_outlined,
+                  ),
                   if (salary.isNotEmpty)
                     _JobInfoRowData(
                       label: 'Lương',
@@ -182,7 +184,9 @@ class JobPostCard extends StatelessWidget {
                 width: double.infinity,
                 height: buttonHeight,
                 child: FilledButton(
-                  onPressed: isApplying ? null : onApplyPressed,
+                  onPressed: isApplying || !isRecruitable
+                      ? null
+                      : onApplyPressed,
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
@@ -201,8 +205,12 @@ class JobPostCard extends StatelessWidget {
                             color: Colors.white,
                           ),
                         )
-                      : const Text(
-                          'Ứng tuyển ngay',
+                      : Text(
+                          isExpired
+                              ? 'Đã hết hạn'
+                              : isRecruitable
+                              ? 'Ứng tuyển ngay'
+                              : 'Chưa mở tuyển',
                           style: TextStyle(fontWeight: FontWeight.w800),
                         ),
                 ),
@@ -397,24 +405,6 @@ String _location(JobPost job, double? distance) {
 
 String _requirements(JobPost job) {
   return job.requirements?.trim() ?? '';
-}
-
-String _shiftTime(JobPost job) {
-  final startTime = job.startTime?.trim();
-  final endTime = job.endTime?.trim();
-  if (startTime != null &&
-      startTime.isNotEmpty &&
-      endTime != null &&
-      endTime.isNotEmpty) {
-    return '$startTime - $endTime';
-  }
-
-  final shiftTime = job.shiftTime.trim();
-  if (shiftTime.isNotEmpty) {
-    return shiftTime;
-  }
-
-  return '';
 }
 
 String _salary(JobPost job) {

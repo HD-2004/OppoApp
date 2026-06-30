@@ -29,4 +29,17 @@ void main() {
 
     expect(payload['role'], 'user');
   });
+
+  test('new profile payload stores date of birth when provided', () {
+    final payload = buildProfileCreatePayload(
+      userId: 'candidate-1',
+      email: 'candidate@example.com',
+      fullName: 'Candidate',
+      role: AppRole.candidate,
+      dateOfBirth: '2000-01-05',
+      createdAt: DateTime.parse('2026-06-14T08:00:00Z'),
+    );
+
+    expect(payload['dateOfBirth'], '2000-01-05');
+  });
 }

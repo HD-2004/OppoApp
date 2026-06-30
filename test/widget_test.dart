@@ -138,7 +138,7 @@ void main() {
     final registerFields = tester.widgetList<EditableText>(
       find.byType(EditableText),
     );
-    expect(registerFields.length, 4);
+    expect(registerFields.length, 5);
     for (final field in registerFields) {
       expect(field.style.color, const Color(0xFF0F172A));
     }

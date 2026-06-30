@@ -263,17 +263,6 @@ class _ProfileAppBar extends StatelessWidget implements PreferredSizeWidget {
           color: AppColors.primary,
         ),
       ),
-      actions: [
-        IconButton(
-          icon: Icon(
-            Icons.notifications_none_rounded,
-            color: AppColors.textPrimaryFor(context),
-            size: 24,
-          ),
-          onPressed: () {},
-        ),
-        const SizedBox(width: 4),
-      ],
     );
   }
 }

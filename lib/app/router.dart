@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../features/auth/application/auth_controller.dart';
 import '../features/auth/domain/auth_state.dart';
+import '../features/auth/presentation/candidate_age_verification_screen.dart';
 import '../features/auth/presentation/confirm_signup_screen.dart';
 import '../features/auth/presentation/forgot_password_screen.dart';
 import '../features/auth/presentation/login_screen.dart';
@@ -17,6 +18,29 @@ import '../features/intro/presentation/intro_screen.dart';
 import '../features/intro/presentation/splash_screen.dart';
 import '../features/urgent_jobs/presentation/booking_screen.dart';
 import '../features/urgent_jobs/presentation/shift_detail_screen.dart';
+
+String? candidateAgeGateRedirect(AuthState authState, String location) {
+  if (authState.status != AuthStatus.authenticated) {
+    return null;
+  }
+
+  final user = authState.user;
+  if (user == null) {
+    return null;
+  }
+
+  const ageVerificationRoute = '/candidate/age-verification';
+  final hasDateOfBirth = user.dateOfBirth?.trim().isNotEmpty == true;
+  if (!hasDateOfBirth) {
+    return location == ageVerificationRoute ? null : ageVerificationRoute;
+  }
+
+  if (location == ageVerificationRoute) {
+    return '/candidate';
+  }
+
+  return null;
+}
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   final router = GoRouter(
@@ -60,6 +84,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final user = value.user;
       if (user == null) {
         return '/login';
+      }
+
+      final ageGateRedirect = candidateAgeGateRedirect(value, location);
+      if (ageGateRedirect != null) {
+        return ageGateRedirect;
       }
 
       if (isAuthRoute ||
@@ -143,6 +172,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const UserDashboardScreen(),
       ),
       GoRoute(
+        path: '/candidate/age-verification',
+        builder: (context, state) => const CandidateAgeVerificationScreen(),
+      ),
+      GoRoute(
         path: '/user-dashboard',
         redirect: (context, state) => '/candidate',
       ),
@@ -190,7 +223,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
   ref.listen<AsyncValue<AuthState>>(authControllerProvider, (previous, next) {
     if (previous?.isLoading != next.isLoading ||
         previous?.value?.status != next.value?.status ||
-        previous?.value?.user?.role != next.value?.user?.role) {
+        previous?.value?.user?.role != next.value?.user?.role ||
+        previous?.value?.user?.dateOfBirth != next.value?.user?.dateOfBirth) {
       router.refresh();
     }
   });

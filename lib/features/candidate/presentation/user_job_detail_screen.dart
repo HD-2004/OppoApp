@@ -7,6 +7,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../employer/presentation/company_profile_screen.dart';
 import '../application/jobs_providers.dart';
 import '../domain/job_post.dart';
+import '../domain/job_recruitment_window.dart';
+import '../domain/job_work_schedule.dart';
 import '../data/aws_job_repository.dart';
 
 /// Màn hình chi tiết công việc — đồng bộ dữ liệu với website qua cùng backend.
@@ -46,6 +48,9 @@ class _UserJobDetailScreenState extends ConsumerState<UserJobDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isRecruitable = isJobPostRecruitable(widget.job);
+    final isExpired = isJobPostExpired(widget.job);
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: Stack(
@@ -75,6 +80,9 @@ class _UserJobDetailScreenState extends ConsumerState<UserJobDetailScreen> {
                   children: [
                     // Quick info cards
                     _QuickInfoSection(job: widget.job),
+                    _WorkScheduleCalendarSection(job: widget.job),
+
+                    if (isExpired) const _ExpiredJobNotice(),
 
                     const _SectionDivider(),
 
@@ -127,6 +135,8 @@ class _UserJobDetailScreenState extends ConsumerState<UserJobDetailScreen> {
               child: _StickyApplyBar(
                 onApply: widget.onApplyPressed,
                 isAiEnabled: widget.job.isAiScreeningEnabled,
+                isRecruitable: isRecruitable,
+                isExpired: isExpired,
               ),
             ),
         ],
@@ -350,7 +360,7 @@ class _QuickInfoSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final shiftTime = _resolveShiftTime();
+    final recruitmentWindow = recruitmentWindowValue(job);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 4),
@@ -379,36 +389,456 @@ class _QuickInfoSection extends StatelessWidget {
               value: job.location,
             ),
           ],
-          if (shiftTime.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            _InfoTile(
-              icon: Icons.access_time_rounded,
-              iconBg: AppColors.primarySoft,
-              iconColor: AppColors.primary,
-              label: 'THỜI GIAN',
-              value: shiftTime,
+          const SizedBox(height: 10),
+          _InfoTile(
+            icon: Icons.calendar_month_outlined,
+            iconBg: AppColors.primarySoft,
+            iconColor: AppColors.primary,
+            label: 'Thời gian tuyển dụng',
+            value: recruitmentWindow,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WorkScheduleCalendarSection extends StatefulWidget {
+  const _WorkScheduleCalendarSection({required this.job});
+
+  final JobPost job;
+
+  @override
+  State<_WorkScheduleCalendarSection> createState() =>
+      _WorkScheduleCalendarSectionState();
+}
+
+class _WorkScheduleCalendarSectionState
+    extends State<_WorkScheduleCalendarSection> {
+  late DateTime _visibleMonth;
+  DateTime? _selectedDate;
+
+  @override
+  void initState() {
+    super.initState();
+    final initial = workScheduleInitialMonth(widget.job) ?? DateTime.now();
+    _visibleMonth = DateTime(initial.year, initial.month);
+    _selectedDate =
+        _firstScheduledDateInMonth(_visibleMonth) ??
+        firstScheduledWorkDate(widget.job);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final selectedDate = _selectedDate;
+    final selectedTimes = selectedDate == null
+        ? const <String>[]
+        : workShiftTimesForDate(widget.job, selectedDate);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                'Lịch làm việc',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  color: const Color(0xFF111827),
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                '${selectedTimes.length} ca',
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFE5E7EB)),
+            ),
+            child: Column(
+              children: [
+                _CalendarMonthHeader(
+                  month: _visibleMonth,
+                  onPrevious: () => _moveMonth(-1),
+                  onNext: () => _moveMonth(1),
+                ),
+                const _CalendarWeekdayHeader(),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(10, 4, 10, 10),
+                  child: _CalendarDayGrid(
+                    month: _visibleMonth,
+                    selectedDate: selectedDate,
+                    job: widget.job,
+                    onDateSelected: (date) {
+                      setState(() => _selectedDate = date);
+                    },
+                  ),
+                ),
+                const Divider(height: 1, color: Color(0xFFE5E7EB)),
+                _SelectedWorkShiftList(
+                  date: selectedDate,
+                  shiftTimes: selectedTimes,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _moveMonth(int offset) {
+    final nextMonth = DateTime(
+      _visibleMonth.year,
+      _visibleMonth.month + offset,
+    );
+    setState(() {
+      _visibleMonth = nextMonth;
+      _selectedDate = _firstScheduledDateInMonth(nextMonth);
+    });
+  }
+
+  DateTime? _firstScheduledDateInMonth(DateTime month) {
+    final daysInMonth = DateUtils.getDaysInMonth(month.year, month.month);
+    for (var day = 1; day <= daysInMonth; day++) {
+      final date = DateTime(month.year, month.month, day);
+      if (hasWorkScheduleOnDate(widget.job, date)) return date;
+    }
+    return null;
+  }
+}
+
+class _CalendarMonthHeader extends StatelessWidget {
+  const _CalendarMonthHeader({
+    required this.month,
+    required this.onPrevious,
+    required this.onNext,
+  });
+
+  final DateTime month;
+  final VoidCallback onPrevious;
+  final VoidCallback onNext;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+      child: Row(
+        children: [
+          IconButton(
+            tooltip: 'Tháng trước',
+            onPressed: onPrevious,
+            icon: const Icon(Icons.chevron_left_rounded),
+          ),
+          Expanded(
+            child: Text(
+              'Tháng ${month.month} ${month.year}',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Color(0xFF111827),
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          IconButton(
+            tooltip: 'Tháng sau',
+            onPressed: onNext,
+            icon: const Icon(Icons.chevron_right_rounded),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CalendarWeekdayHeader extends StatelessWidget {
+  const _CalendarWeekdayHeader();
+
+  static const _labels = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      child: Row(
+        children: [
+          for (final label in _labels)
+            Expanded(
+              child: Center(
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    color: Color(0xFF64748B),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CalendarDayGrid extends StatelessWidget {
+  const _CalendarDayGrid({
+    required this.month,
+    required this.selectedDate,
+    required this.job,
+    required this.onDateSelected,
+  });
+
+  final DateTime month;
+  final DateTime? selectedDate;
+  final JobPost job;
+  final ValueChanged<DateTime> onDateSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final cells = _monthCells(month);
+
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: cells.length,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 7,
+        mainAxisSpacing: 6,
+        crossAxisSpacing: 6,
+      ),
+      itemBuilder: (context, index) {
+        final date = cells[index];
+        if (date == null) return const SizedBox.shrink();
+
+        final isAvailable = hasWorkScheduleOnDate(job, date);
+        final isSelected =
+            selectedDate != null && DateUtils.isSameDay(selectedDate, date);
+
+        return _CalendarDayCell(
+          date: date,
+          isAvailable: isAvailable,
+          isSelected: isSelected,
+          onTap: isAvailable ? () => onDateSelected(date) : null,
+        );
+      },
+    );
+  }
+
+  List<DateTime?> _monthCells(DateTime month) {
+    final firstDay = DateTime(month.year, month.month);
+    final leadingBlankCount = firstDay.weekday - 1;
+    final daysInMonth = DateUtils.getDaysInMonth(month.year, month.month);
+    final cells = <DateTime?>[
+      ...List<DateTime?>.filled(leadingBlankCount, null),
+      for (var day = 1; day <= daysInMonth; day++)
+        DateTime(month.year, month.month, day),
+    ];
+
+    while (cells.length % 7 != 0) {
+      cells.add(null);
+    }
+    return cells;
+  }
+}
+
+class _CalendarDayCell extends StatelessWidget {
+  const _CalendarDayCell({
+    required this.date,
+    required this.isAvailable,
+    required this.isSelected,
+    this.onTap,
+  });
+
+  final DateTime date;
+  final bool isAvailable;
+  final bool isSelected;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final backgroundColor = isSelected
+        ? AppColors.primary
+        : isAvailable
+        ? AppColors.primarySoft
+        : Colors.white;
+    final borderColor = isSelected
+        ? AppColors.primary
+        : isAvailable
+        ? AppColors.primary.withValues(alpha: 0.28)
+        : const Color(0xFFE5E7EB);
+    final textColor = isSelected
+        ? Colors.white
+        : isAvailable
+        ? AppColors.primary
+        : const Color(0xFFCBD5E1);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Ink(
+          decoration: BoxDecoration(
+            color: backgroundColor,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: borderColor),
+          ),
+          child: Center(
+            child: Text(
+              date.day.toString(),
+              style: TextStyle(
+                color: textColor,
+                fontSize: 14,
+                fontWeight: isAvailable ? FontWeight.w800 : FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SelectedWorkShiftList extends StatelessWidget {
+  const _SelectedWorkShiftList({required this.date, required this.shiftTimes});
+
+  final DateTime? date;
+  final List<String> shiftTimes;
+
+  @override
+  Widget build(BuildContext context) {
+    if (date == null || shiftTimes.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.all(14),
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            'Chọn ngày có lịch làm việc để xem ca.',
+            style: TextStyle(
+              color: Color(0xFF64748B),
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            formatRecruitmentDate(date!),
+            style: const TextStyle(
+              color: Color(0xFF111827),
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 10),
+          for (final time in shiftTimes) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              margin: const EdgeInsets.only(bottom: 8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFE5E7EB)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.schedule_rounded,
+                    color: AppColors.primary,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      time,
+                      style: const TextStyle(
+                        color: Color(0xFF111827),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ],
       ),
     );
   }
+}
 
-  String _resolveShiftTime() {
-    if (job.startTime != null &&
-        job.endTime != null &&
-        job.startTime!.isNotEmpty &&
-        job.endTime!.isNotEmpty) {
-      return '${job.startTime} - ${job.endTime}';
-    }
-    if (job.shiftTime.isNotEmpty) return job.shiftTime;
-    if (job.workHours != null && job.workHours!.isNotEmpty) {
-      return job.workHours!;
-    }
-    if (job.workDays != null && job.workDays!.isNotEmpty) {
-      return job.workDays!;
-    }
-    return '';
+class _ExpiredJobNotice extends StatelessWidget {
+  const _ExpiredJobNotice();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFF7ED),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFFED7AA)),
+        ),
+        child: const Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(Icons.event_busy_outlined, color: Color(0xFFEA580C), size: 20),
+            SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Tin tuyển dụng đã hết hạn',
+                    style: TextStyle(
+                      color: Color(0xFF9A3412),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    'Ứng viên không thể ứng tuyển vào tin này nữa.',
+                    style: TextStyle(
+                      color: Color(0xFFC2410C),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      height: 1.35,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -1199,10 +1629,17 @@ class _SimilarEmpty extends StatelessWidget {
 // ── Sticky apply bar ──────────────────────────────────────────────────────────
 
 class _StickyApplyBar extends StatelessWidget {
-  const _StickyApplyBar({required this.onApply, required this.isAiEnabled});
+  const _StickyApplyBar({
+    required this.onApply,
+    required this.isAiEnabled,
+    required this.isRecruitable,
+    required this.isExpired,
+  });
 
   final VoidCallback onApply;
   final bool isAiEnabled;
+  final bool isRecruitable;
+  final bool isExpired;
 
   @override
   Widget build(BuildContext context) {
@@ -1226,7 +1663,7 @@ class _StickyApplyBar extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (isAiEnabled) ...[
+          if (isAiEnabled && isRecruitable) ...[
             Container(
               margin: const EdgeInsets.only(bottom: 12),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -1257,17 +1694,23 @@ class _StickyApplyBar extends StatelessWidget {
             width: double.infinity,
             height: 52,
             child: ElevatedButton(
-              onPressed: onApply,
+              onPressed: isRecruitable ? onApply : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
+                disabledBackgroundColor: const Color(0xFFE5E7EB),
+                disabledForegroundColor: const Color(0xFF6B7280),
                 elevation: 0,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              child: const Text(
-                'Ứng tuyển ngay',
+              child: Text(
+                isExpired
+                    ? 'Đã hết hạn'
+                    : isRecruitable
+                    ? 'Ứng tuyển ngay'
+                    : 'Chưa mở tuyển',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,

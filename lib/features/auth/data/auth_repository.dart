@@ -11,12 +11,14 @@ class RegisterRequest {
     required this.email,
     required this.password,
     required this.role,
+    required this.dateOfBirth,
   });
 
   final String fullName;
   final String email;
   final String password;
   final AppRole role;
+  final String dateOfBirth;
 }
 
 class AuthRepository {
@@ -38,12 +40,14 @@ class AuthRepository {
       password: request.password,
       fullName: request.fullName,
       role: request.role.cognitoValue,
+      dateOfBirth: request.dateOfBirth,
     );
     await _userProfileRepository.savePendingRegistration(
       PendingRegistrationProfile(
         email: request.email,
         fullName: request.fullName,
         role: request.role,
+        dateOfBirth: request.dateOfBirth,
       ),
     );
   }
@@ -124,12 +128,16 @@ class AuthRepository {
     final attributes = await _service.fetchUserAttributes();
     String email = '';
     String fullName = '';
+    String? dateOfBirth;
     for (final attribute in attributes) {
       if (attribute.userAttributeKey.key == 'email') {
         email = attribute.value;
       }
       if (attribute.userAttributeKey.key == 'name') {
         fullName = attribute.value;
+      }
+      if (attribute.userAttributeKey.key == 'birthdate') {
+        dateOfBirth = attribute.value;
       }
     }
 
@@ -140,6 +148,7 @@ class AuthRepository {
       email: email,
       fullName: fullName,
       role: role,
+      dateOfBirth: dateOfBirth,
     );
   }
 

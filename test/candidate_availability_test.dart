@@ -68,13 +68,9 @@ void main() {
         activeQuickJobsProvider.overrideWith((_) async => <JobPost>[]),
       ],
       child: const MaterialApp(
-        localizationsDelegates: [
-          AppLocalizations.delegate,
-        ],
+        localizationsDelegates: [AppLocalizations.delegate],
         locale: Locale('vi'),
-        home: Scaffold(
-          body: UserJobsScreen(showBackButton: false),
-        ),
+        home: Scaffold(body: UserJobsScreen(showBackButton: false)),
       ),
     );
   }
@@ -102,9 +98,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Go to tab 1 (Tuyển gấp)
-      await tester.tap(find.text('Công việc Tuyển gấp'));
-      await tester.pumpAndSettle();
+      await openUrgentJobsTab(tester);
 
       // Toggle switch to true
       final switchFinder = find.byType(Switch);
@@ -145,9 +139,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Go to tab 1 (Tuyển gấp)
-      await tester.tap(find.text('Công việc Tuyển gấp'));
-      await tester.pumpAndSettle();
+      await openUrgentJobsTab(tester);
 
       // Toggle switch to true
       final switchFinder = find.byType(Switch);
@@ -187,9 +179,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Go to tab 1 (Tuyển gấp)
-      await tester.tap(find.text('Công việc Tuyển gấp'));
-      await tester.pumpAndSettle();
+      await openUrgentJobsTab(tester);
 
       // Toggle switch to true
       final switchFinder = find.byType(Switch);
@@ -202,4 +192,11 @@ void main() {
       expect(spyController.lastLongitude, 106.01);
     },
   );
+}
+
+Future<void> openUrgentJobsTab(WidgetTester tester) async {
+  await tester.tap(find.text('Loại công việc'));
+  await tester.pumpAndSettle();
+  await tester.tap(find.text('Công việc Tuyển gấp'));
+  await tester.pumpAndSettle();
 }

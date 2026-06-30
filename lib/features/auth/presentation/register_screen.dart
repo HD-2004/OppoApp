@@ -9,6 +9,7 @@ import '../../../shared/domain/app_role.dart';
 import '../../candidate/presentation/policy_terms_screen.dart';
 import '../application/auth_controller.dart';
 import '../data/auth_repository.dart';
+import '../domain/candidate_age_policy.dart';
 import 'auth_form_fields.dart';
 import 'widgets/auth_footer_link.dart';
 import 'widgets/auth_header.dart';
@@ -28,6 +29,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
   final _fullNameController = TextEditingController();
   final _emailController = TextEditingController();
+  final _dateOfBirthController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   bool _obscurePassword = true;
@@ -42,6 +44,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     for (final c in [
       _fullNameController,
       _emailController,
+      _dateOfBirthController,
       _passwordController,
       _confirmPasswordController,
     ]) {
@@ -54,6 +57,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     for (final c in [
       _fullNameController,
       _emailController,
+      _dateOfBirthController,
       _passwordController,
       _confirmPasswordController,
     ]) {
@@ -67,6 +71,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     final next =
         _fullNameController.text.trim().isNotEmpty &&
         _emailController.text.trim().isNotEmpty &&
+        _dateOfBirthController.text.trim().isNotEmpty &&
         _passwordController.text.isNotEmpty &&
         _confirmPasswordController.text.isNotEmpty;
     if (next != _canSubmit) {
@@ -89,6 +94,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               email: _emailController.text.trim(),
               password: _passwordController.text,
               role: AppRole.candidate,
+              dateOfBirth: _dateOfBirthController.text.trim(),
             ),
           );
     } on AuthFailure catch (f) {
@@ -98,6 +104,27 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
+  }
+
+  Future<void> _selectDateOfBirth() async {
+    var initialDate = DateTime.now().subtract(
+      const Duration(days: 365 * CandidateAgePolicy.minimumAge),
+    );
+    final existing = CandidateAgePolicy.parseDate(_dateOfBirthController.text);
+    if (existing != null) {
+      initialDate = existing;
+    }
+
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: DateTime(1950),
+      lastDate: DateTime.now(),
+    );
+    if (picked == null || !mounted) return;
+
+    _dateOfBirthController.text = CandidateAgePolicy.formatDate(picked);
+    _updateSubmitState();
   }
 
   Future<void> _submitSocial(AuthProvider provider) async {
@@ -130,6 +157,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         formKey: _formKey,
         fullNameController: _fullNameController,
         emailController: _emailController,
+        dateOfBirthController: _dateOfBirthController,
         passwordController: _passwordController,
         confirmPasswordController: _confirmPasswordController,
         obscurePassword: _obscurePassword,
@@ -141,6 +169,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             setState(() => _obscurePassword = !_obscurePassword),
         onToggleConfirmPassword: () =>
             setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+        onSelectDateOfBirth: _selectDateOfBirth,
         onSubmit: _submit,
         onSubmitSocial: _submitSocial,
         l10n: l10n,
@@ -154,6 +183,7 @@ class _RegisterFormStep extends StatelessWidget {
     required this.formKey,
     required this.fullNameController,
     required this.emailController,
+    required this.dateOfBirthController,
     required this.passwordController,
     required this.confirmPasswordController,
     required this.obscurePassword,
@@ -163,6 +193,7 @@ class _RegisterFormStep extends StatelessWidget {
     required this.canSubmit,
     required this.onTogglePassword,
     required this.onToggleConfirmPassword,
+    required this.onSelectDateOfBirth,
     required this.onSubmit,
     required this.onSubmitSocial,
     required this.l10n,
@@ -171,6 +202,7 @@ class _RegisterFormStep extends StatelessWidget {
   final GlobalKey<FormState> formKey;
   final TextEditingController fullNameController;
   final TextEditingController emailController;
+  final TextEditingController dateOfBirthController;
   final TextEditingController passwordController;
   final TextEditingController confirmPasswordController;
   final bool obscurePassword;
@@ -180,6 +212,7 @@ class _RegisterFormStep extends StatelessWidget {
   final bool canSubmit;
   final VoidCallback onTogglePassword;
   final VoidCallback onToggleConfirmPassword;
+  final VoidCallback onSelectDateOfBirth;
   final VoidCallback onSubmit;
   final ValueChanged<AuthProvider> onSubmitSocial;
   final AppLocalizations l10n;
@@ -222,6 +255,20 @@ class _RegisterFormStep extends StatelessWidget {
                     v,
                     requiredMessage: l10n.emailRequired,
                     invalidMessage: l10n.text('invalidEmail'),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                AuthTextField(
+                  controller: dateOfBirthController,
+                  label: 'Ngày sinh',
+                  icon: Icons.calendar_month_outlined,
+                  keyboardType: TextInputType.datetime,
+                  textInputAction: TextInputAction.next,
+                  validator: CandidateAgePolicy.validateDateOfBirth,
+                  suffix: IconButton(
+                    tooltip: 'Chọn ngày sinh',
+                    icon: const Icon(Icons.event_outlined),
+                    onPressed: onSelectDateOfBirth,
                   ),
                 ),
                 const SizedBox(height: 14),

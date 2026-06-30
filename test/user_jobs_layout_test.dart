@@ -301,6 +301,7 @@ class _FakeUserProfileRepository implements UserProfileRepository {
     required String email,
     required String fullName,
     required AppRole? role,
+    String? dateOfBirth,
   }) {
     throw UnimplementedError();
   }

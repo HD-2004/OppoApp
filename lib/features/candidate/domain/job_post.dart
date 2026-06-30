@@ -26,6 +26,9 @@ class JobPost {
     required this.description,
     required this.tags,
     required this.postedAt,
+    this.recruitmentStartDate,
+    this.recruitmentEndDate,
+    this.status = 'active',
     this.employerAvatarUrl,
     this.isSaved = false,
     this.isQuickJob = false,
@@ -63,6 +66,9 @@ class JobPost {
   final String description;
   final List<String> tags;
   final DateTime postedAt;
+  final DateTime? recruitmentStartDate;
+  final DateTime? recruitmentEndDate;
+  final String status;
   final bool isSaved;
   final bool isQuickJob;
   final String? workHours;
@@ -85,6 +91,9 @@ class JobPost {
 
   JobPost copyWith({
     bool? isSaved,
+    DateTime? recruitmentStartDate,
+    DateTime? recruitmentEndDate,
+    String? status,
     bool? isAiScreeningEnabled,
     List<String>? customQuestions,
   }) {
@@ -104,6 +113,9 @@ class JobPost {
       description: description,
       tags: tags,
       postedAt: postedAt,
+      recruitmentStartDate: recruitmentStartDate ?? this.recruitmentStartDate,
+      recruitmentEndDate: recruitmentEndDate ?? this.recruitmentEndDate,
+      status: status ?? this.status,
       isSaved: isSaved ?? this.isSaved,
       isQuickJob: isQuickJob,
       workHours: workHours,

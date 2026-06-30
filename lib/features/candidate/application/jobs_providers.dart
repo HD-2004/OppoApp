@@ -2,13 +2,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/aws_job_repository.dart';
 import '../domain/job_post.dart';
+import '../domain/job_recruitment_window.dart';
 
 final activeJobsProvider = FutureProvider.autoDispose<List<JobPost>>((
   ref,
 ) async {
   final repository = ref.watch(jobRepositoryProvider);
   final jobs = await repository.getActiveJobs();
-  return sortJobsByVisibilityThenCreatedAt(jobs);
+  return sortJobsByVisibilityThenCreatedAt(filterRecruitableJobs(jobs));
 });
 
 final activeQuickJobsProvider = FutureProvider.autoDispose<List<JobPost>>((
@@ -16,8 +17,15 @@ final activeQuickJobsProvider = FutureProvider.autoDispose<List<JobPost>>((
 ) async {
   final repository = ref.watch(jobRepositoryProvider);
   final jobs = await repository.getActiveQuickJobs();
-  return sortJobsByVisibilityThenCreatedAt(jobs);
+  return sortJobsByVisibilityThenCreatedAt(filterRecruitableJobs(jobs));
 });
+
+List<JobPost> filterRecruitableJobs(List<JobPost> jobs, {DateTime? now}) {
+  final referenceTime = now ?? DateTime.now();
+  return jobs
+      .where((job) => isJobPostRecruitable(job, now: referenceTime))
+      .toList(growable: false);
+}
 
 List<JobPost> sortJobsByVisibilityThenCreatedAt(List<JobPost> jobs) {
   final sorted = [...jobs];

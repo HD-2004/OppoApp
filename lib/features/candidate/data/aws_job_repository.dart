@@ -98,6 +98,21 @@ class AwsJobRepository implements JobRepository {
       description: _string(job['description']),
       tags: _tags(job['tags']),
       postedAt: _date(job['createdAt']),
+      recruitmentStartDate: _firstDate([
+        job['recruitmentStartDate'],
+        job['recruitmentStartDateTime'],
+        job['applicationStartDate'],
+        job['validFrom'],
+      ]),
+      recruitmentEndDate: _firstDate([
+        job['recruitmentEndDate'],
+        job['recruitmentEndDateTime'],
+        job['applicationDeadline'],
+        job['deadline'],
+        job['expiresAt'],
+        job['expiryDate'],
+      ]),
+      status: _statusFrom(job),
       applicants: _int(job['applicants']),
       views: _int(job['views']),
       workHours: _nullableString(job['workHours']),
@@ -105,9 +120,14 @@ class AwsJobRepository implements JobRepository {
       responsibilities: _nullableString(job['responsibilities']),
       requirements: _nullableString(job['requirements']),
       benefits: _nullableString(job['benefits']),
-      isAiScreeningEnabled: job['isAiScreeningEnabled'] == true || job['isAiScreeningEnabled'] == 1 || job['isAiScreeningEnabled'] == 'true',
+      isAiScreeningEnabled:
+          job['isAiScreeningEnabled'] == true ||
+          job['isAiScreeningEnabled'] == 1 ||
+          job['isAiScreeningEnabled'] == 'true',
       customQuestions: job['customQuestions'] != null
-          ? List<String>.from((job['customQuestions'] as List).map((e) => e.toString()))
+          ? List<String>.from(
+              (job['customQuestions'] as List).map((e) => e.toString()),
+            )
           : const [],
     );
   }
@@ -151,6 +171,21 @@ class AwsJobRepository implements JobRepository {
       description: _string(job['description']),
       tags: const ['Tuyển gấp', 'Làm ngay'],
       postedAt: _date(job['createdAt']),
+      recruitmentStartDate: _firstDate([
+        job['recruitmentStartDate'],
+        job['recruitmentStartDateTime'],
+        job['applicationStartDate'],
+        job['validFrom'],
+      ]),
+      recruitmentEndDate: _firstDate([
+        job['recruitmentEndDate'],
+        job['recruitmentEndDateTime'],
+        job['applicationDeadline'],
+        job['deadline'],
+        job['expiresAt'],
+        job['expiryDate'],
+      ]),
+      status: _statusFrom(job),
       applicants: _int(job['applicants']),
       views: _int(job['views']),
       workDate: _nullableString(job['workDate']),
@@ -231,6 +266,35 @@ class AwsJobRepository implements JobRepository {
   static DateTime _date(dynamic raw) {
     return DateTime.tryParse(_string(raw))?.toLocal() ??
         DateTime.fromMillisecondsSinceEpoch(0);
+  }
+
+  static DateTime? _firstDate(Iterable<dynamic> values) {
+    for (final value in values) {
+      final date = _dateOrNull(value);
+      if (date != null) return date;
+    }
+    return null;
+  }
+
+  static DateTime? _dateOrNull(dynamic raw) {
+    if (raw is DateTime) {
+      return DateTime(raw.year, raw.month, raw.day);
+    }
+
+    final value = _string(raw);
+    if (value.isEmpty) return null;
+
+    final parsed = DateTime.tryParse(value);
+    if (parsed == null) return null;
+    return DateTime(parsed.year, parsed.month, parsed.day);
+  }
+
+  static String _statusFrom(Map<String, dynamic> job) {
+    return _firstNonEmpty([
+      job['status'],
+      job['jobStatus'],
+      job['visibilityStatus'],
+    ], fallback: 'active');
   }
 
   static String _firstNonEmpty(

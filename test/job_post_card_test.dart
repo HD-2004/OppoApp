@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:oppo_temp_jobs/features/candidate/domain/job_post.dart';
+import 'package:oppo_temp_jobs/features/candidate/domain/job_recruitment_window.dart';
 import 'package:oppo_temp_jobs/features/candidate/presentation/widgets/job_post_card.dart';
 
 void main() {
@@ -24,7 +25,9 @@ void main() {
     expect(find.text('Yêu cầu'), findsOneWidget);
     expect(find.text('Có kinh nghiệm phục vụ'), findsOneWidget);
     expect(find.textContaining('Nhà Văn hóa Sinh Viên'), findsOneWidget);
-    expect(find.text('18:00 - 22:00'), findsOneWidget);
+    expect(find.text('Tuyển dụng'), findsOneWidget);
+    expect(find.text(recruitmentWindowValue(_job)), findsOneWidget);
+    expect(find.text('18:00 - 22:00'), findsNothing);
     expect(find.text('425.000 VND / ca'), findsOneWidget);
     expect(find.text('Ứng tuyển ngay'), findsOneWidget);
 
@@ -124,7 +127,36 @@ void main() {
     expect(find.byIcon(Icons.bookmark_rounded), findsOneWidget);
     expect(find.byIcon(Icons.bookmark_border_rounded), findsNothing);
   });
+
+  testWidgets('job post card disables apply CTA for expired stale data', (
+    tester,
+  ) async {
+    var applyTapCount = 0;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: JobPostCard(
+            job: _job.copyWith(status: 'expired'),
+            onDetailsPressed: () {},
+            onApplyPressed: () => applyTapCount++,
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Đã hết hạn'), findsOneWidget);
+    expect(find.text('Ứng tuyển ngay'), findsNothing);
+
+    await tester.tap(find.text('Đã hết hạn'));
+    await tester.pump();
+
+    expect(applyTapCount, 0);
+  });
 }
+
+final _openRecruitmentStart = DateTime.now().subtract(const Duration(days: 1));
+final _openRecruitmentEnd = DateTime.now().add(const Duration(days: 30));
 
 final _job = JobPost(
   id: 'job-1',
@@ -140,4 +172,6 @@ final _job = JobPost(
   requirements: 'Có kinh nghiệm phục vụ',
   tags: const ['F&B'],
   postedAt: DateTime(2026, 6, 10, 18),
+  recruitmentStartDate: _openRecruitmentStart,
+  recruitmentEndDate: _openRecruitmentEnd,
 );

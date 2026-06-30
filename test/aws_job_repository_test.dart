@@ -45,6 +45,32 @@ void main() {
       expect(job.totalSalary, 400000);
     });
 
+    test('maps standard job recruitment window and status', () {
+      final job = AwsJobRepository.mapStandardJob({
+        'idJob': 'job-window',
+        'recruitmentStartDate': '2026-07-01',
+        'recruitmentEndDate': '2026-07-15',
+        'status': 'active',
+      });
+
+      expect(job.recruitmentStartDate, DateTime(2026, 7, 1));
+      expect(job.recruitmentEndDate, DateTime(2026, 7, 15));
+      expect(job.status, 'active');
+    });
+
+    test('maps quick job recruitment window from alternate backend keys', () {
+      final job = AwsJobRepository.mapQuickJob({
+        'jobID': 'quick-window',
+        'validFrom': '2026-07-03',
+        'deadline': '2026-07-10',
+        'jobStatus': 'expired',
+      });
+
+      expect(job.recruitmentStartDate, DateTime(2026, 7, 3));
+      expect(job.recruitmentEndDate, DateTime(2026, 7, 10));
+      expect(job.status, 'expired');
+    });
+
     test('rejects invalid coordinate ranges', () {
       final job = AwsJobRepository.mapStandardJob({
         'idJob': 'job-2',
