@@ -124,6 +124,42 @@ void main() {
     );
     expect(secondPageView.controller?.page, closeTo(1, 0.01));
   });
+
+  testWidgets('recommended job card expands work shifts inline', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              height: 352,
+              width: 286,
+              child: JobCard(
+                job: _multiShiftJob,
+                matchScore: 90,
+                onTap: () {},
+                onApply: () {},
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('T2 @ 06:30 - 11:00 | T5 @ 08:00 - 11:30'), findsNothing);
+    expect(find.text('10/07/2026'), findsOneWidget);
+    expect(find.text('Ca 1: 06:30 - 11:00'), findsOneWidget);
+    expect(find.text('Ca 2: 08:00 - 11:30'), findsOneWidget);
+    expect(find.text('Ca 3: 13:00 - 17:00'), findsNothing);
+    expect(find.text('Xem thêm...'), findsOneWidget);
+
+    await tester.tap(find.text('Xem thêm...'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Ca 3: 13:00 - 17:00'), findsOneWidget);
+    expect(find.text('Thu gọn'), findsOneWidget);
+  });
 }
 
 Future<void> _pumpHome(
@@ -224,4 +260,21 @@ final _sameEmployerJob = JobPost(
   description: 'Cần bạn phụ pha chế cuối tuần.',
   tags: const ['F&B'],
   postedAt: DateTime(2026, 6, 2),
+);
+
+final _multiShiftJob = JobPost(
+  id: 'job-3',
+  idJob: 'job-3',
+  employerId: 'employer-1',
+  employerName: 'Katinat Quận Cam',
+  title: 'Pha chế thức uống',
+  jobType: JobPostType.partTime,
+  location: 'Quận 2',
+  salary: '6.000.000 VNĐ/giờ',
+  shiftTime: 'T2 @ 06:30 - 11:00 | T5 @ 08:00 - 11:30 | T7 @ 13:00 - 17:00',
+  description: 'Pha chế và chuẩn bị nguyên liệu.',
+  tags: const ['F&B'],
+  postedAt: DateTime(2026, 6, 12),
+  recruitmentStartDate: DateTime(2026, 7, 10),
+  recruitmentEndDate: DateTime(2026, 7, 12),
 );

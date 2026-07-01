@@ -82,6 +82,44 @@ void main() {
     expect(find.text('08:00 - 11:30'), findsOneWidget);
   });
 
+  testWidgets(
+    'job detail marks every recruitment date and ignores weekday labels',
+    (tester) async {
+      final job = _jobFixture(
+        shiftTime: 'T2 @ 06:30 - 11:00 | T5 @ 08:00 - 11:30',
+        recruitmentStartDate: DateTime(2026, 7, 10),
+        recruitmentEndDate: DateTime(2026, 7, 12),
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [jobRepositoryProvider.overrideWithValue(_FakeJobRepo())],
+          child: MaterialApp(
+            home: UserJobDetailScreen(job: job, onApplyPressed: () {}),
+          ),
+        ),
+      );
+
+      await tester.pump();
+      await tester.ensureVisible(find.text('9'));
+      await tester.pump();
+
+      expect(find.byIcon(Icons.check_rounded), findsNWidgets(3));
+
+      await tester.tap(find.text('9'));
+      await tester.pump();
+
+      expect(find.text('09/07/2026'), findsNothing);
+
+      await tester.tap(find.text('10'));
+      await tester.pump();
+
+      expect(find.text('10/07/2026'), findsOneWidget);
+      expect(find.text('06:30 - 11:00'), findsOneWidget);
+      expect(find.text('08:00 - 11:30'), findsOneWidget);
+    },
+  );
+
   testWidgets('expired job detail shows notice and disables apply', (
     tester,
   ) async {

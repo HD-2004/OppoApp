@@ -434,7 +434,7 @@ class _WorkScheduleCalendarSectionState
     final selectedDate = _selectedDate;
     final selectedTimes = selectedDate == null
         ? const <String>[]
-        : workShiftTimesForDate(widget.job, selectedDate);
+        : _displayShiftTimesForDate(widget.job, selectedDate);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
@@ -514,7 +514,7 @@ class _WorkScheduleCalendarSectionState
     final daysInMonth = DateUtils.getDaysInMonth(month.year, month.month);
     for (var day = 1; day <= daysInMonth; day++) {
       final date = DateTime(month.year, month.month, day);
-      if (hasWorkScheduleOnDate(widget.job, date)) return date;
+      if (_hasDisplayWorkScheduleOnDate(widget.job, date)) return date;
     }
     return null;
   }
@@ -624,7 +624,7 @@ class _CalendarDayGrid extends StatelessWidget {
         final date = cells[index];
         if (date == null) return const SizedBox.shrink();
 
-        final isAvailable = hasWorkScheduleOnDate(job, date);
+        final isAvailable = _hasDisplayWorkScheduleOnDate(job, date);
         final isSelected =
             selectedDate != null && DateUtils.isSameDay(selectedDate, date);
 
@@ -670,21 +670,25 @@ class _CalendarDayCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const availableGreen = Color(0xFF16A34A);
+    const availableGreenSoft = Color(0xFFEAF7EE);
+    const availableGreenBorder = Color(0xFF86EFAC);
     final backgroundColor = isSelected
-        ? AppColors.primary
+        ? availableGreen
         : isAvailable
-        ? AppColors.primarySoft
-        : Colors.white;
+        ? availableGreenSoft
+        : const Color(0xFFF8FAFC);
     final borderColor = isSelected
-        ? AppColors.primary
+        ? availableGreen
         : isAvailable
-        ? AppColors.primary.withValues(alpha: 0.28)
+        ? availableGreenBorder
         : const Color(0xFFE5E7EB);
     final textColor = isSelected
         ? Colors.white
         : isAvailable
-        ? AppColors.primary
+        ? const Color(0xFF166534)
         : const Color(0xFFCBD5E1);
+    final checkColor = isSelected ? Colors.white : availableGreen;
 
     return Material(
       color: Colors.transparent,
@@ -697,20 +701,74 @@ class _CalendarDayCell extends StatelessWidget {
             borderRadius: BorderRadius.circular(10),
             border: Border.all(color: borderColor),
           ),
-          child: Center(
-            child: Text(
-              date.day.toString(),
-              style: TextStyle(
-                color: textColor,
-                fontSize: 14,
-                fontWeight: isAvailable ? FontWeight.w800 : FontWeight.w600,
+          child: Stack(
+            children: [
+              Center(
+                child: Text(
+                  date.day.toString(),
+                  style: TextStyle(
+                    color: textColor,
+                    fontSize: 14,
+                    fontWeight: isAvailable ? FontWeight.w800 : FontWeight.w600,
+                  ),
+                ),
               ),
-            ),
+              if (isAvailable)
+                Positioned(
+                  top: 4,
+                  right: 4,
+                  child: Icon(Icons.check_rounded, size: 12, color: checkColor),
+                ),
+            ],
           ),
         ),
       ),
     );
   }
+}
+
+bool _hasDisplayWorkScheduleOnDate(JobPost job, DateTime date) {
+  final exactDate = DateTime.tryParse(job.workDate?.trim() ?? '');
+  if (exactDate != null) {
+    return DateUtils.isSameDay(exactDate, date) &&
+        _displayShiftTimesFromRules(job).isNotEmpty;
+  }
+
+  final start = job.recruitmentStartDate;
+  final end = job.recruitmentEndDate;
+  if (start != null || end != null) {
+    final target = DateTime(date.year, date.month, date.day);
+    if (start != null) {
+      final startDate = DateTime(start.year, start.month, start.day);
+      if (target.isBefore(startDate)) return false;
+    }
+    if (end != null) {
+      final endDate = DateTime(end.year, end.month, end.day);
+      if (target.isAfter(endDate)) return false;
+    }
+    return _displayShiftTimesFromRules(job).isNotEmpty;
+  }
+
+  return workShiftTimesForDate(job, date).isNotEmpty;
+}
+
+List<String> _displayShiftTimesForDate(JobPost job, DateTime date) {
+  if (!_hasDisplayWorkScheduleOnDate(job, date)) return const [];
+
+  final shiftTimes = _displayShiftTimesFromRules(job);
+  if (shiftTimes.isNotEmpty) return shiftTimes;
+  return workShiftTimesForDate(job, date);
+}
+
+List<String> _displayShiftTimesFromRules(JobPost job) {
+  final uniqueTimes = <String>[];
+  for (final rule in workShiftRulesFromJob(job)) {
+    final trimmed = rule.timeRange.trim();
+    if (trimmed.isNotEmpty && !uniqueTimes.contains(trimmed)) {
+      uniqueTimes.add(trimmed);
+    }
+  }
+  return uniqueTimes;
 }
 
 class _SelectedWorkShiftList extends StatelessWidget {

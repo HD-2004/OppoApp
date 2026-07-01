@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:oppo_temp_jobs/features/auth/application/auth_controller.dart';
 import 'package:oppo_temp_jobs/features/auth/domain/auth_state.dart';
 import 'package:oppo_temp_jobs/features/auth/domain/auth_user_profile.dart';
+import 'package:oppo_temp_jobs/features/auth/domain/candidate_age_policy.dart';
 import 'package:oppo_temp_jobs/features/auth/presentation/candidate_age_verification_screen.dart';
 import 'package:oppo_temp_jobs/shared/domain/app_role.dart';
 
@@ -29,7 +30,7 @@ void main() {
 
     await tester.enterText(
       find.widgetWithText(TextFormField, 'Ngày sinh'),
-      '2008-06-30',
+      _underageDateOfBirth(),
     );
     await tester.tap(find.widgetWithText(FilledButton, 'Tiếp tục'));
     await tester.pumpAndSettle();
@@ -41,6 +42,16 @@ void main() {
     expect(spyController.signOutCount, 1);
     expect(spyController.completedDateOfBirth, isNull);
   });
+}
+
+String _underageDateOfBirth() {
+  final today = DateTime.now();
+  final eighteenthBirthdayTomorrow = DateTime(
+    today.year - CandidateAgePolicy.minimumAge,
+    today.month,
+    today.day + 1,
+  );
+  return CandidateAgePolicy.formatDate(eighteenthBirthdayTomorrow);
 }
 
 Widget _appWithController(_SpyAuthController controller) {

@@ -70,7 +70,8 @@ List<String> workShiftTimesForDate(JobPost job, DateTime date) {
 
   final times = <String>[];
   for (final rule in workShiftRulesFromJob(job)) {
-    if (rule.matches(date) && !times.contains(rule.timeRange)) {
+    if (_ruleAppliesToRecruitmentDate(rule, date) &&
+        !times.contains(rule.timeRange)) {
       times.add(rule.timeRange);
     }
   }
@@ -215,6 +216,14 @@ bool _isInsideRecruitmentWindow(JobPost job, DateTime date) {
   if (end != null && target.isAfter(_dateOnly(end))) return false;
 
   return true;
+}
+
+bool _ruleAppliesToRecruitmentDate(JobWorkShiftRule rule, DateTime date) {
+  if (!rule.matches(date)) return false;
+
+  final exactDate = rule.date;
+  if (exactDate == null) return true;
+  return _dateOnly(exactDate) == _dateOnly(date);
 }
 
 DateTime _dateOnly(DateTime value) {

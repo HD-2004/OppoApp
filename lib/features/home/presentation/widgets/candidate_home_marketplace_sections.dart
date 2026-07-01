@@ -7,6 +7,8 @@ import 'package:flutter/material.dart';
 import '../../../../core/config/s3_asset_config.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../candidate/domain/job_post.dart';
+import '../../../candidate/domain/job_recruitment_window.dart';
+import '../../../candidate/domain/job_work_schedule.dart';
 import '../../../employer_packages/domain/employer_package.dart';
 import '../../../recommendations/domain/job_recommendation.dart';
 
@@ -198,6 +200,8 @@ class RecommendedJobsSection extends StatelessWidget {
   final ValueChanged<JobPost> onJobTap;
   final ValueChanged<JobPost> onApply;
 
+  static const double _jobCardHeight = 352;
+
   @override
   Widget build(BuildContext context) {
     return _SectionShell(
@@ -207,7 +211,9 @@ class RecommendedJobsSection extends StatelessWidget {
           : _SeeAllButton(onPressed: onSeeAll),
       child: Builder(
         builder: (context) {
-          if (isLoading) return const _HorizontalSkeleton(height: 310);
+          if (isLoading) {
+            return const _HorizontalSkeleton(height: _jobCardHeight);
+          }
           if (hasError) {
             return Padding(
               padding: const EdgeInsets.symmetric(horizontal: 18),
@@ -232,7 +238,7 @@ class RecommendedJobsSection extends StatelessWidget {
           }
 
           return SizedBox(
-            height: 310,
+            height: _jobCardHeight,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 18),
@@ -698,7 +704,7 @@ class EmptyState extends StatelessWidget {
   }
 }
 
-class JobCard extends StatelessWidget {
+class JobCard extends StatefulWidget {
   const JobCard({
     super.key,
     required this.job,
@@ -713,7 +719,15 @@ class JobCard extends StatelessWidget {
   final int? matchScore;
 
   @override
+  State<JobCard> createState() => _JobCardState();
+}
+
+class _JobCardState extends State<JobCard> {
+  bool _isScheduleExpanded = false;
+
+  @override
   Widget build(BuildContext context) {
+    final job = widget.job;
     final companyName = companyNameOf(job);
     return SizedBox(
       width: 286,
@@ -721,7 +735,7 @@ class JobCard extends StatelessWidget {
         color: AppColors.cardBackground(context),
         borderRadius: BorderRadius.circular(24),
         child: InkWell(
-          onTap: onTap,
+          onTap: widget.onTap,
           borderRadius: BorderRadius.circular(24),
           child: Container(
             padding: const EdgeInsets.all(16),
@@ -860,15 +874,20 @@ class JobCard extends StatelessWidget {
                   label: publicOrHidden(job.location),
                 ),
                 const SizedBox(height: 9),
-                _MetaLine(
-                  icon: Icons.schedule_rounded,
-                  label: publicOrHidden(scheduleOf(job)),
+                _ScheduleMetaBlock(
+                  job: job,
+                  isExpanded: _isScheduleExpanded,
+                  onToggleExpanded: () {
+                    setState(() {
+                      _isScheduleExpanded = !_isScheduleExpanded;
+                    });
+                  },
                 ),
                 const SizedBox(height: 13),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    if (matchScore != null)
+                    if (widget.matchScore != null)
                       Flexible(
                         child: Container(
                           padding: const EdgeInsets.symmetric(
@@ -883,7 +902,7 @@ class JobCard extends StatelessWidget {
                             ),
                           ),
                           child: Text(
-                            'Phù hợp: $matchScore%',
+                            'Phù hợp: ${widget.matchScore}%',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
@@ -897,7 +916,7 @@ class JobCard extends StatelessWidget {
                     else
                       const SizedBox.shrink(),
                     FilledButton(
-                      onPressed: onApply,
+                      onPressed: widget.onApply,
                       style: FilledButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         foregroundColor: AppColors.textOnPrimary,
@@ -1234,6 +1253,140 @@ class _SeeAllButton extends StatelessWidget {
   }
 }
 
+class _ScheduleMetaBlock extends StatelessWidget {
+  const _ScheduleMetaBlock({
+    required this.job,
+    required this.isExpanded,
+    required this.onToggleExpanded,
+  });
+
+  static const int _collapsedShiftCount = 2;
+
+  final JobPost job;
+  final bool isExpanded;
+  final VoidCallback onToggleExpanded;
+
+  @override
+  Widget build(BuildContext context) {
+    final preview = _SchedulePreviewData.fromJob(job);
+    if (!preview.hasContent) {
+      return const _MetaLine(
+        icon: Icons.schedule_rounded,
+        label: 'Không công khai',
+      );
+    }
+
+    final visibleShiftTimes = isExpanded
+        ? preview.shiftTimes
+        : preview.shiftTimes.take(_collapsedShiftCount).toList();
+    final canExpand = preview.shiftTimes.length > _collapsedShiftCount;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(
+          Icons.schedule_rounded,
+          size: 19,
+          color: AppColors.textMutedFor(context),
+        ),
+        const SizedBox(width: 9),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                preview.dateLabel,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: AppColors.textPrimaryFor(context),
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              if (visibleShiftTimes.isNotEmpty) ...[
+                const SizedBox(height: 3),
+                AnimatedSize(
+                  duration: const Duration(milliseconds: 180),
+                  curve: Curves.easeOutCubic,
+                  alignment: Alignment.topLeft,
+                  child: _ShiftTimeList(
+                    shiftTimes: visibleShiftTimes,
+                    scrollWhenExpanded: isExpanded,
+                  ),
+                ),
+              ],
+              if (canExpand) ...[
+                const SizedBox(height: 2),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton(
+                    onPressed: onToggleExpanded,
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.primary,
+                      minimumSize: Size.zero,
+                      padding: EdgeInsets.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      textStyle: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    child: Text(isExpanded ? 'Thu gọn' : 'Xem thêm...'),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ShiftTimeList extends StatelessWidget {
+  const _ShiftTimeList({
+    required this.shiftTimes,
+    required this.scrollWhenExpanded,
+  });
+
+  final List<String> shiftTimes;
+  final bool scrollWhenExpanded;
+
+  @override
+  Widget build(BuildContext context) {
+    final list = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (var index = 0; index < shiftTimes.length; index++)
+          Text(
+            'Ca ${index + 1}: ${shiftTimes[index]}',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: AppColors.textPrimaryFor(context),
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              height: 1.28,
+            ),
+          ),
+      ],
+    );
+
+    if (!scrollWhenExpanded || shiftTimes.length <= 5) {
+      return list;
+    }
+
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxHeight: 84),
+      child: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
+        child: list,
+      ),
+    );
+  }
+}
+
 class _MetaLine extends StatelessWidget {
   const _MetaLine({required this.icon, required this.label});
 
@@ -1325,6 +1478,59 @@ class _SkeletonBox extends StatelessWidget {
       ),
     );
   }
+}
+
+class _SchedulePreviewData {
+  const _SchedulePreviewData({
+    required this.dateLabel,
+    required this.shiftTimes,
+  });
+
+  final String dateLabel;
+  final List<String> shiftTimes;
+
+  bool get hasContent => dateLabel.isNotEmpty || shiftTimes.isNotEmpty;
+
+  static _SchedulePreviewData fromJob(JobPost job) {
+    final date = _schedulePreviewDate(job);
+    final shiftTimes = _schedulePreviewShiftTimes(job, date);
+    final dateLabel = date == null
+        ? 'Không công khai'
+        : formatRecruitmentDate(date);
+
+    return _SchedulePreviewData(dateLabel: dateLabel, shiftTimes: shiftTimes);
+  }
+}
+
+DateTime? _schedulePreviewDate(JobPost job) {
+  final exactDate = DateTime.tryParse(job.workDate?.trim() ?? '');
+  if (exactDate != null) {
+    return DateTime(exactDate.year, exactDate.month, exactDate.day);
+  }
+
+  final recruitmentStart = job.recruitmentStartDate;
+  if (recruitmentStart != null) {
+    return DateTime(
+      recruitmentStart.year,
+      recruitmentStart.month,
+      recruitmentStart.day,
+    );
+  }
+
+  return null;
+}
+
+List<String> _schedulePreviewShiftTimes(JobPost job, DateTime? date) {
+  final shiftTimes = workShiftRulesFromJob(job).map((rule) => rule.timeRange);
+
+  final uniqueTimes = <String>[];
+  for (final time in shiftTimes) {
+    final trimmed = time.trim();
+    if (trimmed.isNotEmpty && !uniqueTimes.contains(trimmed)) {
+      uniqueTimes.add(trimmed);
+    }
+  }
+  return uniqueTimes;
 }
 
 String companyNameOf(JobPost job) {

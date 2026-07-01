@@ -6,6 +6,7 @@ import 'package:oppo_temp_jobs/core/localization/app_localizations.dart';
 import 'package:oppo_temp_jobs/features/auth/application/auth_controller.dart';
 import 'package:oppo_temp_jobs/features/auth/data/auth_repository.dart';
 import 'package:oppo_temp_jobs/features/auth/domain/auth_state.dart';
+import 'package:oppo_temp_jobs/features/auth/domain/candidate_age_policy.dart';
 import 'package:oppo_temp_jobs/features/auth/presentation/confirm_signup_screen.dart';
 import 'package:oppo_temp_jobs/features/auth/presentation/forgot_password_screen.dart';
 import 'package:oppo_temp_jobs/features/auth/presentation/login_screen.dart';
@@ -117,7 +118,7 @@ void main() {
     );
     await tester.enterText(
       find.widgetWithText(TextFormField, 'Ngày sinh'),
-      '2008-06-30',
+      _underageDateOfBirth(),
     );
     await tester.pump();
 
@@ -185,6 +186,16 @@ void main() {
     expect(find.widgetWithText(TextFormField, 'Mật khẩu mới'), findsNothing);
     expect(find.text('Độ mạnh mật khẩu'), findsNothing);
   });
+}
+
+String _underageDateOfBirth() {
+  final today = DateTime.now();
+  final eighteenthBirthdayTomorrow = DateTime(
+    today.year - CandidateAgePolicy.minimumAge,
+    today.month,
+    today.day + 1,
+  );
+  return CandidateAgePolicy.formatDate(eighteenthBirthdayTomorrow);
 }
 
 class _SpyAuthController extends AuthController {
