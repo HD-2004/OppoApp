@@ -1,9 +1,11 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:http/http.dart' as http;
 import '../../../core/theme/app_colors.dart';
 import '../../auth/application/auth_controller.dart';
+import '../application/ai_interview_providers.dart';
+import '../data/aws_application_repository.dart';
+import '../domain/ai_interview_models.dart';
+import '../domain/application_repository.dart';
 import '../domain/job_post.dart';
 import 'ai_interview_chat_screen.dart';
 
@@ -34,6 +36,7 @@ class _AIScreeningScreenState extends ConsumerState<AIScreeningScreen>
   List<String> _strengths = [];
   List<String> _weaknesses = [];
   String _reason = "";
+  String? _applicationId;
 
   late AnimationController _progressController;
   late Animation<double> _progressAnimation;
@@ -65,72 +68,108 @@ class _AIScreeningScreenState extends ConsumerState<AIScreeningScreen>
 
     try {
       final user = ref.read(authControllerProvider).asData?.value.user;
-      final fullName = user?.fullName.isNotEmpty == true ? user!.fullName : 'Ứng viên';
+      final fullName = user?.fullName.isNotEmpty == true
+          ? user!.fullName
+          : 'Ứng viên';
       final title = widget.job.title;
       final skills = (user?.skills != null && user!.skills!.isNotEmpty)
           ? user.skills!.join(', ')
           : 'Nhanh nhẹn, chăm chỉ, có trách nhiệm';
-      final bio = (user?.bio != null && user!.bio!.isNotEmpty) ? user.bio! : 'Chưa cập nhật';
+      final bio = (user?.bio != null && user!.bio!.isNotEmpty)
+          ? user.bio!
+          : 'Chưa cập nhật';
 
-      final cvText = '''
+      final cvText =
+          '''
 Họ tên: $fullName
 Vị trí mong muốn: $title
 Kinh nghiệm làm việc: Đã có kinh nghiệm làm việc ở vị trí tương đương.
 Học vấn: Chưa cập nhật
 Kỹ năng: $skills
 Giới thiệu bản thân: $bio
-'''.trim();
+'''
+              .trim();
 
-      final jdText = """
+      final jdText =
+          """
 Tiêu đề công việc: ${widget.job.title}
 Mô tả công việc: ${widget.job.description}
 Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thiết kế ứng dụng di động."}
 Nhiệm vụ: ${widget.job.responsibilities ?? "Phát triển và bảo trì các tính năng ứng dụng."}
 """;
 
-      // Gọi API FastAPI Backend
-      // Flutter Web chạy trên localhost, chúng ta sẽ gọi đến backend localhost:8000
-      final response = await http.post(
-        Uri.parse("http://localhost:8000/api/v1/cv/screen"),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode({
-          "job_description": jdText,
-          "cv_text": cvText,
-          "cv_url": widget.cvUrl,
-        }),
-      ).timeout(const Duration(seconds: 15));
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(utf8.decode(response.bodyBytes));
-        setState(() {
-          _score = data["score"] ?? 0;
-          _result = data["result"] ?? "review";
-          _strengths = List<String>.from(data["strengths"] ?? []);
-          _weaknesses = List<String>.from(data["weaknesses"] ?? []);
-          _reason = data["reason"] ?? "";
-          _isLoading = false;
-
-          // Chạy animation vòng tròn điểm số
-          _progressAnimation = Tween<double>(
-            begin: 0,
-            end: _score / 100.0,
-          ).animate(
-            CurvedAnimation(
-              parent: _progressController,
-              curve: Curves.easeOutCubic,
-            ),
+      final screeningResult = await ref
+          .read(aiInterviewRepositoryProvider)
+          .screenCv(
+            jobDescription: jdText,
+            cvText: cvText,
+            cvUrl: widget.cvUrl,
           );
-          _progressController.forward();
-        });
-      } else {
-        throw Exception("Server trả về mã lỗi: ${response.statusCode}");
+
+      setState(() {
+        _score = screeningResult.score;
+        _result = screeningResult.result;
+        _strengths = screeningResult.strengths;
+        _weaknesses = screeningResult.weaknesses;
+        _reason = screeningResult.reason;
+        _isLoading = false;
+
+        _progressAnimation = Tween<double>(begin: 0, end: _score / 100.0)
+            .animate(
+              CurvedAnimation(
+                parent: _progressController,
+                curve: Curves.easeOutCubic,
+              ),
+            );
+        _progressController.forward();
+      });
+
+      if (screeningResult.canContinueToInterview) {
+        await _submitRoundOneApplication(screeningResult);
       }
     } catch (e) {
       setState(() {
         _isLoading = false;
         _errorMessage =
-            "Không thể kết nối đến máy chủ AI. Vui lòng đảm bảo Backend FastAPI đang chạy tại cổng 8000.\nChi tiết: $e";
+            'Không thể kết nối đến dịch vụ phỏng vấn AI. Vui lòng kiểm tra kết nối mạng và thử lại.\nChi tiết: $e';
       });
+    }
+  }
+
+  Future<void> _submitRoundOneApplication(CvScreeningResult result) async {
+    if (_applicationId != null) return;
+
+    final user = ref.read(authControllerProvider).asData?.value.user;
+    if (user == null) {
+      throw Exception('Vui lòng đăng nhập để ứng tuyển.');
+    }
+
+    final response = await ref
+        .read(applicationRepositoryProvider)
+        .submitApplication(
+          jobId: widget.job.idJob,
+          cvUrl: widget.cvUrl,
+          cvFilename: widget.cvFileName,
+          notification: ApplicationNotificationDetails(
+            employerId: widget.job.employerId,
+            candidateId: user.userId,
+            candidateName: user.fullName,
+            jobTitle: widget.job.title,
+            companyName: widget.job.companyName ?? widget.job.employerName,
+            isQuickJob: widget.job.isQuickJob,
+          ),
+          extraFields: result.toApplicationExtraFields(),
+        );
+
+    final application = response['application'];
+    final id =
+        response['applicationId'] ??
+        (application is Map ? application['applicationId'] : null);
+    if (id == null) {
+      throw Exception('Không nhận được mã hồ sơ ứng tuyển từ máy chủ.');
+    }
+    if (mounted) {
+      setState(() => _applicationId = id.toString());
     }
   }
 
@@ -173,8 +212,8 @@ Nhiệm vụ: ${widget.job.responsibilities ?? "Phát triển và bảo trì cá
       body: _isLoading
           ? _buildLoadingState()
           : _errorMessage != null
-              ? _buildErrorState()
-              : _buildSuccessState(resultColor, resultText),
+          ? _buildErrorState()
+          : _buildSuccessState(resultColor, resultText),
     );
   }
 
@@ -196,9 +235,9 @@ Nhiệm vụ: ${widget.job.responsibilities ?? "Phát triển và bảo trì cá
             const SizedBox(height: 32),
             Text(
               'AI đang phân tích hồ sơ...',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
             Text(
@@ -219,7 +258,11 @@ Nhiệm vụ: ${widget.job.responsibilities ?? "Phát triển và bảo trì cá
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline_rounded, size: 72, color: Colors.red),
+            const Icon(
+              Icons.error_outline_rounded,
+              size: 72,
+              color: Colors.red,
+            ),
             const SizedBox(height: 20),
             const Text(
               'Lỗi kết nối AI',
@@ -239,8 +282,10 @@ Nhiệm vụ: ${widget.job.responsibilities ?? "Phát triển và bảo trì cá
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.secondary,
                 foregroundColor: Colors.white,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
               ),
             ),
           ],
@@ -296,8 +341,9 @@ Nhiệm vụ: ${widget.job.responsibilities ?? "Phát triển và bảo trì cá
                               value: _progressAnimation.value,
                               strokeWidth: 12,
                               backgroundColor: Colors.grey[200],
-                              valueColor:
-                                  AlwaysStoppedAnimation<Color>(resultColor),
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                resultColor,
+                              ),
                             ),
                           ),
                           Column(
@@ -327,8 +373,10 @@ Nhiệm vụ: ${widget.job.responsibilities ?? "Phát triển và bảo trì cá
                   ),
                   const SizedBox(height: 20),
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
                       color: resultColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(20),
@@ -370,22 +418,24 @@ Nhiệm vụ: ${widget.job.responsibilities ?? "Phát triển và bảo trì cá
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: _strengths
-                    .map((s) => Padding(
-                          padding: const EdgeInsets.only(bottom: 8.0),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Icon(Icons.arrow_right, color: Colors.green),
-                              const SizedBox(width: 4),
-                              Expanded(
-                                child: Text(
-                                  s,
-                                  style: const TextStyle(fontSize: 14),
-                                ),
+                    .map(
+                      (s) => Padding(
+                        padding: const EdgeInsets.only(bottom: 8.0),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(Icons.arrow_right, color: Colors.green),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                s,
+                                style: const TextStyle(fontSize: 14),
                               ),
-                            ],
-                          ),
-                        ))
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
                     .toList(),
               ),
             ),
@@ -401,22 +451,24 @@ Nhiệm vụ: ${widget.job.responsibilities ?? "Phát triển và bảo trì cá
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: _weaknesses
-                    .map((w) => Padding(
-                          padding: const EdgeInsets.only(bottom: 8.0),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Icon(Icons.arrow_right, color: Colors.amber[700]),
-                              const SizedBox(width: 4),
-                              Expanded(
-                                child: Text(
-                                  w,
-                                  style: const TextStyle(fontSize: 14),
-                                ),
+                    .map(
+                      (w) => Padding(
+                        padding: const EdgeInsets.only(bottom: 8.0),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(Icons.arrow_right, color: Colors.amber[700]),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                w,
+                                style: const TextStyle(fontSize: 14),
                               ),
-                            ],
-                          ),
-                        ))
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
                     .toList(),
               ),
             ),
@@ -433,21 +485,24 @@ Nhiệm vụ: ${widget.job.responsibilities ?? "Phát triển và bảo trì cá
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => AIInterviewChatScreen(
-                      job: widget.job,
-                      cvFileName: widget.cvFileName,
-                      cvUrl: widget.cvUrl,
-                      cvS3Key: widget.cvS3Key,
-                      aiScreeningScore: _score,
-                      aiScreeningResult: _result,
-                      aiScreeningReason: _reason,
-                    ),
-                  ),
-                );
-              },
+              onPressed: _applicationId == null
+                  ? null
+                  : () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => AIInterviewChatScreen(
+                            job: widget.job,
+                            cvFileName: widget.cvFileName,
+                            cvUrl: widget.cvUrl,
+                            cvS3Key: widget.cvS3Key,
+                            applicationId: _applicationId,
+                            aiScreeningScore: _score,
+                            aiScreeningResult: _result,
+                            aiScreeningReason: _reason,
+                          ),
+                        ),
+                      );
+                    },
               icon: const Icon(Icons.forum_outlined),
               label: const Text(
                 'Bắt đầu Vòng 2: Phỏng vấn với AI',
@@ -491,9 +546,7 @@ Nhiệm vụ: ${widget.job.responsibilities ?? "Phát triển và bảo trì cá
   }) {
     return Card(
       elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(

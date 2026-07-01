@@ -188,7 +188,7 @@ class AwsApplicationRepository implements ApplicationRepository {
   }
 
   @override
-  Future<void> submitApplication({
+  Future<Map<String, dynamic>> submitApplication({
     required String jobId,
     required String cvUrl,
     required String cvFilename,
@@ -222,10 +222,22 @@ class AwsApplicationRepository implements ApplicationRepository {
       throw Exception(errorMsg);
     }
 
+    final successBody = response.body.trim().isEmpty
+        ? <String, dynamic>{}
+        : jsonDecode(response.body);
+
     await _sendEmployerApplicationNotification(
       jobId: jobId,
       details: notification,
     );
+
+    if (successBody is Map<String, dynamic>) {
+      return successBody;
+    }
+    if (successBody is Map) {
+      return Map<String, dynamic>.from(successBody);
+    }
+    return <String, dynamic>{};
   }
 
   @override

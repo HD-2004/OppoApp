@@ -25,7 +25,7 @@ abstract class ApplicationRepository {
     required String fileType,
   });
   Future<void> deleteCandidateCV({required String userId, String? cvId});
-  Future<void> submitApplication({
+  Future<Map<String, dynamic>> submitApplication({
     required String jobId,
     required String cvUrl,
     required String cvFilename,

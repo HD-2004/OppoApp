@@ -97,13 +97,15 @@ class _FakeApplicationRepository implements ApplicationRepository {
   }
 
   @override
-  Future<void> submitApplication({
+  Future<Map<String, dynamic>> submitApplication({
     required String jobId,
     required String cvUrl,
     required String cvFilename,
     required ApplicationNotificationDetails notification,
     Map<String, dynamic>? extraFields,
-  }) async {}
+  }) async {
+    return {'applicationId': 'fake-application'};
+  }
 
   @override
   Future<void> updateApplicationStatus({

@@ -14,11 +14,7 @@ class ChatMessage {
   final bool isMe;
   final DateTime time;
 
-  ChatMessage({
-    required this.text,
-    required this.isMe,
-    required this.time,
-  });
+  ChatMessage({required this.text, required this.isMe, required this.time});
 }
 
 class AIInterviewChatScreen extends ConsumerStatefulWidget {
@@ -26,6 +22,7 @@ class AIInterviewChatScreen extends ConsumerStatefulWidget {
   final String cvFileName;
   final String cvUrl;
   final String? cvS3Key;
+  final String? applicationId;
   final int aiScreeningScore;
   final String aiScreeningResult;
   final String aiScreeningReason;
@@ -36,13 +33,15 @@ class AIInterviewChatScreen extends ConsumerStatefulWidget {
     required this.cvFileName,
     required this.cvUrl,
     this.cvS3Key,
+    this.applicationId,
     required this.aiScreeningScore,
     required this.aiScreeningResult,
     required this.aiScreeningReason,
   });
 
   @override
-  ConsumerState<AIInterviewChatScreen> createState() => _AIInterviewChatScreenState();
+  ConsumerState<AIInterviewChatScreen> createState() =>
+      _AIInterviewChatScreenState();
 }
 
 class _AIInterviewChatScreenState extends ConsumerState<AIInterviewChatScreen> {
@@ -92,50 +91,61 @@ class _AIInterviewChatScreenState extends ConsumerState<AIInterviewChatScreen> {
 
     try {
       final user = ref.read(authControllerProvider).asData?.value.user;
-      final fullName = user?.fullName.isNotEmpty == true ? user!.fullName : 'Ứng viên';
+      final fullName = user?.fullName.isNotEmpty == true
+          ? user!.fullName
+          : 'Ứng viên';
       final title = widget.job.title;
       final skills = (user?.skills != null && user!.skills!.isNotEmpty)
           ? user.skills!.join(', ')
           : 'Nhanh nhẹn, chăm chỉ, có trách nhiệm';
-      final bio = (user?.bio != null && user!.bio!.isNotEmpty) ? user.bio! : 'Chưa cập nhật';
+      final bio = (user?.bio != null && user!.bio!.isNotEmpty)
+          ? user.bio!
+          : 'Chưa cập nhật';
 
-      final cvText = '''
+      final cvText =
+          '''
 Họ tên: $fullName
 Vị trí mong muốn: $title
 Kinh nghiệm làm việc: Đã có kinh nghiệm làm việc ở vị trí tương đương.
 Học vấn: Chưa cập nhật
 Kỹ năng: $skills
 Giới thiệu bản thân: $bio
-'''.trim();
+'''
+              .trim();
 
-      final jdText = """
+      final jdText =
+          """
 Tiêu đề công việc: ${widget.job.title}
 Mô tả công việc: ${widget.job.description}
 Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thiết kế ứng dụng di động."}
 """;
 
-      final response = await http.post(
-        Uri.parse("http://localhost:8000/api/v1/interview/start"),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode({
-          "job_title": widget.job.title,
-          "job_description": jdText,
-          "cv_text": cvText,
-          "cv_url": widget.cvUrl,
-          "custom_questions": widget.job.customQuestions,
-        }),
-      ).timeout(const Duration(seconds: 15));
+      final response = await http
+          .post(
+            Uri.parse("http://localhost:8000/api/v1/interview/start"),
+            headers: {"Content-Type": "application/json"},
+            body: jsonEncode({
+              "job_title": widget.job.title,
+              "job_description": jdText,
+              "cv_text": cvText,
+              "cv_url": widget.cvUrl,
+              "custom_questions": widget.job.customQuestions,
+            }),
+          )
+          .timeout(const Duration(seconds: 15));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(utf8.decode(response.bodyBytes));
         setState(() {
           _sessionId = data["session_id"];
           _isLoading = false;
-          _messages.add(ChatMessage(
-            text: data["question"] ?? "Chào bạn, hãy bắt đầu buổi phỏng vấn.",
-            isMe: false,
-            time: DateTime.now(),
-          ));
+          _messages.add(
+            ChatMessage(
+              text: data["question"] ?? "Chào bạn, hãy bắt đầu buổi phỏng vấn.",
+              isMe: false,
+              time: DateTime.now(),
+            ),
+          );
         });
         _scrollToBottom();
       } else {
@@ -144,7 +154,8 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
     } catch (e) {
       setState(() {
         _isLoading = false;
-        _errorMessage = "Không thể khởi động buổi phỏng vấn AI. Vui lòng kiểm tra kết nối mạng hoặc server Backend.\nChi tiết: $e";
+        _errorMessage =
+            "Không thể khởi động buổi phỏng vấn AI. Vui lòng kiểm tra kết nối mạng hoặc server Backend.\nChi tiết: $e";
       });
     }
   }
@@ -161,14 +172,13 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
     _scrollToBottom();
 
     try {
-      final response = await http.post(
-        Uri.parse("http://localhost:8000/api/v1/interview/respond"),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode({
-          "session_id": _sessionId,
-          "answer": text,
-        }),
-      ).timeout(const Duration(seconds: 20));
+      final response = await http
+          .post(
+            Uri.parse("http://localhost:8000/api/v1/interview/respond"),
+            headers: {"Content-Type": "application/json"},
+            body: jsonEncode({"session_id": _sessionId, "answer": text}),
+          )
+          .timeout(const Duration(seconds: 20));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(utf8.decode(response.bodyBytes));
@@ -178,19 +188,24 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
 
           if (_finished) {
             _report = data["report"];
-            _messages.add(ChatMessage(
-              text: "Cảm ơn bạn đã tham gia buổi phỏng vấn. Hệ thống đang tổng hợp kết quả của bạn...",
-              isMe: false,
-              time: DateTime.now(),
-            ));
+            _messages.add(
+              ChatMessage(
+                text:
+                    "Cảm ơn bạn đã tham gia buổi phỏng vấn. Hệ thống đang tổng hợp kết quả của bạn...",
+                isMe: false,
+                time: DateTime.now(),
+              ),
+            );
             _showReportDialog();
             _submitDeferredApplication();
           } else {
-            _messages.add(ChatMessage(
-              text: data["question"] ?? "",
-              isMe: false,
-              time: DateTime.now(),
-            ));
+            _messages.add(
+              ChatMessage(
+                text: data["question"] ?? "",
+                isMe: false,
+                time: DateTime.now(),
+              ),
+            );
           }
         });
         _scrollToBottom();
@@ -200,11 +215,14 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
     } catch (e) {
       setState(() {
         _isSending = false;
-        _messages.add(ChatMessage(
-          text: "⚠️ Lỗi: Không thể gửi câu trả lời đến AI. Vui lòng kiểm tra lại kết nối của bạn và thử lại.",
-          isMe: false,
-          time: DateTime.now(),
-        ));
+        _messages.add(
+          ChatMessage(
+            text:
+                "⚠️ Lỗi: Không thể gửi câu trả lời đến AI. Vui lòng kiểm tra lại kết nối của bạn và thử lại.",
+            isMe: false,
+            time: DateTime.now(),
+          ),
+        );
       });
       _scrollToBottom();
     }
@@ -217,7 +235,9 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
     final isPassed = recommend || (score >= 70);
 
     if (!isPassed) {
-      safePrint("❌ [Deferred] Interview failed, skipping application submission");
+      safePrint(
+        "❌ [Deferred] Interview failed, skipping application submission",
+      );
       return;
     }
 
@@ -228,7 +248,7 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
       }
 
       final repository = ref.read(applicationRepositoryProvider);
-      
+
       final extraFields = {
         'aiScreeningScore': widget.aiScreeningScore,
         'aiScreeningResult': widget.aiScreeningResult,
@@ -251,8 +271,10 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
         ),
         extraFields: extraFields,
       );
-      
-      safePrint("✅ [Deferred] Application submitted successfully after AI Interview");
+
+      safePrint(
+        "✅ [Deferred] Application submitted successfully after AI Interview",
+      );
     } catch (e) {
       safePrint("❌ [Deferred] Failed to submit application: $e");
     }
@@ -319,7 +341,10 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
                             color: score >= 70 ? Colors.green : Colors.red,
                           ),
                         ),
-                        const Text('Điểm phỏng vấn', style: TextStyle(color: Colors.grey)),
+                        const Text(
+                          'Điểm phỏng vấn',
+                          style: TextStyle(color: Colors.grey),
+                        ),
                       ],
                     ),
                     Container(width: 1, height: 60, color: Colors.grey[300]),
@@ -344,7 +369,7 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
                 const SizedBox(height: 24),
                 const Divider(),
                 const SizedBox(height: 12),
-                
+
                 // Nhận xét chi tiết
                 const Text(
                   'Đánh giá chung:',
@@ -353,25 +378,40 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
                 const SizedBox(height: 6),
                 Text(reason, style: const TextStyle(fontSize: 14, height: 1.4)),
                 const SizedBox(height: 16),
-                
+
                 // Điểm mạnh
                 if (strengths.isNotEmpty) ...[
                   const Text(
                     'Điểm mạnh:',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.green),
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green,
+                    ),
                   ),
                   const SizedBox(height: 6),
-                  ...strengths.map((s) => Padding(
-                    padding: const EdgeInsets.only(bottom: 4),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Icon(Icons.check, color: Colors.green, size: 18),
-                        const SizedBox(width: 6),
-                        Expanded(child: Text(s, style: const TextStyle(fontSize: 13))),
-                      ],
+                  ...strengths.map(
+                    (s) => Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(
+                            Icons.check,
+                            color: Colors.green,
+                            size: 18,
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              s,
+                              style: const TextStyle(fontSize: 13),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  )),
+                  ),
                   const SizedBox(height: 16),
                 ],
 
@@ -379,26 +419,41 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
                 if (weaknesses.isNotEmpty) ...[
                   const Text(
                     'Điểm cần cải thiện:',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.amber),
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.amber,
+                    ),
                   ),
                   const SizedBox(height: 6),
-                  ...weaknesses.map((w) => Padding(
-                    padding: const EdgeInsets.only(bottom: 4),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Icon(Icons.arrow_right_alt_outlined, color: Colors.amber, size: 18),
-                        const SizedBox(width: 6),
-                        Expanded(child: Text(w, style: const TextStyle(fontSize: 13))),
-                      ],
+                  ...weaknesses.map(
+                    (w) => Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(
+                            Icons.arrow_right_alt_outlined,
+                            color: Colors.amber,
+                            size: 18,
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              w,
+                              style: const TextStyle(fontSize: 13),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  )),
+                  ),
                   const SizedBox(height: 20),
                 ],
 
                 const Divider(),
                 const SizedBox(height: 12),
-                
+
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.secondary,
@@ -413,7 +468,10 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
                     Navigator.of(context).pop(); // Đóng chat screen
                     Navigator.of(context).pop(); // Đóng screening screen
                   },
-                  child: const Text('Hoàn tất và Quay lại', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  child: const Text(
+                    'Hoàn tất và Quay lại',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
                 ),
               ],
             ),
@@ -430,8 +488,14 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            const Text('Phỏng vấn AI Interviewer', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            Text(widget.job.title, style: const TextStyle(fontSize: 12, color: Colors.white70)),
+            const Text(
+              'Phỏng vấn AI Interviewer',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            Text(
+              widget.job.title,
+              style: const TextStyle(fontSize: 12, color: Colors.white70),
+            ),
           ],
         ),
         centerTitle: true,
@@ -441,31 +505,31 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
               icon: const Icon(Icons.assignment_turned_in),
               tooltip: 'Xem kết quả phỏng vấn',
               onPressed: _showReportDialog,
-            )
+            ),
         ],
       ),
       body: _isLoading
           ? _buildLoadingState()
           : _errorMessage != null
-              ? _buildErrorState()
-              : Column(
-                  children: [
-                    Expanded(
-                      child: ListView.builder(
-                        controller: _scrollController,
-                        padding: const EdgeInsets.all(16.0),
-                        itemCount: _messages.length + (_isSending ? 1 : 0),
-                        itemBuilder: (context, index) {
-                          if (index == _messages.length) {
-                            return _buildTypingIndicator();
-                          }
-                          return _buildMessageBubble(_messages[index]);
-                        },
-                      ),
-                    ),
-                    _buildInputBar(),
-                  ],
+          ? _buildErrorState()
+          : Column(
+              children: [
+                Expanded(
+                  child: ListView.builder(
+                    controller: _scrollController,
+                    padding: const EdgeInsets.all(16.0),
+                    itemCount: _messages.length + (_isSending ? 1 : 0),
+                    itemBuilder: (context, index) {
+                      if (index == _messages.length) {
+                        return _buildTypingIndicator();
+                      }
+                      return _buildMessageBubble(_messages[index]);
+                    },
+                  ),
                 ),
+                _buildInputBar(),
+              ],
+            ),
     );
   }
 
@@ -492,7 +556,11 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline_rounded, size: 72, color: Colors.red),
+            const Icon(
+              Icons.error_outline_rounded,
+              size: 72,
+              color: Colors.red,
+            ),
             const SizedBox(height: 16),
             const Text(
               'Lỗi kết nối phiên phỏng vấn',
@@ -507,8 +575,13 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
             const SizedBox(height: 24),
             ElevatedButton(
               onPressed: _startInterviewSession,
-              style: ElevatedButton.styleFrom(backgroundColor: AppColors.secondary),
-              child: const Text('Kết nối lại', style: TextStyle(color: Colors.white)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.secondary,
+              ),
+              child: const Text(
+                'Kết nối lại',
+                style: TextStyle(color: Colors.white),
+              ),
             ),
           ],
         ),
@@ -517,7 +590,9 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
   }
 
   Widget _buildMessageBubble(ChatMessage message) {
-    final alignment = message.isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start;
+    final alignment = message.isMe
+        ? CrossAxisAlignment.end
+        : CrossAxisAlignment.start;
     final bubbleColor = message.isMe ? AppColors.secondary : Colors.grey[200];
     final textColor = message.isMe ? Colors.white : Colors.black87;
 
@@ -584,7 +659,11 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
                 SizedBox(width: 10),
                 Text(
                   'AI đang suy nghĩ...',
-                  style: TextStyle(color: Colors.grey, fontSize: 13, fontStyle: FontStyle.italic),
+                  style: TextStyle(
+                    color: Colors.grey,
+                    fontSize: 13,
+                    fontStyle: FontStyle.italic,
+                  ),
                 ),
               ],
             ),
@@ -626,7 +705,9 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
           IconButton(
             icon: Icon(
               Icons.send,
-              color: _finished || _isSending ? Colors.grey : AppColors.secondary,
+              color: _finished || _isSending
+                  ? Colors.grey
+                  : AppColors.secondary,
             ),
             onPressed: _finished || _isSending ? null : _handleSendAnswer,
           ),
