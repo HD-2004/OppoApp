@@ -1,5 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_tts/flutter_tts.dart';
+import 'package:speech_to_text/speech_recognition_error.dart';
+import 'package:speech_to_text/speech_recognition_result.dart';
+import 'package:speech_to_text/speech_to_text.dart';
+
 import '../../../core/theme/app_colors.dart';
 import '../../auth/application/auth_controller.dart';
 import '../application/ai_interview_providers.dart';
@@ -7,12 +14,13 @@ import '../data/aws_application_repository.dart';
 import '../domain/ai_interview_models.dart';
 import '../domain/job_post.dart';
 
-class ChatMessage {
-  final String text;
-  final bool isMe;
-  final DateTime time;
-
-  ChatMessage({required this.text, required this.isMe, required this.time});
+enum _VoiceInterviewPhase {
+  connecting,
+  speaking,
+  ready,
+  listening,
+  processing,
+  finished,
 }
 
 class AIInterviewChatScreen extends ConsumerStatefulWidget {
@@ -43,48 +51,102 @@ class AIInterviewChatScreen extends ConsumerStatefulWidget {
 }
 
 class _AIInterviewChatScreenState extends ConsumerState<AIInterviewChatScreen> {
-  final List<ChatMessage> _messages = [];
-  final TextEditingController _textController = TextEditingController();
-  final ScrollController _scrollController = ScrollController();
+  final SpeechToText _speechToText = SpeechToText();
+  final FlutterTts _flutterTts = FlutterTts();
 
-  bool _isLoading = true;
-  bool _isSending = false;
+  _VoiceInterviewPhase _phase = _VoiceInterviewPhase.connecting;
+  bool _speechReady = false;
+  bool _ttsConfigured = false;
+  bool _hasSubmittedCurrentUtterance = false;
   bool _finished = false;
+  int _questionNumber = 0;
+  double _soundLevel = 0;
+  String _pendingAnswer = '';
   String? _sessionId;
+  String? _currentQuestion;
   String? _errorMessage;
+  String? _noticeMessage;
+  String? _speechLocaleId;
 
-  // Đối tượng lưu báo cáo phỏng vấn
   Map<String, dynamic>? _report;
 
   @override
   void initState() {
     super.initState();
+    _configureTextToSpeech();
     _startInterviewSession();
   }
 
   @override
   void dispose() {
-    _textController.dispose();
-    _scrollController.dispose();
+    _speechToText.cancel();
+    _flutterTts.stop();
     super.dispose();
   }
 
-  void _scrollToBottom() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
-      }
+  Future<void> _configureTextToSpeech() async {
+    if (_ttsConfigured) return;
+
+    _flutterTts.setStartHandler(() {
+      if (!mounted) return;
+      setState(() {
+        _phase = _VoiceInterviewPhase.speaking;
+        _noticeMessage = null;
+      });
     });
+
+    _flutterTts.setCompletionHandler(() {
+      if (!mounted || _finished || _phase != _VoiceInterviewPhase.speaking) {
+        return;
+      }
+      setState(() {
+        _phase = _VoiceInterviewPhase.ready;
+      });
+    });
+
+    _flutterTts.setCancelHandler(() {
+      if (!mounted || _finished || _phase != _VoiceInterviewPhase.speaking) {
+        return;
+      }
+      setState(() {
+        _phase = _VoiceInterviewPhase.ready;
+      });
+    });
+
+    _flutterTts.setErrorHandler((message) {
+      if (!mounted) return;
+      setState(() {
+        _phase = _VoiceInterviewPhase.ready;
+        _noticeMessage =
+            'Không thể phát câu hỏi bằng giọng nói. Hãy bấm nghe lại.';
+      });
+    });
+
+    await _flutterTts.awaitSpeakCompletion(true);
+    await _flutterTts.setLanguage('vi-VN');
+    await _flutterTts.setSpeechRate(0.45);
+    await _flutterTts.setPitch(1.0);
+    await _flutterTts.setVolume(1.0);
+
+    _ttsConfigured = true;
   }
 
   Future<void> _startInterviewSession() async {
+    await _speechToText.cancel();
+    await _flutterTts.stop();
+
+    if (!mounted) return;
     setState(() {
-      _isLoading = true;
+      _phase = _VoiceInterviewPhase.connecting;
       _errorMessage = null;
+      _noticeMessage = null;
+      _finished = false;
+      _report = null;
+      _currentQuestion = null;
+      _pendingAnswer = '';
+      _questionNumber = 0;
+      _soundLevel = 0;
+      _hasSubmittedCurrentUtterance = false;
     });
 
     try {
@@ -112,11 +174,11 @@ Giới thiệu bản thân: $bio
               .trim();
 
       final jdText =
-          """
+          '''
 Tiêu đề công việc: ${widget.job.title}
 Mô tả công việc: ${widget.job.description}
 Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thiết kế ứng dụng di động."}
-""";
+''';
 
       final result = await ref
           .read(aiInterviewRepositoryProvider)
@@ -132,89 +194,286 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
         throw Exception('Không nhận được mã phiên phỏng vấn từ máy chủ.');
       }
 
+      final question = result.question.trim().isNotEmpty
+          ? result.question.trim()
+          : 'Chào bạn, hãy bắt đầu buổi phỏng vấn.';
+
+      if (!mounted) return;
       setState(() {
         _sessionId = result.sessionId;
-        _isLoading = false;
-        _messages.add(
-          ChatMessage(
-            text: result.question.isNotEmpty
-                ? result.question
-                : "Chào bạn, hãy bắt đầu buổi phỏng vấn.",
-            isMe: false,
-            time: DateTime.now(),
-          ),
-        );
+        _currentQuestion = question;
+        _questionNumber = 1;
       });
-      _scrollToBottom();
+
+      await _speakQuestion(question);
     } catch (e) {
+      if (!mounted) return;
       setState(() {
-        _isLoading = false;
         _errorMessage =
-            "Không thể khởi động buổi phỏng vấn AI. Vui lòng kiểm tra kết nối mạng và thử lại.\nChi tiết: $e";
+            'Không thể khởi động buổi phỏng vấn AI. Vui lòng kiểm tra kết nối mạng và thử lại.\nChi tiết: $e';
       });
     }
   }
 
-  Future<void> _handleSendAnswer() async {
-    final text = _textController.text.trim();
-    if (text.isEmpty || _isSending || _sessionId == null) return;
+  Future<void> _speakQuestion(String question) async {
+    if (question.trim().isEmpty) return;
 
-    _textController.clear();
+    await _configureTextToSpeech();
+    await _speechToText.cancel();
+    await _flutterTts.stop();
+
+    if (!mounted) return;
     setState(() {
-      _isSending = true;
-      _messages.add(ChatMessage(text: text, isMe: true, time: DateTime.now()));
+      _phase = _VoiceInterviewPhase.speaking;
+      _noticeMessage = null;
+      _soundLevel = 0;
     });
-    _scrollToBottom();
+
+    try {
+      await _flutterTts.speak(question);
+      if (!mounted || _finished || _phase != _VoiceInterviewPhase.speaking) {
+        return;
+      }
+      setState(() {
+        _phase = _VoiceInterviewPhase.ready;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _phase = _VoiceInterviewPhase.ready;
+        _noticeMessage =
+            'Không thể phát câu hỏi bằng giọng nói. Hãy bấm nghe lại.';
+      });
+    }
+  }
+
+  Future<void> _replayCurrentQuestion() async {
+    final question = _currentQuestion;
+    if (question == null ||
+        question.trim().isEmpty ||
+        _phase == _VoiceInterviewPhase.processing ||
+        _phase == _VoiceInterviewPhase.listening) {
+      return;
+    }
+    await _speakQuestion(question);
+  }
+
+  Future<bool> _ensureSpeechReady() async {
+    if (_speechReady) return true;
+
+    final available = await _speechToText.initialize(
+      onStatus: _handleSpeechStatus,
+      onError: _handleSpeechError,
+    );
+
+    if (!mounted) return false;
+    if (!available) {
+      setState(() {
+        _errorMessage =
+            'Thiết bị chưa cho phép hoặc không hỗ trợ nhận diện giọng nói. Vui lòng bật quyền microphone và thử lại.';
+      });
+      return false;
+    }
+
+    _speechReady = true;
+    return true;
+  }
+
+  Future<String?> _preferredSpeechLocale() async {
+    if (_speechLocaleId != null) return _speechLocaleId;
+
+    try {
+      final locales = await _speechToText.locales();
+      for (final locale in locales) {
+        final normalized = locale.localeId.toLowerCase().replaceAll('-', '_');
+        if (normalized.startsWith('vi_')) {
+          _speechLocaleId = locale.localeId;
+          return _speechLocaleId;
+        }
+      }
+    } catch (_) {
+      return null;
+    }
+
+    return null;
+  }
+
+  Future<void> _handleMicPressed() async {
+    if (_phase == _VoiceInterviewPhase.listening) {
+      await _finishListeningAndSubmit();
+      return;
+    }
+
+    if (_phase != _VoiceInterviewPhase.ready ||
+        _finished ||
+        _sessionId == null) {
+      return;
+    }
+
+    await _startListening();
+  }
+
+  Future<void> _startListening() async {
+    final ready = await _ensureSpeechReady();
+    if (!ready || !mounted) return;
+
+    await _flutterTts.stop();
+
+    final localeId = await _preferredSpeechLocale();
+    if (!mounted) return;
+
+    setState(() {
+      _phase = _VoiceInterviewPhase.listening;
+      _pendingAnswer = '';
+      _noticeMessage = null;
+      _soundLevel = 0;
+      _hasSubmittedCurrentUtterance = false;
+    });
+
+    try {
+      await _speechToText.listen(
+        onResult: _handleSpeechResult,
+        onSoundLevelChange: (level) {
+          if (!mounted || _phase != _VoiceInterviewPhase.listening) return;
+          setState(() {
+            _soundLevel = level;
+          });
+        },
+        listenOptions: SpeechListenOptions(
+          cancelOnError: true,
+          partialResults: true,
+          listenMode: ListenMode.dictation,
+          pauseFor: const Duration(seconds: 3),
+          listenFor: const Duration(seconds: 45),
+          localeId: localeId,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _phase = _VoiceInterviewPhase.ready;
+        _noticeMessage =
+            'Không thể mở microphone. Vui lòng kiểm tra quyền microphone và thử lại.';
+      });
+    }
+  }
+
+  void _handleSpeechResult(SpeechRecognitionResult result) {
+    if (!mounted || _phase != _VoiceInterviewPhase.listening) return;
+
+    final recognized = result.recognizedWords.trim();
+    if (recognized.isNotEmpty) {
+      _pendingAnswer = recognized;
+    }
+
+    if (result.finalResult && _pendingAnswer.trim().isNotEmpty) {
+      unawaited(_finishListeningAndSubmit());
+    }
+  }
+
+  void _handleSpeechStatus(String status) {
+    if (!mounted || _phase != _VoiceInterviewPhase.listening) return;
+
+    final normalized = status.toLowerCase();
+    if (normalized == 'done' ||
+        normalized == 'notlistening' ||
+        normalized == 'not_listening') {
+      unawaited(_finishListeningAndSubmit());
+    }
+  }
+
+  void _handleSpeechError(SpeechRecognitionError error) {
+    if (!mounted || _phase != _VoiceInterviewPhase.listening) return;
+
+    setState(() {
+      _phase = _VoiceInterviewPhase.ready;
+      _noticeMessage = error.permanent
+          ? 'Nhận diện giọng nói đang bị chặn. Vui lòng bật quyền microphone rồi thử lại.'
+          : 'Mình chưa nghe rõ câu trả lời. Hãy bấm mic và nói lại.';
+    });
+  }
+
+  Future<void> _finishListeningAndSubmit() async {
+    if (_hasSubmittedCurrentUtterance ||
+        _phase != _VoiceInterviewPhase.listening) {
+      return;
+    }
+
+    _hasSubmittedCurrentUtterance = true;
+
+    try {
+      if (_speechToText.isListening) {
+        await _speechToText.stop();
+      }
+    } catch (_) {
+      // The recognizer may already be closed by the platform timeout.
+    }
+
+    final answer = _pendingAnswer.trim();
+    if (answer.isEmpty) {
+      if (!mounted) return;
+      setState(() {
+        _phase = _VoiceInterviewPhase.ready;
+        _noticeMessage =
+            'Mình chưa nghe rõ câu trả lời. Hãy bấm mic và nói lại.';
+      });
+      _hasSubmittedCurrentUtterance = false;
+      return;
+    }
+
+    await _submitSpokenAnswer(answer);
+  }
+
+  Future<void> _submitSpokenAnswer(String answer) async {
+    final sessionId = _sessionId;
+    if (sessionId == null || _finished) return;
+
+    if (!mounted) return;
+    setState(() {
+      _phase = _VoiceInterviewPhase.processing;
+      _noticeMessage = null;
+      _soundLevel = 0;
+    });
 
     try {
       final data = await ref
           .read(aiInterviewRepositoryProvider)
-          .respondInterview(sessionId: _sessionId!, answer: text);
+          .respondInterview(sessionId: sessionId, answer: answer);
       final report = data.report;
 
-      setState(() {
-        _isSending = false;
-        _finished = data.finished;
-
-        if (_finished) {
-          _report = report?.toJson();
-          _messages.add(
-            ChatMessage(
-              text:
-                  "Cảm ơn bạn đã tham gia buổi phỏng vấn. Hệ thống đang tổng hợp kết quả của bạn...",
-              isMe: false,
-              time: DateTime.now(),
-            ),
-          );
-        } else {
-          _messages.add(
-            ChatMessage(
-              text: data.question ?? "",
-              isMe: false,
-              time: DateTime.now(),
-            ),
-          );
-        }
-      });
-      _scrollToBottom();
-
+      if (!mounted) return;
       if (data.finished) {
+        setState(() {
+          _finished = true;
+          _phase = _VoiceInterviewPhase.finished;
+          _report = report?.toJson();
+          _currentQuestion = null;
+        });
+
         _showReportDialog();
         await _submitDeferredApplication(report);
+        return;
       }
-    } catch (e) {
+
+      final nextQuestion = data.question?.trim() ?? '';
+      if (nextQuestion.isEmpty) {
+        throw Exception('Không nhận được câu hỏi tiếp theo từ máy chủ.');
+      }
+
       setState(() {
-        _isSending = false;
-        _messages.add(
-          ChatMessage(
-            text:
-                "⚠️ Lỗi: Không thể gửi câu trả lời đến AI. Vui lòng kiểm tra lại kết nối của bạn và thử lại.",
-            isMe: false,
-            time: DateTime.now(),
-          ),
-        );
+        _currentQuestion = nextQuestion;
+        _questionNumber += 1;
+        _pendingAnswer = '';
       });
-      _scrollToBottom();
+
+      await _speakQuestion(nextQuestion);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _phase = _VoiceInterviewPhase.ready;
+        _noticeMessage =
+            'Không thể gửi câu trả lời đến AI. Vui lòng kiểm tra kết nối và trả lời lại.';
+      });
     }
   }
 
@@ -256,7 +515,7 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
   }
 
   void _showReportDialog() {
-    if (_report == null) return;
+    if (_report == null || !mounted) return;
 
     final score = _report!["total_score"] ?? 0;
     final recommend = _report!["recommend_to_employer"] ?? false;
@@ -303,7 +562,6 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 24),
-                // Điểm số và Đề xuất
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
@@ -345,8 +603,6 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
                 const SizedBox(height: 24),
                 const Divider(),
                 const SizedBox(height: 12),
-
-                // Nhận xét chi tiết
                 const Text(
                   'Đánh giá chung:',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
@@ -354,8 +610,6 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
                 const SizedBox(height: 6),
                 Text(reason, style: const TextStyle(fontSize: 14, height: 1.4)),
                 const SizedBox(height: 16),
-
-                // Điểm mạnh
                 if (strengths.isNotEmpty) ...[
                   const Text(
                     'Điểm mạnh:',
@@ -390,8 +644,6 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
                   ),
                   const SizedBox(height: 16),
                 ],
-
-                // Điểm yếu
                 if (weaknesses.isNotEmpty) ...[
                   const Text(
                     'Điểm cần cải thiện:',
@@ -426,10 +678,8 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
                   ),
                   const SizedBox(height: 20),
                 ],
-
                 const Divider(),
                 const SizedBox(height: 12),
-
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.secondary,
@@ -440,9 +690,9 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
                     ),
                   ),
                   onPressed: () {
-                    Navigator.of(context).pop(); // Đóng bottom sheet
-                    Navigator.of(context).pop(); // Đóng chat screen
-                    Navigator.of(context).pop(); // Đóng screening screen
+                    Navigator.of(context).pop();
+                    Navigator.of(context).pop();
+                    Navigator.of(context).pop();
                   },
                   child: const Text(
                     'Hoàn tất và Quay lại',
@@ -460,17 +710,19 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF3FAFF),
       appBar: AppBar(
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             const Text(
-              'Phỏng vấn AI Interviewer',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              'Phỏng vấn AI bằng giọng nói',
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
             ),
             Text(
               widget.job.title,
               style: const TextStyle(fontSize: 12, color: Colors.white70),
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
@@ -484,28 +736,11 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
             ),
         ],
       ),
-      body: _isLoading
-          ? _buildLoadingState()
-          : _errorMessage != null
+      body: _errorMessage != null
           ? _buildErrorState()
-          : Column(
-              children: [
-                Expanded(
-                  child: ListView.builder(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.all(16.0),
-                    itemCount: _messages.length + (_isSending ? 1 : 0),
-                    itemBuilder: (context, index) {
-                      if (index == _messages.length) {
-                        return _buildTypingIndicator();
-                      }
-                      return _buildMessageBubble(_messages[index]);
-                    },
-                  ),
-                ),
-                _buildInputBar(),
-              ],
-            ),
+          : _phase == _VoiceInterviewPhase.connecting
+          ? _buildLoadingState()
+          : _buildVoiceInterview(),
     );
   }
 
@@ -541,22 +776,24 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
             const Text(
               'Lỗi kết nối phiên phỏng vấn',
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
             ),
             const SizedBox(height: 12),
             Text(
-              _errorMessage ?? "",
+              _errorMessage ?? '',
               textAlign: TextAlign.center,
               style: const TextStyle(color: Colors.red),
             ),
             const SizedBox(height: 24),
-            ElevatedButton(
+            ElevatedButton.icon(
               onPressed: _startInterviewSession,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.secondary,
-              ),
-              child: const Text(
+              icon: const Icon(Icons.refresh, color: Colors.white),
+              label: const Text(
                 'Kết nối lại',
                 style: TextStyle(color: Colors.white),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.secondary,
               ),
             ),
           ],
@@ -565,135 +802,301 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
     );
   }
 
-  Widget _buildMessageBubble(ChatMessage message) {
-    final alignment = message.isMe
-        ? CrossAxisAlignment.end
-        : CrossAxisAlignment.start;
-    final bubbleColor = message.isMe ? AppColors.secondary : Colors.grey[200];
-    final textColor = message.isMe ? Colors.white : Colors.black87;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Column(
-        crossAxisAlignment: alignment,
-        children: [
-          Container(
-            constraints: BoxConstraints(
-              maxWidth: MediaQuery.of(context).size.width * 0.75,
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: bubbleColor,
-              borderRadius: BorderRadius.only(
-                topLeft: const Radius.circular(16),
-                topRight: const Radius.circular(16),
-                bottomLeft: Radius.circular(message.isMe ? 16 : 0),
-                bottomRight: Radius.circular(message.isMe ? 0 : 16),
-              ),
-            ),
-            child: Text(
-              message.text,
-              style: TextStyle(color: textColor, fontSize: 15, height: 1.3),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            _formatTime(message.time),
-            style: const TextStyle(color: Colors.grey, fontSize: 10),
-          ),
-        ],
+  Widget _buildVoiceInterview() {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
+        child: Column(
+          children: [
+            _buildQuestionPill(),
+            const Spacer(),
+            _buildVoiceCenterpiece(),
+            const Spacer(),
+            _buildControls(),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildTypingIndicator() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: Colors.grey[200],
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(16),
-                topRight: Radius.circular(16),
-                bottomRight: Radius.circular(16),
-              ),
-            ),
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SizedBox(
-                  width: 14,
-                  height: 14,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.grey),
-                  ),
-                ),
-                SizedBox(width: 10),
-                Text(
-                  'AI đang suy nghĩ...',
-                  style: TextStyle(
-                    color: Colors.grey,
-                    fontSize: 13,
-                    fontStyle: FontStyle.italic,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  Widget _buildQuestionPill() {
+    final label = _finished
+        ? 'Đã hoàn tất'
+        : _questionNumber > 0
+        ? 'Câu hỏi $_questionNumber'
+        : 'Chuẩn bị phỏng vấn';
 
-  Widget _buildInputBar() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border(top: BorderSide(color: Colors.grey[200]!)),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: AppColors.secondary.withValues(alpha: 0.18)),
       ),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.grey[100],
-                borderRadius: BorderRadius.circular(24),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: TextField(
-                controller: _textController,
-                enabled: !_finished && !_isSending,
-                decoration: const InputDecoration(
-                  hintText: 'Nhập câu trả lời của bạn...',
-                  border: InputBorder.none,
-                ),
-                style: const TextStyle(fontSize: 15),
-                onSubmitted: (_) => _handleSendAnswer(),
-              ),
-            ),
+          Icon(
+            _finished ? Icons.check_circle_outline : Icons.graphic_eq,
+            size: 18,
+            color: _finished ? Colors.green : AppColors.secondary,
           ),
           const SizedBox(width: 8),
-          IconButton(
-            icon: Icon(
-              Icons.send,
-              color: _finished || _isSending
-                  ? Colors.grey
-                  : AppColors.secondary,
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.grey[800],
+              fontWeight: FontWeight.w700,
             ),
-            onPressed: _finished || _isSending ? null : _handleSendAnswer,
           ),
         ],
       ),
     );
   }
 
-  String _formatTime(DateTime time) {
-    final minuteStr = time.minute.toString().padLeft(2, '0');
-    return '${time.hour}:$minuteStr';
+  Widget _buildVoiceCenterpiece() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _buildVoiceOrb(),
+        const SizedBox(height: 28),
+        Text(
+          _headlineText,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: Color(0xFF111827),
+            fontSize: 24,
+            fontWeight: FontWeight.w800,
+            height: 1.15,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          _supportingText,
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Colors.grey[700], fontSize: 15, height: 1.45),
+        ),
+        const SizedBox(height: 24),
+        _buildVoiceMeter(),
+        if (_noticeMessage != null) ...[
+          const SizedBox(height: 24),
+          _buildNotice(),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildVoiceOrb() {
+    final activeColor = switch (_phase) {
+      _VoiceInterviewPhase.listening => Colors.red,
+      _VoiceInterviewPhase.processing => const Color(0xFF6366F1),
+      _VoiceInterviewPhase.finished => Colors.green,
+      _ => AppColors.secondary,
+    };
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 220),
+      width: _phase == _VoiceInterviewPhase.listening ? 156 : 140,
+      height: _phase == _VoiceInterviewPhase.listening ? 156 : 140,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: activeColor.withValues(alpha: 0.12),
+        border: Border.all(
+          color: activeColor.withValues(alpha: 0.34),
+          width: 2,
+        ),
+      ),
+      child: Center(
+        child: Container(
+          width: 96,
+          height: 96,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: activeColor,
+            boxShadow: [
+              BoxShadow(
+                color: activeColor.withValues(alpha: 0.28),
+                blurRadius: 24,
+                offset: const Offset(0, 12),
+              ),
+            ],
+          ),
+          child: Icon(_orbIcon, color: Colors.white, size: 42),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVoiceMeter() {
+    final listeningStrength = ((_soundLevel + 2) / 12).clamp(0.0, 1.0);
+    final isActive =
+        _phase == _VoiceInterviewPhase.listening ||
+        _phase == _VoiceInterviewPhase.speaking ||
+        _phase == _VoiceInterviewPhase.processing;
+
+    return SizedBox(
+      height: 42,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: List.generate(9, (index) {
+          final distance = (index - 4).abs();
+          final base = 10 + (4 - distance).clamp(0, 4) * 4;
+          final activeBoost = _phase == _VoiceInterviewPhase.listening
+              ? listeningStrength * 26
+              : isActive
+              ? (index.isEven ? 10 : 18)
+              : 0;
+
+          return AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOut,
+            width: 6,
+            height: (base + activeBoost).toDouble(),
+            margin: const EdgeInsets.symmetric(horizontal: 4),
+            decoration: BoxDecoration(
+              color: isActive
+                  ? AppColors.secondary
+                  : AppColors.secondary.withValues(alpha: 0.26),
+              borderRadius: BorderRadius.circular(999),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
+  Widget _buildNotice() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF7ED),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: const Color(0xFFF59E0B).withValues(alpha: 0.3),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.info_outline, color: Color(0xFFF59E0B), size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              _noticeMessage ?? '',
+              style: const TextStyle(
+                color: Color(0xFF92400E),
+                fontSize: 13,
+                height: 1.35,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildControls() {
+    final canReplay =
+        _currentQuestion != null &&
+        !_finished &&
+        _phase != _VoiceInterviewPhase.listening &&
+        _phase != _VoiceInterviewPhase.processing;
+    final isListening = _phase == _VoiceInterviewPhase.listening;
+    final canUseMic =
+        isListening || (_phase == _VoiceInterviewPhase.ready && !_finished);
+
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Tooltip(
+              message: 'Nghe lại câu hỏi',
+              child: IconButton.filledTonal(
+                onPressed: canReplay ? _replayCurrentQuestion : null,
+                icon: const Icon(Icons.replay_rounded),
+                color: AppColors.secondary,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 18),
+        Semantics(
+          button: true,
+          label: isListening ? 'Dừng và gửi câu trả lời' : 'Bắt đầu trả lời',
+          child: SizedBox(
+            width: 96,
+            height: 96,
+            child: ElevatedButton(
+              onPressed: canUseMic ? _handleMicPressed : null,
+              style: ElevatedButton.styleFrom(
+                shape: const CircleBorder(),
+                backgroundColor: isListening ? Colors.red : AppColors.secondary,
+                disabledBackgroundColor: Colors.grey[300],
+                foregroundColor: Colors.white,
+                padding: EdgeInsets.zero,
+                elevation: canUseMic ? 8 : 0,
+              ),
+              child: Icon(
+                isListening ? Icons.stop_rounded : Icons.mic_rounded,
+                size: 42,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          isListening
+              ? 'Dừng và gửi'
+              : _phase == _VoiceInterviewPhase.ready
+              ? 'Bấm để trả lời'
+              : 'Đợi AI hoàn tất',
+          style: TextStyle(
+            color: canUseMic ? const Color(0xFF111827) : Colors.grey[600],
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    );
+  }
+
+  String get _headlineText {
+    return switch (_phase) {
+      _VoiceInterviewPhase.connecting => 'Đang kết nối AI',
+      _VoiceInterviewPhase.speaking => 'AI đang đặt câu hỏi',
+      _VoiceInterviewPhase.ready => 'Đến lượt bạn trả lời',
+      _VoiceInterviewPhase.listening => 'Đang nghe bạn nói',
+      _VoiceInterviewPhase.processing => 'AI đang xử lý câu trả lời',
+      _VoiceInterviewPhase.finished => 'Phỏng vấn hoàn tất',
+    };
+  }
+
+  String get _supportingText {
+    return switch (_phase) {
+      _VoiceInterviewPhase.connecting =>
+        'Hệ thống đang chuẩn bị phiên phỏng vấn cho vị trí này.',
+      _VoiceInterviewPhase.speaking =>
+        'Hãy nghe hết câu hỏi, sau đó bấm microphone để trả lời bằng giọng nói.',
+      _VoiceInterviewPhase.ready =>
+        'Bấm microphone và trả lời tự nhiên trong một lượt. Nội dung được xử lý ẩn để gửi tới AI.',
+      _VoiceInterviewPhase.listening =>
+        'Nói rõ ràng và bấm lại nút khi bạn đã trả lời xong.',
+      _VoiceInterviewPhase.processing =>
+        'Câu trả lời đang được gửi đến phiên phỏng vấn. Vui lòng chờ trong giây lát.',
+      _VoiceInterviewPhase.finished =>
+        'Hệ thống đã tổng hợp kết quả phỏng vấn của bạn.',
+    };
+  }
+
+  IconData get _orbIcon {
+    return switch (_phase) {
+      _VoiceInterviewPhase.speaking => Icons.volume_up_rounded,
+      _VoiceInterviewPhase.ready => Icons.record_voice_over_rounded,
+      _VoiceInterviewPhase.listening => Icons.mic_rounded,
+      _VoiceInterviewPhase.processing => Icons.auto_awesome_rounded,
+      _VoiceInterviewPhase.finished => Icons.check_rounded,
+      _VoiceInterviewPhase.connecting => Icons.graphic_eq_rounded,
+    };
   }
 }

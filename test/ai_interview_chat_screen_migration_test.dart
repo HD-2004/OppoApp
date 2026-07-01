@@ -34,4 +34,15 @@ void main() {
     expect(deferredSource, contains('updateApplicationStatus'));
     expect(deferredSource, isNot(contains('submitApplication(')));
   });
+
+  test('interview screen is voice-only instead of typed chat', () {
+    expect(source, contains("package:speech_to_text/speech_to_text.dart"));
+    expect(source, contains("package:flutter_tts/flutter_tts.dart"));
+
+    expect(source, isNot(contains('TextEditingController')));
+    expect(source, isNot(contains('TextField')));
+    expect(source, isNot(contains('Nhập câu trả lời')));
+    expect(source, isNot(contains('_buildInputBar')));
+    expect(source, isNot(contains('_buildMessageBubble')));
+  });
 }

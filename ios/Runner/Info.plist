@@ -70,6 +70,10 @@
 	<string>Ứng dụng cần quyền sử dụng camera để chụp ảnh eKYC xác thực khuôn mặt.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Ứng dụng cần quyền truy cập thư viện ảnh để tải ảnh CCCD/CMND xác thực eKYC.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Ứng dụng cần quyền sử dụng microphone để ghi nhận câu trả lời trong phỏng vấn AI bằng giọng nói.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Ứng dụng cần nhận diện giọng nói để chuyển câu trả lời phỏng vấn thành nội dung gửi đến AI.</string>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
