@@ -1,12 +1,10 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:http/http.dart' as http;
-import 'package:amplify_flutter/amplify_flutter.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../auth/application/auth_controller.dart';
-import '../domain/application_repository.dart';
+import '../application/ai_interview_providers.dart';
 import '../data/aws_application_repository.dart';
+import '../domain/ai_interview_models.dart';
 import '../domain/job_post.dart';
 
 class ChatMessage {
@@ -120,42 +118,39 @@ Mô tả công việc: ${widget.job.description}
 Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thiết kế ứng dụng di động."}
 """;
 
-      final response = await http
-          .post(
-            Uri.parse("http://localhost:8000/api/v1/interview/start"),
-            headers: {"Content-Type": "application/json"},
-            body: jsonEncode({
-              "job_title": widget.job.title,
-              "job_description": jdText,
-              "cv_text": cvText,
-              "cv_url": widget.cvUrl,
-              "custom_questions": widget.job.customQuestions,
-            }),
-          )
-          .timeout(const Duration(seconds: 15));
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(utf8.decode(response.bodyBytes));
-        setState(() {
-          _sessionId = data["session_id"];
-          _isLoading = false;
-          _messages.add(
-            ChatMessage(
-              text: data["question"] ?? "Chào bạn, hãy bắt đầu buổi phỏng vấn.",
-              isMe: false,
-              time: DateTime.now(),
-            ),
+      final result = await ref
+          .read(aiInterviewRepositoryProvider)
+          .startInterview(
+            jobTitle: widget.job.title,
+            jobDescription: jdText,
+            cvText: cvText,
+            cvUrl: widget.cvUrl,
+            customQuestions: widget.job.customQuestions,
           );
-        });
-        _scrollToBottom();
-      } else {
-        throw Exception("Server trả về mã lỗi: ${response.statusCode}");
+
+      if (result.sessionId.isEmpty) {
+        throw Exception('Không nhận được mã phiên phỏng vấn từ máy chủ.');
       }
+
+      setState(() {
+        _sessionId = result.sessionId;
+        _isLoading = false;
+        _messages.add(
+          ChatMessage(
+            text: result.question.isNotEmpty
+                ? result.question
+                : "Chào bạn, hãy bắt đầu buổi phỏng vấn.",
+            isMe: false,
+            time: DateTime.now(),
+          ),
+        );
+      });
+      _scrollToBottom();
     } catch (e) {
       setState(() {
         _isLoading = false;
         _errorMessage =
-            "Không thể khởi động buổi phỏng vấn AI. Vui lòng kiểm tra kết nối mạng hoặc server Backend.\nChi tiết: $e";
+            "Không thể khởi động buổi phỏng vấn AI. Vui lòng kiểm tra kết nối mạng và thử lại.\nChi tiết: $e";
       });
     }
   }
@@ -172,45 +167,40 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
     _scrollToBottom();
 
     try {
-      final response = await http
-          .post(
-            Uri.parse("http://localhost:8000/api/v1/interview/respond"),
-            headers: {"Content-Type": "application/json"},
-            body: jsonEncode({"session_id": _sessionId, "answer": text}),
-          )
-          .timeout(const Duration(seconds: 20));
+      final data = await ref
+          .read(aiInterviewRepositoryProvider)
+          .respondInterview(sessionId: _sessionId!, answer: text);
+      final report = data.report;
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(utf8.decode(response.bodyBytes));
-        setState(() {
-          _isSending = false;
-          _finished = data["finished"] ?? false;
+      setState(() {
+        _isSending = false;
+        _finished = data.finished;
 
-          if (_finished) {
-            _report = data["report"];
-            _messages.add(
-              ChatMessage(
-                text:
-                    "Cảm ơn bạn đã tham gia buổi phỏng vấn. Hệ thống đang tổng hợp kết quả của bạn...",
-                isMe: false,
-                time: DateTime.now(),
-              ),
-            );
-            _showReportDialog();
-            _submitDeferredApplication();
-          } else {
-            _messages.add(
-              ChatMessage(
-                text: data["question"] ?? "",
-                isMe: false,
-                time: DateTime.now(),
-              ),
-            );
-          }
-        });
-        _scrollToBottom();
-      } else {
-        throw Exception("Server trả về mã lỗi: ${response.statusCode}");
+        if (_finished) {
+          _report = report?.toJson();
+          _messages.add(
+            ChatMessage(
+              text:
+                  "Cảm ơn bạn đã tham gia buổi phỏng vấn. Hệ thống đang tổng hợp kết quả của bạn...",
+              isMe: false,
+              time: DateTime.now(),
+            ),
+          );
+        } else {
+          _messages.add(
+            ChatMessage(
+              text: data.question ?? "",
+              isMe: false,
+              time: DateTime.now(),
+            ),
+          );
+        }
+      });
+      _scrollToBottom();
+
+      if (data.finished) {
+        _showReportDialog();
+        await _submitDeferredApplication(report);
       }
     } catch (e) {
       setState(() {
@@ -228,55 +218,40 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
     }
   }
 
-  Future<void> _submitDeferredApplication() async {
-    if (_report == null) return;
-    final score = _report!["total_score"] ?? 0;
-    final recommend = _report!["recommend_to_employer"] ?? false;
-    final isPassed = recommend || (score >= 70);
+  Future<void> _submitDeferredApplication(InterviewReport? report) async {
+    if (report == null || !report.isPassed) {
+      debugPrint('AI interview did not pass; skipping application update');
+      return;
+    }
 
-    if (!isPassed) {
-      safePrint(
-        "❌ [Deferred] Interview failed, skipping application submission",
+    final applicationId = widget.applicationId;
+    if (applicationId == null || applicationId.trim().isEmpty) {
+      debugPrint(
+        'AI interview finished without applicationId; skipping update',
       );
       return;
     }
 
     try {
-      final user = ref.read(authControllerProvider).asData?.value.user;
-      if (user == null) {
-        throw Exception("Vui lòng đăng nhập để hoàn tất ứng tuyển.");
-      }
-
       final repository = ref.read(applicationRepositoryProvider);
 
       final extraFields = {
         'aiScreeningScore': widget.aiScreeningScore,
         'aiScreeningResult': widget.aiScreeningResult,
         'aiScreeningReason': widget.aiScreeningReason,
-        'aiInterviewScore': score,
-        'aiInterviewReport': _report ?? {},
+        'aiInterviewScore': report.totalScore,
+        'aiInterviewReport': report.toJson(),
       };
 
-      await repository.submitApplication(
-        jobId: widget.job.idJob,
-        cvUrl: widget.cvUrl,
-        cvFilename: widget.cvFileName,
-        notification: ApplicationNotificationDetails(
-          employerId: widget.job.employerId,
-          candidateId: user.userId,
-          candidateName: user.fullName,
-          jobTitle: widget.job.title,
-          companyName: widget.job.companyName ?? widget.job.employerName,
-          isQuickJob: widget.job.isQuickJob,
-        ),
+      await repository.updateApplicationStatus(
+        applicationId: applicationId,
+        status: 'approved',
         extraFields: extraFields,
       );
 
-      safePrint(
-        "✅ [Deferred] Application submitted successfully after AI Interview",
-      );
+      debugPrint('AI interview application updated successfully');
     } catch (e) {
-      safePrint("❌ [Deferred] Failed to submit application: $e");
+      debugPrint('Failed to update application after AI interview: $e');
     }
   }
 
@@ -285,6 +260,7 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
 
     final score = _report!["total_score"] ?? 0;
     final recommend = _report!["recommend_to_employer"] ?? false;
+    final isPassed = recommend || score >= 60;
     final strengths = List<String>.from(_report!["strengths"] ?? []);
     final weaknesses = List<String>.from(_report!["weaknesses"] ?? []);
     final reason = _report!["reason"] ?? "";
@@ -338,7 +314,7 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
                           style: TextStyle(
                             fontSize: 48,
                             fontWeight: FontWeight.bold,
-                            color: score >= 70 ? Colors.green : Colors.red,
+                            color: isPassed ? Colors.green : Colors.red,
                           ),
                         ),
                         const Text(
@@ -353,13 +329,13 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
                         Icon(
                           recommend ? Icons.check_circle : Icons.cancel,
                           size: 48,
-                          color: recommend ? Colors.green : Colors.red,
+                          color: isPassed ? Colors.green : Colors.red,
                         ),
                         Text(
-                          recommend ? 'Gửi CV thành công' : 'Chưa phù hợp',
+                          isPassed ? 'Gửi CV thành công' : 'Chưa phù hợp',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            color: recommend ? Colors.green : Colors.red,
+                            color: isPassed ? Colors.green : Colors.red,
                           ),
                         ),
                       ],
