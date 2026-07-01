@@ -37,6 +37,7 @@ class _AIScreeningScreenState extends ConsumerState<AIScreeningScreen>
   List<String> _weaknesses = [];
   String _reason = "";
   String? _applicationId;
+  String? _applicationNotice;
 
   late AnimationController _progressController;
   late Animation<double> _progressAnimation;
@@ -64,8 +65,10 @@ class _AIScreeningScreenState extends ConsumerState<AIScreeningScreen>
     setState(() {
       _isLoading = true;
       _errorMessage = null;
+      _applicationNotice = null;
     });
 
+    late CvScreeningResult screeningResult;
     try {
       final user = ref.read(authControllerProvider).asData?.value.user;
       final fullName = user?.fullName.isNotEmpty == true
@@ -98,7 +101,7 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
 Nhiệm vụ: ${widget.job.responsibilities ?? "Phát triển và bảo trì các tính năng ứng dụng."}
 """;
 
-      final screeningResult = await ref
+      screeningResult = await ref
           .read(aiInterviewRepositoryProvider)
           .screenCv(
             jobDescription: jdText,
@@ -123,16 +126,26 @@ Nhiệm vụ: ${widget.job.responsibilities ?? "Phát triển và bảo trì cá
             );
         _progressController.forward();
       });
-
-      if (screeningResult.canContinueToInterview) {
-        await _submitRoundOneApplication(screeningResult);
-      }
     } catch (e) {
       setState(() {
         _isLoading = false;
         _errorMessage =
             'Không thể kết nối đến dịch vụ phỏng vấn AI. Vui lòng kiểm tra kết nối mạng và thử lại.\nChi tiết: $e';
       });
+      return;
+    }
+
+    if (screeningResult.canContinueToInterview) {
+      try {
+        await _submitRoundOneApplication(screeningResult);
+      } catch (e) {
+        if (!mounted) return;
+        setState(() {
+          _applicationNotice =
+              'AI đã phân tích xong, nhưng chưa thể tạo hồ sơ ứng tuyển. '
+              'Vui lòng thử lại sau.\nChi tiết: ${e.toString().replaceAll('Exception: ', '')}';
+        });
+      }
     }
   }
 
@@ -144,32 +157,47 @@ Nhiệm vụ: ${widget.job.responsibilities ?? "Phát triển và bảo trì cá
       throw Exception('Vui lòng đăng nhập để ứng tuyển.');
     }
 
-    final response = await ref
-        .read(applicationRepositoryProvider)
-        .submitApplication(
-          jobId: widget.job.idJob,
-          cvUrl: widget.cvUrl,
-          cvFilename: widget.cvFileName,
-          notification: ApplicationNotificationDetails(
-            employerId: widget.job.employerId,
-            candidateId: user.userId,
-            candidateName: user.fullName,
-            jobTitle: widget.job.title,
-            companyName: widget.job.companyName ?? widget.job.employerName,
-            isQuickJob: widget.job.isQuickJob,
-          ),
-          extraFields: result.toApplicationExtraFields(),
-        );
+    final repository = ref.read(applicationRepositoryProvider);
+    try {
+      final response = await repository.submitApplication(
+        jobId: widget.job.idJob,
+        cvUrl: widget.cvUrl,
+        cvFilename: widget.cvFileName,
+        notification: ApplicationNotificationDetails(
+          employerId: widget.job.employerId,
+          candidateId: user.userId,
+          candidateName: user.fullName,
+          jobTitle: widget.job.title,
+          companyName: widget.job.companyName ?? widget.job.employerName,
+          isQuickJob: widget.job.isQuickJob,
+        ),
+        extraFields: result.toApplicationExtraFields(),
+      );
 
-    final application = response['application'];
-    final id =
-        response['applicationId'] ??
-        (application is Map ? application['applicationId'] : null);
-    if (id == null) {
-      throw Exception('Không nhận được mã hồ sơ ứng tuyển từ máy chủ.');
-    }
-    if (mounted) {
-      setState(() => _applicationId = id.toString());
+      final id = applicationIdFromSubmitResponse(response);
+      if (id == null) {
+        throw Exception('Không nhận được mã hồ sơ ứng tuyển từ máy chủ.');
+      }
+      if (mounted) {
+        setState(() => _applicationId = id);
+      }
+    } catch (e) {
+      if (!isAlreadyAppliedApplicationError(e)) rethrow;
+
+      final applications = await repository.getCandidateApplications(
+        user.userId,
+      );
+      final existingId =
+          existingApplicationIdForJob(applications, widget.job.idJob) ??
+          existingApplicationIdForJob(applications, widget.job.id);
+
+      if (!mounted) return;
+      setState(() {
+        _applicationId = existingId;
+        _applicationNotice = existingId == null
+            ? 'Bạn đã ứng tuyển công việc này rồi. App chưa lấy được mã hồ sơ hiện có nên chưa thể mở vòng phỏng vấn tiếp theo.'
+            : 'Bạn đã ứng tuyển công việc này rồi. App sẽ dùng hồ sơ hiện có để tiếp tục vòng phỏng vấn AI.';
+      });
     }
   }
 
@@ -473,6 +501,53 @@ Nhiệm vụ: ${widget.job.responsibilities ?? "Phát triển và bảo trì cá
               ),
             ),
             const SizedBox(height: 24),
+          ],
+
+          if (_applicationNotice != null) ...[
+            Card(
+              color: _applicationId == null
+                  ? Colors.orange[50]
+                  : Colors.blue[50],
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: BorderSide(
+                  color: _applicationId == null
+                      ? Colors.orange
+                      : AppColors.secondary,
+                  width: 1,
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      _applicationId == null
+                          ? Icons.info_outline
+                          : Icons.check_circle_outline,
+                      color: _applicationId == null
+                          ? Colors.orange[800]
+                          : AppColors.secondary,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        _applicationNotice!,
+                        style: TextStyle(
+                          color: _applicationId == null
+                              ? Colors.orange[900]
+                              : Colors.blue[900],
+                          fontSize: 13,
+                          height: 1.35,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
           ],
 
           // ── Action Button ──────────────────────────────────────────────
