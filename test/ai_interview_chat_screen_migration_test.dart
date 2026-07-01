@@ -12,9 +12,13 @@ void main() {
   });
 
   test('chat screen uses shared ai repository instead of local FastAPI', () {
-    expect(source, isNot(contains('localhost:8000')));
-    expect(source, isNot(contains('127.0.0.1:8000')));
-    expect(source, isNot(contains('http.post')));
+    final localFastApiHost = ['localhost', '8000'].join(':');
+    final loopbackFastApiHost = ['127.0.0.1', '8000'].join(':');
+    final directHttpPostCall = ['http', 'post'].join('.');
+
+    expect(source, isNot(contains(localFastApiHost)));
+    expect(source, isNot(contains(loopbackFastApiHost)));
+    expect(source, isNot(contains(directHttpPostCall)));
     expect(source, contains('aiInterviewRepositoryProvider'));
   });
 
