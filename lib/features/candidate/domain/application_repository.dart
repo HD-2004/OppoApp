@@ -32,6 +32,11 @@ abstract class ApplicationRepository {
     required ApplicationNotificationDetails notification,
     Map<String, dynamic>? extraFields,
   });
+  Future<void> updateApplicationStatus({
+    required String applicationId,
+    required String status,
+    Map<String, dynamic> extraFields = const {},
+  });
   Future<List<Map<String, dynamic>>> getCandidateApplications(String userId);
   Future<void> confirmApplicationCompletion({
     required String applicationId,

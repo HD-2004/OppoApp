@@ -106,6 +106,13 @@ class _FakeApplicationRepository implements ApplicationRepository {
   }) async {}
 
   @override
+  Future<void> updateApplicationStatus({
+    required String applicationId,
+    required String status,
+    Map<String, dynamic> extraFields = const {},
+  }) async {}
+
+  @override
   Future<void> submitCandidateRating({
     required String applicationId,
     required Map<String, dynamic> candidateRating,

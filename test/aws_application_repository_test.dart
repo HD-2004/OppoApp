@@ -72,4 +72,26 @@ void main() {
       'isQuickJob': false,
     });
   });
+
+  test('builds application status payload with AI interview fields', () {
+    final report = {
+      'total_score': 72,
+      'strengths': ['Thái độ tốt'],
+      'weaknesses': ['Cần quen ca cao điểm'],
+      'recommend_to_employer': true,
+      'reason': 'Ứng viên phù hợp.',
+    };
+
+    expect(
+      buildApplicationStatusPayload(
+        status: 'approved',
+        extraFields: {'aiInterviewScore': 72, 'aiInterviewReport': report},
+      ),
+      {
+        'status': 'approved',
+        'aiInterviewScore': 72,
+        'aiInterviewReport': report,
+      },
+    );
+  });
 }

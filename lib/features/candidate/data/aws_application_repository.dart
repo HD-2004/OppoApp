@@ -42,6 +42,13 @@ Map<String, dynamic> buildCandidateRatingPayload(
   return {'status': 'completed', 'candidateRating': candidateRating};
 }
 
+Map<String, dynamic> buildApplicationStatusPayload({
+  required String status,
+  Map<String, dynamic> extraFields = const {},
+}) {
+  return {'status': status, ...extraFields};
+}
+
 class AwsApplicationRepository implements ApplicationRepository {
   static const _cvBaseUrl =
       'https://v56v542h8f.execute-api.ap-southeast-1.amazonaws.com/prod';
@@ -219,6 +226,38 @@ class AwsApplicationRepository implements ApplicationRepository {
       jobId: jobId,
       details: notification,
     );
+  }
+
+  @override
+  Future<void> updateApplicationStatus({
+    required String applicationId,
+    required String status,
+    Map<String, dynamic> extraFields = const {},
+  }) async {
+    final token = await _getAuthToken();
+    if (token == null) {
+      throw Exception('Vui lòng đăng nhập để cập nhật hồ sơ ứng tuyển.');
+    }
+
+    final response = await http.put(
+      Uri.parse(
+        '$_applicationsBaseUrl/applications/'
+        '${Uri.encodeComponent(applicationId)}/status',
+      ),
+      headers: _buildHeaders(token),
+      body: jsonEncode(
+        buildApplicationStatusPayload(status: status, extraFields: extraFields),
+      ),
+    );
+
+    if (response.statusCode != 200) {
+      final body = jsonDecode(response.body);
+      final errorMsg =
+          body['error'] ??
+          body['message'] ??
+          'Không thể cập nhật hồ sơ ứng tuyển';
+      throw Exception(errorMsg);
+    }
   }
 
   Future<void> _sendEmployerApplicationNotification({
