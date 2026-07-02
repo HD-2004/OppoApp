@@ -213,15 +213,24 @@ final jobsControllerProvider = AsyncNotifierProvider<JobsController, JobsState>(
 class JobsController extends AsyncNotifier<JobsState> {
   @override
   Future<JobsState> build() async {
-    return _fetch();
+    final standard = await ref.watch(activeJobsProvider.future);
+    final urgent = await ref.watch(activeQuickJobsProvider.future);
+    return _buildFetchedState(standard, urgent);
   }
 
-  Future<JobsState> _fetch() async {
+  Future<JobsState> _fetch({JobsState? current}) async {
     final standard = await ref.read(activeJobsProvider.future);
     final urgent = await ref.read(activeQuickJobsProvider.future);
-    // Preserve current filter & tab when refreshing
-    final current = state.asData?.value ?? const JobsState();
-    return current.copyWith(
+    return _buildFetchedState(standard, urgent, current: current);
+  }
+
+  JobsState _buildFetchedState(
+    List<JobPost> standard,
+    List<JobPost> urgent, {
+    JobsState? current,
+  }) {
+    final previous = current ?? state.asData?.value ?? const JobsState();
+    return previous.copyWith(
       standardJobs: standard,
       urgentJobs: urgent,
       isLoading: false,
@@ -230,8 +239,11 @@ class JobsController extends AsyncNotifier<JobsState> {
   }
 
   Future<void> refresh() async {
+    final current = state.asData?.value ?? const JobsState();
+    ref.invalidate(activeJobsProvider);
+    ref.invalidate(activeQuickJobsProvider);
     state = const AsyncLoading();
-    state = await AsyncValue.guard(_fetch);
+    state = await AsyncValue.guard(() => _fetch(current: current));
   }
 
   void setTab(JobTab tab) {

@@ -10,6 +10,8 @@ import 'package:oppo_temp_jobs/features/auth/domain/auth_user_profile.dart';
 import 'package:oppo_temp_jobs/features/candidate/application/jobs_providers.dart';
 import 'package:oppo_temp_jobs/features/candidate/domain/job_post.dart';
 import 'package:oppo_temp_jobs/features/candidate/presentation/user_jobs_screen.dart';
+import 'package:oppo_temp_jobs/features/recommendations/application/job_recommendation_providers.dart';
+import 'package:oppo_temp_jobs/features/recommendations/domain/job_recommendation.dart';
 import 'package:oppo_temp_jobs/shared/domain/app_role.dart';
 
 void main() {
@@ -31,6 +33,11 @@ void main() {
           ),
           activeJobsProvider.overrideWith((_) async => [_job]),
           activeQuickJobsProvider.overrideWith((_) async => <JobPost>[]),
+          personalizedJobRecommendationsProvider.overrideWith(
+            (_) async => [
+              JobRecommendation(job: _job, matchScore: 80, reasons: const []),
+            ],
+          ),
         ],
         child: const MaterialApp(
           localizationsDelegates: [
@@ -59,6 +66,16 @@ void main() {
           ),
           activeJobsProvider.overrideWith((_) async => [_job, _secondJob]),
           activeQuickJobsProvider.overrideWith((_) async => [_quickJob]),
+          personalizedJobRecommendationsProvider.overrideWith(
+            (_) async => [
+              JobRecommendation(job: _job, matchScore: 80, reasons: const []),
+              JobRecommendation(
+                job: _secondJob,
+                matchScore: 70,
+                reasons: const [],
+              ),
+            ],
+          ),
         ],
         child: const MaterialApp(
           localizationsDelegates: [
@@ -81,6 +98,7 @@ void main() {
     await tester.tap(find.text('Loại công việc'));
     await tester.pumpAndSettle();
 
+    expect(find.text('Phù hợp với bạn'), findsOneWidget);
     expect(find.text('Công việc tiêu chuẩn'), findsOneWidget);
     expect(find.text('Công việc Tuyển gấp'), findsOneWidget);
 
@@ -88,6 +106,131 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Tìm thấy 1 công việc phù hợp'), findsOneWidget);
+  });
+
+  testWidgets('jobs screen defaults to web recommendation order', (
+    tester,
+  ) async {
+    final olderQuickJob = _quickJobAt(
+      id: 'quick-recommended',
+      title: 'Phụ ca gấp',
+      latitude: 10.0,
+      postedAt: DateTime(2025),
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authControllerProvider.overrideWithBuild(
+            (_, _) => AuthState.authenticated(_activeCandidateUser),
+          ),
+          activeJobsProvider.overrideWith((_) async => [_job, _secondJob]),
+          activeQuickJobsProvider.overrideWith((_) async => [olderQuickJob]),
+          personalizedJobRecommendationsProvider.overrideWith(
+            (_) async => [
+              JobRecommendation(
+                job: olderQuickJob,
+                matchScore: 95,
+                reasons: const ['Gần vị trí của bạn'],
+              ),
+              JobRecommendation(
+                job: _secondJob,
+                matchScore: 80,
+                reasons: const ['Khớp kỹ năng'],
+              ),
+            ],
+          ),
+        ],
+        child: const MaterialApp(
+          localizationsDelegates: [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: UserJobsScreen(showBackButton: false),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Tìm thấy 2 công việc phù hợp'), findsOneWidget);
+    final quickTop = tester.getTopLeft(find.text('Phụ ca gấp')).dy;
+    final standardTop = tester.getTopLeft(find.text('Thu ngân')).dy;
+    expect(quickTop, lessThan(standardTop));
+  });
+
+  testWidgets('urgent jobs include 10km radius and prioritize closest first', (
+    tester,
+  ) async {
+    final nearJob = _quickJobAt(
+      id: 'quick-near',
+      title: 'Ca gần 1km',
+      latitude: 10.009,
+      postedAt: DateTime(2026, 1, 1),
+    );
+    final midJob = _quickJobAt(
+      id: 'quick-mid',
+      title: 'Ca gần 2km',
+      latitude: 10.018,
+      postedAt: DateTime(2026, 1, 2),
+    );
+    final farJob = _quickJobAt(
+      id: 'quick-far',
+      title: 'Ca gần 5km',
+      latitude: 10.045,
+      postedAt: DateTime(2026, 1, 3),
+    );
+    final outsideJob = _quickJobAt(
+      id: 'quick-outside',
+      title: 'Ca ngoài 10km',
+      latitude: 10.100,
+      postedAt: DateTime(2026, 1, 4),
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authControllerProvider.overrideWithBuild(
+            (_, _) => AuthState.authenticated(_activeCandidateUser),
+          ),
+          activeJobsProvider.overrideWith((_) async => <JobPost>[]),
+          activeQuickJobsProvider.overrideWith(
+            (_) async => [farJob, outsideJob, midJob, nearJob],
+          ),
+          personalizedJobRecommendationsProvider.overrideWith(
+            (_) async => const <JobRecommendation>[],
+          ),
+        ],
+        child: const MaterialApp(
+          localizationsDelegates: [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: UserJobsScreen(showBackButton: false),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Loại công việc'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Công việc Tuyển gấp'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Tìm thấy 3 công việc phù hợp'), findsOneWidget);
+    expect(find.text('Ca ngoài 10km'), findsNothing);
+
+    final nearTop = tester.getTopLeft(find.text('Ca gần 1km')).dy;
+    final midTop = tester.getTopLeft(find.text('Ca gần 2km')).dy;
+    final farTop = tester.getTopLeft(find.text('Ca gần 5km')).dy;
+
+    expect(nearTop, lessThan(midTop));
+    expect(midTop, lessThan(farTop));
   });
 
   testWidgets('job type selector and saved jobs icon fit on mobile', (
@@ -108,6 +251,16 @@ void main() {
           ),
           activeJobsProvider.overrideWith((_) async => [_job, _secondJob]),
           activeQuickJobsProvider.overrideWith((_) async => [_quickJob]),
+          personalizedJobRecommendationsProvider.overrideWith(
+            (_) async => [
+              JobRecommendation(job: _job, matchScore: 80, reasons: const []),
+              JobRecommendation(
+                job: _quickJob,
+                matchScore: 70,
+                reasons: const [],
+              ),
+            ],
+          ),
         ],
         child: const MaterialApp(
           localizationsDelegates: [
@@ -159,6 +312,11 @@ void main() {
           ),
           activeJobsProvider.overrideWith((_) async => [_job]),
           activeQuickJobsProvider.overrideWith((_) async => <JobPost>[]),
+          personalizedJobRecommendationsProvider.overrideWith(
+            (_) async => [
+              JobRecommendation(job: _job, matchScore: 80, reasons: const []),
+            ],
+          ),
         ],
         child: const MaterialApp(
           localizationsDelegates: [
@@ -277,6 +435,31 @@ final _quickJob = JobPost(
   postedAt: DateTime(2026, 1, 3),
   isQuickJob: true,
 );
+
+JobPost _quickJobAt({
+  required String id,
+  required String title,
+  required double latitude,
+  required DateTime postedAt,
+}) {
+  return JobPost(
+    id: id,
+    idJob: id,
+    employerId: 'employer-$id',
+    employerName: 'Oppo Mart',
+    title: title,
+    jobType: JobPostType.urgent,
+    location: 'TP.HCM',
+    latitude: latitude,
+    longitude: 106.0,
+    salary: '40.000đ/giờ',
+    shiftTime: '18:00 - 22:00',
+    description: 'Phụ ca trong ngày.',
+    tags: const ['Tuyển gấp'],
+    postedAt: postedAt,
+    isQuickJob: true,
+  );
+}
 
 class _FakeUserProfileRepository implements UserProfileRepository {
   @override

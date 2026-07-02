@@ -7,8 +7,8 @@ import '../../../auth/application/auth_controller.dart';
 import '../../../candidate/data/aws_application_repository.dart';
 import '../../../candidate/domain/application_repository.dart';
 import '../../../candidate/domain/job_post.dart';
+import '../../../candidate/presentation/application_flow_navigation.dart';
 import '../../../candidate/presentation/user_job_detail_screen.dart';
-import '../../../candidate/presentation/ai_screening_screen.dart';
 import '../controllers/jobs_controller.dart';
 import '../widgets/job_card.dart';
 import '../widgets/job_filter_bar.dart';
@@ -133,28 +133,42 @@ class _JobsPageState extends ConsumerState<JobsPage> {
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.secondary,
               ),
-              onPressed: () {
+              onPressed: () async {
                 Navigator.pop(ctx);
                 final chosen = cvs.firstWhere(
                   (c) => c['id']?.toString() == selectedId,
                 );
-                final cvUrl = chosen['cvUrl'] ?? chosen['cvS3Key'] ?? '';
-                final cvFilename = chosen['cvFileName'] ?? 'CV.pdf';
+                final cvUrl = (chosen['cvUrl'] ?? chosen['cvS3Key'] ?? '')
+                    .toString();
+                final cvFilename = (chosen['cvFileName'] ?? 'CV.pdf')
+                    .toString();
                 final cvS3Key = chosen['cvS3Key']?.toString();
 
                 if (job.isAiScreeningEnabled) {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => AIScreeningScreen(
-                        job: job,
-                        cvFileName: cvFilename,
-                        cvUrl: cvUrl,
-                        cvS3Key: cvS3Key,
+                  final user = ref
+                      .read(authControllerProvider)
+                      .asData
+                      ?.value
+                      .user;
+                  if (user == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Vui lòng đăng nhập để ứng tuyển.'),
                       ),
-                    ),
+                    );
+                    return;
+                  }
+                  await openAiApplicationFlow(
+                    context: context,
+                    ref: ref,
+                    job: job,
+                    user: user,
+                    selectedCvUrl: cvUrl,
+                    selectedCvFilename: cvFilename,
+                    selectedCvS3Key: cvS3Key,
                   );
                 } else {
-                  _submitApplication(job, cvUrl, cvFilename);
+                  _submitApplication(job, cvUrl, cvFilename, cvS3Key: cvS3Key);
                 }
               },
               child: const Text('Nộp đơn'),
@@ -168,8 +182,9 @@ class _JobsPageState extends ConsumerState<JobsPage> {
   Future<void> _submitApplication(
     JobPost job,
     String cvUrl,
-    String cvFilename,
-  ) async {
+    String cvFilename, {
+    String? cvS3Key,
+  }) async {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -207,10 +222,26 @@ class _JobsPageState extends ConsumerState<JobsPage> {
       if (!mounted) return;
       Navigator.pop(context);
       final msg = e.toString();
+      if (isAlreadyAppliedApplicationError(e)) {
+        final user = ref.read(authControllerProvider).asData?.value.user;
+        if (user != null) {
+          final openedInterview =
+              await openExistingAiInterviewForDuplicateApplication(
+                context: context,
+                ref: ref,
+                job: job,
+                user: user,
+                selectedCvUrl: cvUrl,
+                selectedCvFilename: cvFilename,
+                selectedCvS3Key: cvS3Key,
+              );
+          if (openedInterview || !mounted) return;
+        }
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            msg.contains('ALREADY_APPLIED') || msg.contains('đã ứng tuyển')
+            isAlreadyAppliedApplicationError(e)
                 ? 'Bạn đã ứng tuyển công việc này rồi!'
                 : msg.replaceAll('Exception: ', ''),
           ),

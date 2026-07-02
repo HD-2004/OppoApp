@@ -211,7 +211,7 @@ class RecommendedJobsSection extends StatelessWidget {
           : _SeeAllButton(onPressed: onSeeAll),
       child: Builder(
         builder: (context) {
-          if (isLoading) {
+          if (isLoading && recommendations.isEmpty) {
             return const _HorizontalSkeleton(height: _jobCardHeight);
           }
           if (hasError) {
@@ -863,7 +863,7 @@ class _JobCardState extends State<JobCard> {
                     LogoBox(name: companyName, imageUrl: job.employerAvatarUrl),
                   ],
                 ),
-                const Spacer(),
+                const SizedBox(height: 18),
                 _MetaLine(
                   icon: Icons.payments_outlined,
                   label: publicOrHidden(job.salary),
@@ -884,6 +884,7 @@ class _JobCardState extends State<JobCard> {
                   },
                 ),
                 const SizedBox(height: 13),
+                const Spacer(),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [

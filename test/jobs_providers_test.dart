@@ -4,6 +4,7 @@ import 'package:oppo_temp_jobs/features/candidate/application/jobs_providers.dar
 import 'package:oppo_temp_jobs/features/candidate/data/aws_job_repository.dart';
 import 'package:oppo_temp_jobs/features/candidate/domain/job_post.dart';
 import 'package:oppo_temp_jobs/features/candidate/domain/job_repository.dart';
+import 'package:oppo_temp_jobs/features/jobs/presentation/controllers/jobs_controller.dart';
 
 void main() {
   test(
@@ -111,6 +112,90 @@ void main() {
       throwsA(isA<JobRepositoryException>()),
     );
   });
+
+  test('job listings do not auto-refresh by default', () {
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+
+    expect(container.read(jobListingsRefreshIntervalProvider), isNull);
+  });
+
+  test('quick jobs refresh automatically while watched', () async {
+    final repository = _SequencedJobRepository(
+      activeQuickJobs: [
+        const <JobPost>[],
+        [_job('new-quick', jobType: JobPostType.urgent, isQuickJob: true)],
+      ],
+    );
+    final container = ProviderContainer(
+      overrides: [
+        jobRepositoryProvider.overrideWithValue(repository),
+        jobListingsRefreshIntervalProvider.overrideWithValue(
+          const Duration(milliseconds: 10),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    final observed = <List<String>>[];
+    final subscription = container.listen(activeQuickJobsProvider, (
+      previous,
+      next,
+    ) {
+      next.whenData((jobs) {
+        observed.add(jobs.map((job) => job.idJob).toList(growable: false));
+      });
+    }, fireImmediately: true);
+    addTearDown(subscription.close);
+
+    await Future<void>.delayed(const Duration(milliseconds: 80));
+
+    expect(observed, contains(equals(const <String>[])));
+    expect(observed, contains(equals(const ['new-quick'])));
+  });
+
+  test('jobs controller follows refreshed job listings', () async {
+    final repository = _SequencedJobRepository(
+      activeQuickJobs: [
+        const <JobPost>[],
+        [
+          _job(
+            'controller-quick',
+            jobType: JobPostType.urgent,
+            isQuickJob: true,
+          ),
+        ],
+      ],
+    );
+    final container = ProviderContainer(
+      overrides: [
+        jobRepositoryProvider.overrideWithValue(repository),
+        jobListingsRefreshIntervalProvider.overrideWithValue(
+          const Duration(milliseconds: 10),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    final observed = <List<String>>[];
+    final subscription = container.listen(jobsControllerProvider, (
+      previous,
+      next,
+    ) {
+      next.whenData((state) {
+        observed.add(
+          state.urgentJobs.map((job) => job.idJob).toList(growable: false),
+        );
+      });
+    }, fireImmediately: true);
+    addTearDown(subscription.close);
+
+    await container.read(jobsControllerProvider.future);
+    await Future<void>.delayed(const Duration(milliseconds: 80));
+
+    expect(observed, contains(equals(const <String>[])));
+    expect(observed, contains(equals(const ['controller-quick'])));
+  });
 }
 
 class _FailingJobRepository implements JobRepository {
@@ -147,6 +232,32 @@ class _SuccessfulJobRepository implements JobRepository {
   }) async {}
 }
 
+class _SequencedJobRepository implements JobRepository {
+  _SequencedJobRepository({this.activeQuickJobs = const [<JobPost>[]]});
+
+  final List<List<JobPost>> activeQuickJobs;
+  var _activeQuickJobsCallCount = 0;
+
+  @override
+  Future<List<JobPost>> getActiveJobs() async => const [];
+
+  @override
+  Future<List<JobPost>> getActiveQuickJobs() async {
+    final index = _activeQuickJobsCallCount.clamp(
+      0,
+      activeQuickJobs.length - 1,
+    );
+    _activeQuickJobsCallCount += 1;
+    return activeQuickJobs[index];
+  }
+
+  @override
+  Future<void> incrementJobViews(
+    String jobId, {
+    required bool isQuickJob,
+  }) async {}
+}
+
 JobPost _job(
   String id, {
   DateTime? recruitmentStartDate,
@@ -154,6 +265,8 @@ JobPost _job(
   String status = 'active',
   DateTime? postedAt,
   double visibilityScore = 0,
+  JobPostType jobType = JobPostType.partTime,
+  bool isQuickJob = false,
 }) {
   return JobPost(
     id: id,
@@ -161,7 +274,7 @@ JobPost _job(
     employerId: 'employer-1',
     employerName: 'Công ty Demo',
     title: 'Nhân viên phục vụ',
-    jobType: JobPostType.partTime,
+    jobType: jobType,
     location: 'Quận 1',
     salary: '30.000 VNĐ/giờ',
     shiftTime: '08:00 - 12:00',
@@ -172,5 +285,6 @@ JobPost _job(
     recruitmentEndDate: recruitmentEndDate,
     status: status,
     visibilityScore: visibilityScore,
+    isQuickJob: isQuickJob,
   );
 }

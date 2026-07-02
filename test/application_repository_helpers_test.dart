@@ -49,4 +49,135 @@ void main() {
     expect(existingApplicationIdForJob(applications, 'job-3'), 'app-3');
     expect(existingApplicationIdForJob(applications, 'job-x'), isNull);
   });
+
+  test(
+    'builds AI interview continuation for accepted existing application',
+    () {
+      final continuation = aiInterviewContinuationForExistingApplication(
+        applications: const [
+          {
+            'applicationId': 'app-ai',
+            'jobId': 'job-ai',
+            'status': 'accepted',
+            'cvUrl': 'https://example.com/accepted-cv.pdf',
+            'cvFilename': 'accepted-cv.pdf',
+            'aiScreeningScore': 82,
+            'aiScreeningResult': 'pass',
+            'aiScreeningReason': 'CV đã được chấp nhận.',
+          },
+        ],
+        jobId: 'job-ai',
+        selectedCvUrl: 'https://example.com/selected.pdf',
+        selectedCvFilename: 'selected.pdf',
+      );
+
+      expect(continuation, isNotNull);
+      expect(continuation?.applicationId, 'app-ai');
+      expect(continuation?.cvUrl, 'https://example.com/accepted-cv.pdf');
+      expect(continuation?.cvFilename, 'accepted-cv.pdf');
+      expect(continuation?.aiScreeningScore, 82);
+      expect(continuation?.aiScreeningResult, 'pass');
+    },
+  );
+
+  test(
+    'accepted application continues for standard AI flow even without job flag',
+    () {
+      final continuation = aiInterviewContinuationForExistingApplication(
+        applications: const [
+          {
+            'applicationId': 'app-web-ai',
+            'jobId': 'job-web-ai',
+            'status': 'cvAccepted',
+          },
+        ],
+        jobId: 'job-web-ai',
+        selectedCvUrl: 'https://example.com/selected.pdf',
+        selectedCvFilename: 'selected.pdf',
+        jobRequiresAiInterview: true,
+      );
+
+      expect(continuation?.applicationId, 'app-web-ai');
+      expect(continuation?.aiScreeningResult, 'pass');
+    },
+  );
+
+  test('plain accepted application does not continue when job is non-AI', () {
+    final continuation = aiInterviewContinuationForExistingApplication(
+      applications: const [
+        {
+          'applicationId': 'app-non-ai',
+          'jobId': 'job-non-ai',
+          'status': 'accepted',
+        },
+      ],
+      jobId: 'job-non-ai',
+      selectedCvUrl: 'https://example.com/selected.pdf',
+      selectedCvFilename: 'selected.pdf',
+      jobRequiresAiInterview: false,
+    );
+
+    expect(continuation, isNull);
+  });
+
+  test('application AI evidence continues even when job flag is missing', () {
+    final continuation = aiInterviewContinuationForExistingApplication(
+      applications: const [
+        {
+          'applicationId': 'app-ai-evidence',
+          'jobId': 'job-ai-evidence',
+          'status': 'accepted',
+          'requiresAiInterview': true,
+        },
+      ],
+      jobId: 'job-ai-evidence',
+      selectedCvUrl: 'https://example.com/selected.pdf',
+      selectedCvFilename: 'selected.pdf',
+      jobRequiresAiInterview: false,
+    );
+
+    expect(continuation?.applicationId, 'app-ai-evidence');
+  });
+
+  test(
+    'approved application continues AI interview when report is missing',
+    () {
+      final continuation = aiInterviewContinuationForExistingApplication(
+        applications: const [
+          {
+            'applicationId': 'app-approved',
+            'jobId': 'job-ai',
+            'status': 'approved',
+            'aiScreeningResult': 'pass',
+          },
+        ],
+        jobId: 'job-ai',
+        selectedCvUrl: 'https://example.com/selected.pdf',
+        selectedCvFilename: 'selected.pdf',
+      );
+
+      expect(continuation?.applicationId, 'app-approved');
+      expect(continuation?.aiScreeningResult, 'pass');
+    },
+  );
+
+  test('approved application does not continue after AI interview report', () {
+    final continuation = aiInterviewContinuationForExistingApplication(
+      applications: const [
+        {
+          'applicationId': 'app-approved-done',
+          'jobId': 'job-ai',
+          'status': 'approved',
+          'aiScreeningResult': 'pass',
+          'aiInterviewScore': 72,
+          'aiInterviewReport': {'total_score': 72},
+        },
+      ],
+      jobId: 'job-ai',
+      selectedCvUrl: 'https://example.com/selected.pdf',
+      selectedCvFilename: 'selected.pdf',
+    );
+
+    expect(continuation, isNull);
+  });
 }

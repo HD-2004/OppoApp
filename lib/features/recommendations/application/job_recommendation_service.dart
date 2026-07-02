@@ -2,6 +2,105 @@ import '../../auth/domain/auth_user_profile.dart';
 import '../../candidate/domain/job_post.dart';
 import '../domain/job_recommendation.dart';
 
+List<JobRecommendation> mapApiJobRecommendationsToJobs({
+  required Iterable<dynamic> rawRecommendations,
+  required List<JobPost> jobs,
+}) {
+  final jobMap = <String, JobPost>{};
+  for (final job in jobs) {
+    _putJobById(jobMap, job.id, job);
+    _putJobById(jobMap, job.idJob, job);
+  }
+
+  final recommendations = <JobRecommendation>[];
+  for (final raw in rawRecommendations) {
+    if (raw is! Map) continue;
+    final item = Map<dynamic, dynamic>.from(raw);
+    final jobId = _recommendationJobId(item);
+    if (jobId == null) continue;
+
+    final matchedJob = jobMap[jobId];
+    if (matchedJob == null) continue;
+
+    recommendations.add(
+      JobRecommendation(
+        job: matchedJob,
+        matchScore: _recommendationScore(item),
+        reasons: _recommendationReasons(item),
+      ),
+    );
+  }
+  return recommendations;
+}
+
+void _putJobById(Map<String, JobPost> target, String rawId, JobPost job) {
+  final id = rawId.trim();
+  if (id.isEmpty) return;
+  target[id] = job;
+}
+
+String? _recommendationJobId(Map<dynamic, dynamic> item) {
+  final nestedJob = item['job'];
+  return _firstNonEmpty([
+    item['jobId'],
+    item['jobID'],
+    item['idJob'],
+    item['id'],
+    if (nestedJob is Map) ...[
+      nestedJob['jobId'],
+      nestedJob['jobID'],
+      nestedJob['idJob'],
+      nestedJob['id'],
+    ],
+  ]);
+}
+
+int _recommendationScore(Map<dynamic, dynamic> item) {
+  final value = _firstNumber([
+    item['matchScore'],
+    item['score'],
+    item['match'],
+    item['percentage'],
+  ]);
+  return (value ?? 50).round().clamp(0, 100);
+}
+
+List<String> _recommendationReasons(Map<dynamic, dynamic> item) {
+  final reasons = item['reasons'];
+  if (reasons is List) {
+    final parsed = reasons
+        .map((reason) => reason?.toString().trim() ?? '')
+        .where((reason) => reason.isNotEmpty)
+        .toList(growable: false);
+    if (parsed.isNotEmpty) return parsed;
+  }
+
+  final reason = _firstNonEmpty([
+    item['matchReason'],
+    item['reason'],
+    item['explanation'],
+    item['summary'],
+  ]);
+  return reason == null ? const [] : [reason];
+}
+
+String? _firstNonEmpty(Iterable<dynamic> values) {
+  for (final value in values) {
+    final text = value?.toString().trim() ?? '';
+    if (text.isNotEmpty) return text;
+  }
+  return null;
+}
+
+num? _firstNumber(Iterable<dynamic> values) {
+  for (final value in values) {
+    if (value is num) return value;
+    final parsed = num.tryParse(value?.toString() ?? '');
+    if (parsed != null) return parsed;
+  }
+  return null;
+}
+
 class JobRecommendationService {
   const JobRecommendationService();
 

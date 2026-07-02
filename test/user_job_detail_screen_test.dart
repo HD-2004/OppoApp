@@ -32,7 +32,7 @@ void main() {
     tester,
   ) async {
     const rawSchedule = 'T2,T3,T4,T5,T6 @ 07:00 - 11:30';
-    final job = _jobFixture(shiftTime: rawSchedule);
+    final job = _jobFixture(shiftTime: rawSchedule, isQuickJob: true);
 
     await tester.pumpWidget(
       ProviderScope(
@@ -53,6 +53,30 @@ void main() {
     expect(find.text('THỜI GIAN'), findsNothing);
   });
 
+  testWidgets('standard job detail does not render work schedule calendar', (
+    tester,
+  ) async {
+    const rawSchedule = 'T2,T3,T4,T5,T6 @ 07:00 - 11:30';
+    final job = _jobFixture(shiftTime: rawSchedule);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [jobRepositoryProvider.overrideWithValue(_FakeJobRepo())],
+        child: MaterialApp(
+          home: UserJobDetailScreen(job: job, onApplyPressed: () {}),
+        ),
+      ),
+    );
+
+    await tester.pump();
+
+    expect(find.text('Thời gian tuyển dụng'), findsOneWidget);
+    expect(find.text(recruitmentWindowValue(job)), findsOneWidget);
+    expect(find.text('Lịch làm việc'), findsNothing);
+    expect(find.text(rawSchedule), findsNothing);
+    expect(find.text('07:00 - 11:30'), findsNothing);
+  });
+
   testWidgets('job detail shows all shifts for the selected work date', (
     tester,
   ) async {
@@ -60,6 +84,7 @@ void main() {
       shiftTime: 'T2,T3,T4,T5 @ 06:30 - 11:00 | T5,T6,T7 @ 08:00 - 11:30',
       recruitmentStartDate: DateTime(2026, 7),
       recruitmentEndDate: DateTime(2026, 7, 15),
+      isQuickJob: true,
     );
 
     await tester.pumpWidget(
@@ -89,6 +114,7 @@ void main() {
         shiftTime: 'T2 @ 06:30 - 11:00 | T5 @ 08:00 - 11:30',
         recruitmentStartDate: DateTime(2026, 7, 10),
         recruitmentEndDate: DateTime(2026, 7, 12),
+        isQuickJob: true,
       );
 
       await tester.pumpWidget(
@@ -158,6 +184,7 @@ JobPost _jobFixture({
   String shiftTime = 'T2,T3,T4,T5,T6 @ 07:00 - 11:30',
   DateTime? recruitmentStartDate,
   DateTime? recruitmentEndDate,
+  bool isQuickJob = false,
 }) {
   return JobPost(
     id: 'job-1',
@@ -165,7 +192,7 @@ JobPost _jobFixture({
     employerId: 'employer-1',
     employerName: 'Công ty cổ phần cafe Katinat',
     title: 'Nhân viên phục vụ',
-    jobType: JobPostType.partTime,
+    jobType: isQuickJob ? JobPostType.urgent : JobPostType.partTime,
     location: 'Quận 1',
     salary: '24.000 VNĐ/giờ',
     shiftTime: shiftTime,
@@ -176,6 +203,7 @@ JobPost _jobFixture({
     postedAt: DateTime(2026, 6, 1),
     recruitmentStartDate: recruitmentStartDate ?? _openRecruitmentStart,
     recruitmentEndDate: recruitmentEndDate ?? _openRecruitmentEnd,
+    isQuickJob: isQuickJob,
   );
 }
 

@@ -11,11 +11,20 @@ import '../application/jobs_providers.dart';
 import '../data/aws_application_repository.dart';
 import '../domain/application_repository.dart';
 import '../domain/job_post.dart';
+import '../../recommendations/application/job_recommendation_providers.dart';
+import '../../recommendations/domain/job_recommendation.dart';
+import 'application_flow_navigation.dart';
 import 'quick_job_intro_page.dart';
 import 'user_job_detail_screen.dart';
-import 'ai_screening_screen.dart';
 import 'widgets/availability_card.dart';
 import 'widgets/job_post_card.dart';
+
+const double _urgentJobSearchRadiusKm = 10;
+const double _unknownJobDistanceKm = 9999;
+const int _jobsTabRecommended = 0;
+const int _jobsTabStandard = 1;
+const int _jobsTabUrgent = 2;
+const int _jobsTabSaved = 3;
 
 class UserJobsScreen extends ConsumerStatefulWidget {
   const UserJobsScreen({super.key, this.showBackButton = true});
@@ -36,8 +45,7 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
   String _searchKeyword = '';
   String _searchLocation = '';
 
-  // Tab: 0 = Standard, 1 = Quick/Urgent, 2 = Saved
-  int _activeTab = 0;
+  int _activeTab = _jobsTabRecommended;
 
   // Filters
   bool _filterFullTime = false;
@@ -144,7 +152,7 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
     final theme = Theme.of(context);
     final textTheme = theme.textTheme;
 
-    if (_activeTab == 1) {
+    if (_activeTab == _jobsTabUrgent) {
       final status = user?.verificationStatus ?? 'PENDING';
       final isApproved = status == 'APPROVED';
       final isActive = user?.isActive == true;
@@ -226,8 +234,8 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
               ),
             ),
             const SizedBox(height: 6),
-            const Text(
-              'Vui lòng bật trạng thái làm việc ở phía trên để tìm các công việc tuyển gấp trong bán kính 3km.',
+            Text(
+              'Vui lòng bật trạng thái làm việc ở phía trên để tìm các công việc tuyển gấp trong bán kính ${_urgentJobSearchRadiusKm.toStringAsFixed(0)}km.',
               textAlign: TextAlign.center,
             ),
           ],
@@ -244,8 +252,8 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
             style: textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 6),
-          const Text(
-            'Không có công việc tuyển gấp trong bán kính 3km. Thử lại sau hoặc di chuyển đến khu vực khác.',
+          Text(
+            'Không có công việc tuyển gấp trong bán kính ${_urgentJobSearchRadiusKm.toStringAsFixed(0)}km. Thử lại sau hoặc di chuyển đến khu vực khác.',
             textAlign: TextAlign.center,
           ),
         ],
@@ -269,6 +277,7 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
 
   // Filter logic
   List<JobPost> _getFilteredJobs(
+    List<JobPost> recommendedJobs,
     List<JobPost> allStandard,
     List<JobPost> allQuick,
     List<String> savedJobIds,
@@ -276,6 +285,7 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
   ) {
     return _getFilteredJobsForTab(
       _activeTab,
+      recommendedJobs,
       allStandard,
       allQuick,
       savedJobIds,
@@ -285,15 +295,18 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
 
   List<JobPost> _getFilteredJobsForTab(
     int tab,
+    List<JobPost> recommendedJobs,
     List<JobPost> allStandard,
     List<JobPost> allQuick,
     List<String> savedJobIds,
     AuthUserProfile? user,
   ) {
     List<JobPost> baseList;
-    if (tab == 0) {
+    if (tab == _jobsTabRecommended) {
+      baseList = recommendedJobs;
+    } else if (tab == _jobsTabStandard) {
       baseList = allStandard;
-    } else if (tab == 1) {
+    } else if (tab == _jobsTabUrgent) {
       final status = user?.verificationStatus ?? 'PENDING';
       final isApproved = status == 'APPROVED';
       final isActive = user?.isActive == true;
@@ -306,6 +319,7 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
       final double? userLng = user?.longitude;
 
       if (userLat != null && userLng != null) {
+        _jobDistances.clear();
         baseList = [];
         for (final job in allQuick) {
           final double? jobLat = job.latitude;
@@ -317,18 +331,12 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
               jobLat,
               jobLng,
             );
-            if (distance <= 3.0) {
+            if (distance <= _urgentJobSearchRadiusKm) {
               _jobDistances[job.id] = distance;
               baseList.add(job);
             }
           }
         }
-        // Sort closest first
-        baseList.sort((a, b) {
-          final distA = _jobDistances[a.id] ?? 9999.0;
-          final distB = _jobDistances[b.id] ?? 9999.0;
-          return distA.compareTo(distB);
-        });
       } else {
         baseList = [];
       }
@@ -387,22 +395,39 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
       }).toList();
     }
 
-    // Apply Sorting
-    if (_sortBy == 'newest') {
-      baseList.sort((a, b) => b.postedAt.compareTo(a.postedAt));
-    } else if (_sortBy == 'salary_desc') {
+    if (tab == _jobsTabRecommended && _sortBy == 'newest') {
+      return baseList;
+    }
+
+    if (tab == _jobsTabUrgent) {
       baseList.sort((a, b) {
-        final valA = a.isQuickJob
-            ? (a.hourlyRate ?? 0)
-            : _getSalaryValue(a.salary);
-        final valB = b.isQuickJob
-            ? (b.hourlyRate ?? 0)
-            : _getSalaryValue(b.salary);
-        return valB.compareTo(valA);
+        final distanceComparison =
+            (_jobDistances[a.id] ?? _unknownJobDistanceKm).compareTo(
+              _jobDistances[b.id] ?? _unknownJobDistanceKm,
+            );
+        if (distanceComparison != 0) {
+          return distanceComparison;
+        }
+        return _compareBySelectedSort(a, b);
       });
+    } else {
+      baseList.sort(_compareBySelectedSort);
     }
 
     return baseList;
+  }
+
+  int _compareBySelectedSort(JobPost a, JobPost b) {
+    if (_sortBy == 'salary_desc') {
+      final valA = a.isQuickJob
+          ? (a.hourlyRate ?? 0)
+          : _getSalaryValue(a.salary);
+      final valB = b.isQuickJob
+          ? (b.hourlyRate ?? 0)
+          : _getSalaryValue(b.salary);
+      return valB.compareTo(valA);
+    }
+    return b.postedAt.compareTo(a.postedAt);
   }
 
   bool _isJobSaved(JobPost job, List<String> savedJobIds) {
@@ -584,28 +609,43 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
                   ),
-                  onPressed: () {
+                  onPressed: () async {
                     Navigator.of(ctx).pop();
                     final chosen = cvList.firstWhere(
                       (c) => c['id']?.toString() == selectedCvId,
                     );
-                    final cvUrl = chosen['cvUrl'] ?? chosen['cvS3Key'] ?? '';
-                    final cvFilename = chosen['cvFileName'] ?? 'CV.pdf';
+                    final cvUrl = (chosen['cvUrl'] ?? chosen['cvS3Key'] ?? '')
+                        .toString();
+                    final cvFilename = (chosen['cvFileName'] ?? 'CV.pdf')
+                        .toString();
                     final cvS3Key = chosen['cvS3Key']?.toString();
 
                     if (job.isAiScreeningEnabled) {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => AIScreeningScreen(
-                            job: job,
-                            cvFileName: cvFilename,
-                            cvUrl: cvUrl,
-                            cvS3Key: cvS3Key,
-                          ),
-                        ),
+                      final user = ref
+                          .read(authControllerProvider)
+                          .asData
+                          ?.value
+                          .user;
+                      if (user == null) {
+                        _showErrorDialog('Vui lòng đăng nhập để ứng tuyển.');
+                        return;
+                      }
+                      await openAiApplicationFlow(
+                        context: context,
+                        ref: ref,
+                        job: job,
+                        user: user,
+                        selectedCvUrl: cvUrl,
+                        selectedCvFilename: cvFilename,
+                        selectedCvS3Key: cvS3Key,
                       );
                     } else {
-                      _submitApplication(job, cvUrl, cvFilename);
+                      _submitApplication(
+                        job,
+                        cvUrl,
+                        cvFilename,
+                        cvS3Key: cvS3Key,
+                      );
                     }
                   },
                   child: const Text('Nộp đơn'),
@@ -621,8 +661,9 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
   Future<void> _submitApplication(
     JobPost job,
     String cvUrl,
-    String cvFilename,
-  ) async {
+    String cvFilename, {
+    String? cvS3Key,
+  }) async {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -662,6 +703,20 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
       if (msg.contains('ALREADY_APPLIED') ||
           msg.contains('already applied') ||
           msg.contains('đã ứng tuyển')) {
+        final user = ref.read(authControllerProvider).asData?.value.user;
+        if (user != null) {
+          final openedInterview =
+              await openExistingAiInterviewForDuplicateApplication(
+                context: context,
+                ref: ref,
+                job: job,
+                user: user,
+                selectedCvUrl: cvUrl,
+                selectedCvFilename: cvFilename,
+                selectedCvS3Key: cvS3Key,
+              );
+          if (openedInterview || !mounted) return;
+        }
         _showErrorDialog('Bạn đã ứng tuyển công việc này rồi!');
       } else {
         _showErrorDialog(msg.replaceAll('Exception: ', ''));
@@ -730,6 +785,37 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
     );
   }
 
+  List<JobPost> _recommendedJobsFrom(
+    List<JobRecommendation>? recommendations, {
+    required List<JobPost> fallbackJobs,
+  }) {
+    if (recommendations == null || recommendations.isEmpty) {
+      return fallbackJobs;
+    }
+    return _uniqueJobPosts(
+      recommendations.map((recommendation) => recommendation.job).toList(),
+    );
+  }
+
+  List<JobPost> _uniqueJobPosts(List<JobPost> jobs) {
+    final seenIds = <String>{};
+    final uniqueJobs = <JobPost>[];
+
+    for (final job in jobs) {
+      final ids = <String>{
+        if (job.id.trim().isNotEmpty) job.id.trim(),
+        if (job.idJob.trim().isNotEmpty) job.idJob.trim(),
+      };
+      if (ids.isNotEmpty && ids.any(seenIds.contains)) {
+        continue;
+      }
+      seenIds.addAll(ids);
+      uniqueJobs.add(job);
+    }
+
+    return uniqueJobs;
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -738,6 +824,9 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
     // Async jobs data
     final standardJobsAsync = ref.watch(activeJobsProvider);
     final quickJobsAsync = ref.watch(activeQuickJobsProvider);
+    final recommendationsAsync = ref.watch(
+      personalizedJobRecommendationsProvider,
+    );
 
     // Profile sync
     final user = ref.watch(authControllerProvider).asData?.value.user;
@@ -749,6 +838,14 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
           data: (standardJobs) {
             return quickJobsAsync.when(
               data: (quickJobs) {
+                final allActiveJobs = _uniqueJobPosts([
+                  ...standardJobs,
+                  ...quickJobs,
+                ]);
+                final recommendedJobs = _recommendedJobsFrom(
+                  recommendationsAsync.value,
+                  fallbackJobs: allActiveJobs,
+                );
                 final savedJobIds = _validSavedJobIds(
                   rawSavedJobIds,
                   standardJobs,
@@ -756,13 +853,15 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
                 );
                 _pruneExpiredSavedJobs(rawSavedJobIds, savedJobIds);
                 final filteredJobs = _getFilteredJobs(
+                  recommendedJobs,
                   standardJobs,
                   quickJobs,
                   savedJobIds,
                   user,
                 );
                 final urgentJobsCount = _getFilteredJobsForTab(
-                  1,
+                  _jobsTabUrgent,
+                  recommendedJobs,
                   standardJobs,
                   quickJobs,
                   savedJobIds,
@@ -921,6 +1020,7 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
                         ),
                         child: _JobCategoryTabs(
                           activeTab: _activeTab,
+                          recommendedCount: recommendedJobs.length,
                           standardCount: standardJobs.length,
                           urgentCount: urgentJobsCount,
                           savedCount: savedJobIds.length,
@@ -929,7 +1029,7 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
                         ),
                       ),
 
-                      if (_activeTab == 1) ...[
+                      if (_activeTab == _jobsTabUrgent) ...[
                         if (user?.verificationStatus != 'APPROVED')
                           Padding(
                             padding: const EdgeInsets.symmetric(
@@ -1165,12 +1265,16 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
                                 DropdownButton<String>(
                                   value: _sortBy,
                                   underline: const SizedBox(),
-                                  items: const [
+                                  items: [
                                     DropdownMenuItem(
                                       value: 'newest',
-                                      child: Text('Mới nhất'),
+                                      child: Text(
+                                        _activeTab == _jobsTabRecommended
+                                            ? 'Phù hợp nhất'
+                                            : 'Mới nhất',
+                                      ),
                                     ),
-                                    DropdownMenuItem(
+                                    const DropdownMenuItem(
                                       value: 'salary_desc',
                                       child: Text('Lương cao nhất'),
                                     ),
@@ -1319,6 +1423,7 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
 class _JobCategoryTabs extends StatefulWidget {
   const _JobCategoryTabs({
     required this.activeTab,
+    required this.recommendedCount,
     required this.standardCount,
     required this.urgentCount,
     required this.savedCount,
@@ -1326,6 +1431,7 @@ class _JobCategoryTabs extends StatefulWidget {
   });
 
   final int activeTab;
+  final int recommendedCount;
   final int standardCount;
   final int urgentCount;
   final int savedCount;
@@ -1345,10 +1451,11 @@ class _JobCategoryTabsState extends State<_JobCategoryTabs> {
 
   @override
   Widget build(BuildContext context) {
-    final selectedJobTypeTab = widget.activeTab == 1 ? 1 : 0;
-    final selectedIcon = selectedJobTypeTab == 1
-        ? Icons.flash_on_outlined
-        : Icons.work_outline;
+    final selectedIcon = switch (widget.activeTab) {
+      _jobsTabRecommended => Icons.track_changes_outlined,
+      _jobsTabUrgent => Icons.flash_on_outlined,
+      _ => Icons.work_outline,
+    };
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1359,22 +1466,23 @@ class _JobCategoryTabsState extends State<_JobCategoryTabs> {
               child: _JobTypeDropdownButton(
                 icon: selectedIcon,
                 isExpanded: _isExpanded,
-                isActive: widget.activeTab != 2,
+                isActive: widget.activeTab != _jobsTabSaved,
                 onTap: () => setState(() => _isExpanded = !_isExpanded),
               ),
             ),
             const SizedBox(width: 12),
             _SavedJobsIconButton(
               count: widget.savedCount,
-              isActive: widget.activeTab == 2,
-              onTap: () => _selectTab(2),
+              isActive: widget.activeTab == _jobsTabSaved,
+              onTap: () => _selectTab(_jobsTabSaved),
             ),
           ],
         ),
         if (_isExpanded) ...[
           const SizedBox(height: 10),
           _JobTypeDropdownPanel(
-            activeTab: selectedJobTypeTab,
+            activeTab: widget.activeTab,
+            recommendedCount: widget.recommendedCount,
             standardCount: widget.standardCount,
             urgentCount: widget.urgentCount,
             onSelected: _selectTab,
@@ -1558,12 +1666,14 @@ class _SavedJobsIconButton extends StatelessWidget {
 class _JobTypeDropdownPanel extends StatelessWidget {
   const _JobTypeDropdownPanel({
     required this.activeTab,
+    required this.recommendedCount,
     required this.standardCount,
     required this.urgentCount,
     required this.onSelected,
   });
 
   final int activeTab;
+  final int recommendedCount;
   final int standardCount;
   final int urgentCount;
   final ValueChanged<int> onSelected;
@@ -1589,19 +1699,27 @@ class _JobTypeDropdownPanel extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           _JobTypeOption(
+            label: 'Phù hợp với bạn',
+            count: recommendedCount,
+            icon: Icons.track_changes_outlined,
+            isActive: activeTab == _jobsTabRecommended,
+            onTap: () => onSelected(_jobsTabRecommended),
+          ),
+          Divider(height: 1, color: theme.colorScheme.outlineVariant),
+          _JobTypeOption(
             label: 'Công việc tiêu chuẩn',
             count: standardCount,
             icon: Icons.work_outline,
-            isActive: activeTab == 0,
-            onTap: () => onSelected(0),
+            isActive: activeTab == _jobsTabStandard,
+            onTap: () => onSelected(_jobsTabStandard),
           ),
           Divider(height: 1, color: theme.colorScheme.outlineVariant),
           _JobTypeOption(
             label: 'Công việc Tuyển gấp',
             count: urgentCount,
             icon: Icons.flash_on_outlined,
-            isActive: activeTab == 1,
-            onTap: () => onSelected(1),
+            isActive: activeTab == _jobsTabUrgent,
+            onTap: () => onSelected(_jobsTabUrgent),
           ),
         ],
       ),

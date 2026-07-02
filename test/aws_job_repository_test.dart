@@ -58,6 +58,40 @@ void main() {
       expect(job.status, 'active');
     });
 
+    test('maps web AI interview fields to mobile screening flag', () {
+      final explicitAiJob = AwsJobRepository.mapStandardJob({
+        'idJob': 'job-ai-explicit',
+        'aiInterviewEnabled': true,
+      });
+      final customQuestionJob = AwsJobRepository.mapStandardJob({
+        'idJob': 'job-ai-questions',
+        'customQuestions': ['Bạn xử lý khách phàn nàn thế nào?'],
+      });
+
+      expect(explicitAiJob.isAiScreeningEnabled, isTrue);
+      expect(customQuestionJob.isAiScreeningEnabled, isTrue);
+      expect(customQuestionJob.customQuestions, [
+        'Bạn xử lý khách phàn nàn thế nào?',
+      ]);
+    });
+
+    test('maps alternate web AI interview field shapes', () {
+      final nestedAiJob = AwsJobRepository.mapStandardJob({
+        'idJob': 'job-ai-nested',
+        'aiInterview': {'enabled': true},
+      });
+      final interviewQuestionJob = AwsJobRepository.mapStandardJob({
+        'idJob': 'job-ai-interview-questions',
+        'interviewQuestions': ['Bạn làm ca tối được không?'],
+      });
+
+      expect(nestedAiJob.isAiScreeningEnabled, isTrue);
+      expect(interviewQuestionJob.isAiScreeningEnabled, isTrue);
+      expect(interviewQuestionJob.customQuestions, [
+        'Bạn làm ca tối được không?',
+      ]);
+    });
+
     test('maps quick job recruitment window from alternate backend keys', () {
       final job = AwsJobRepository.mapQuickJob({
         'jobID': 'quick-window',

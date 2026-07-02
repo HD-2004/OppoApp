@@ -66,6 +66,39 @@ void main() {
     );
     expect(recommendations.map((item) => item.job.id), contains('new'));
   });
+
+  test('maps web recommendation ids from standard and quick job payloads', () {
+    final standard = _job(
+      id: 'JOB-1',
+      title: 'Nhân viên pha chế trà sữa',
+      location: 'Quận 2',
+      tags: const ['Pha chế'],
+    );
+    final quick = _job(
+      id: 'quick-QJOB-1',
+      idJob: 'QJOB-1',
+      title: 'Nhân viên pha chế rượu',
+      location: 'Thủ Đức',
+      tags: const ['Tuyển gấp'],
+      isQuickJob: true,
+    );
+
+    final recommendations = mapApiJobRecommendationsToJobs(
+      rawRecommendations: const [
+        {
+          'jobID': 'QJOB-1',
+          'matchScore': 95,
+          'matchReason': 'Gần vị trí của bạn',
+        },
+        {'idJob': 'JOB-1', 'score': 80, 'reason': 'Khớp kỹ năng pha chế'},
+      ],
+      jobs: [standard, quick],
+    );
+
+    expect(recommendations.map((item) => item.job.idJob), ['QJOB-1', 'JOB-1']);
+    expect(recommendations.map((item) => item.matchScore), [95, 80]);
+    expect(recommendations.first.reasons, ['Gần vị trí của bạn']);
+  });
 }
 
 const _profile = AuthUserProfile(
@@ -83,22 +116,25 @@ const _profile = AuthUserProfile(
 
 JobPost _job({
   required String id,
+  String? idJob,
   required String title,
   required String location,
   required List<String> tags,
+  bool isQuickJob = false,
 }) {
   return JobPost(
     id: id,
-    idJob: id,
+    idJob: idJob ?? id,
     employerId: 'employer',
     employerName: 'Oppo',
     title: title,
-    jobType: JobPostType.fullTime,
+    jobType: isQuickJob ? JobPostType.urgent : JobPostType.fullTime,
     location: location,
     salary: '20 triệu',
     shiftTime: '',
     description: '$title ${tags.join(' ')}',
     tags: tags,
     postedAt: DateTime(2026, 6, 10),
+    isQuickJob: isQuickJob,
   );
 }

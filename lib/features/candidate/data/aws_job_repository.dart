@@ -78,6 +78,7 @@ class AwsJobRepository implements JobRepository {
 
   static JobPost mapStandardJob(Map<String, dynamic> job) {
     final idJob = _string(job['idJob']);
+    final customQuestions = _firstCustomQuestions(job);
     return JobPost(
       id: 'dynamo-$idJob',
       idJob: idJob,
@@ -120,15 +121,8 @@ class AwsJobRepository implements JobRepository {
       responsibilities: _nullableString(job['responsibilities']),
       requirements: _nullableString(job['requirements']),
       benefits: _nullableString(job['benefits']),
-      isAiScreeningEnabled:
-          job['isAiScreeningEnabled'] == true ||
-          job['isAiScreeningEnabled'] == 1 ||
-          job['isAiScreeningEnabled'] == 'true',
-      customQuestions: job['customQuestions'] != null
-          ? List<String>.from(
-              (job['customQuestions'] as List).map((e) => e.toString()),
-            )
-          : const [],
+      isAiScreeningEnabled: _aiWorkflowEnabled(job, customQuestions),
+      customQuestions: customQuestions,
     );
   }
 
@@ -252,6 +246,132 @@ class AwsJobRepository implements JobRepository {
         .map((tag) => tag.trim())
         .where((tag) => tag.isNotEmpty)
         .toList(growable: false);
+  }
+
+  static List<String> _customQuestions(dynamic raw) {
+    if (raw is List) {
+      return raw
+          .map(_string)
+          .where((question) => question.isNotEmpty)
+          .toList(growable: false);
+    }
+    return const [];
+  }
+
+  static List<String> _firstCustomQuestions(Map<String, dynamic> job) {
+    for (final key in const [
+      'customQuestions',
+      'interviewQuestions',
+      'aiInterviewQuestions',
+      'aiQuestions',
+      'customInterviewQuestions',
+      'screeningQuestions',
+    ]) {
+      final questions = _customQuestions(job[key]);
+      if (questions.isNotEmpty) return questions;
+    }
+
+    for (final key in const [
+      'aiInterview',
+      'aiInterviewConfig',
+      'aiInterviewSettings',
+      'interviewConfig',
+      'screeningConfig',
+    ]) {
+      final nested = job[key];
+      if (nested is Map) {
+        final questions = _firstCustomQuestions(
+          Map<String, dynamic>.from(nested),
+        );
+        if (questions.isNotEmpty) return questions;
+      }
+    }
+
+    return const [];
+  }
+
+  static bool _aiWorkflowEnabled(
+    Map<String, dynamic> job,
+    List<String> customQuestions,
+  ) {
+    if (customQuestions.isNotEmpty) return true;
+
+    for (final key in const [
+      'isAiScreeningEnabled',
+      'aiScreeningEnabled',
+      'enableAiScreening',
+      'requiresAiScreening',
+      'aiScreeningRequired',
+      'isAIInterviewEnabled',
+      'isAiInterviewEnabled',
+      'aiInterviewEnabled',
+      'enableAiInterview',
+      'requiresAiInterview',
+      'requireAiInterview',
+      'aiInterviewRequired',
+      'hasAiInterview',
+      'useAiInterview',
+      'aiInterview',
+      'aiScreening',
+    ]) {
+      if (_truthy(job[key])) return true;
+    }
+
+    for (final key in const [
+      'aiInterview',
+      'aiInterviewConfig',
+      'aiInterviewSettings',
+      'interviewConfig',
+      'screeningConfig',
+    ]) {
+      final nested = job[key];
+      if (nested is Map &&
+          (_truthy(nested['enabled']) ||
+              _truthy(nested['required']) ||
+              _aiWorkflowEnabled(
+                Map<String, dynamic>.from(nested),
+                customQuestions,
+              ))) {
+        return true;
+      }
+    }
+
+    for (final key in const [
+      'interviewType',
+      'screeningType',
+      'selectionFlow',
+      'applicationFlow',
+      'interviewMode',
+      'interviewMethod',
+      'applicationProcess',
+      'selectionProcess',
+      'recruitmentFlow',
+    ]) {
+      final value = _string(job[key]).toLowerCase();
+      if (value == 'ai' ||
+          value.contains('ai_interview') ||
+          value.contains('ai-interview') ||
+          value.contains('ai interview') ||
+          value.contains('ai-screening') ||
+          value.contains('ai screening') ||
+          value.contains('phỏng vấn ai')) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  static bool _truthy(dynamic raw) {
+    if (raw is bool) return raw;
+    if (raw is num) return raw != 0;
+    final value = _string(raw).toLowerCase();
+    return value == 'true' ||
+        value == '1' ||
+        value == 'yes' ||
+        value == 'y' ||
+        value == 'enabled' ||
+        value == 'on';
   }
 
   static double? _coordinate(dynamic raw, {required bool latitude}) {

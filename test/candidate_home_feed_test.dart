@@ -160,6 +160,61 @@ void main() {
     expect(find.text('Ca 3: 13:00 - 17:00'), findsOneWidget);
     expect(find.text('Thu gọn'), findsOneWidget);
   });
+
+  testWidgets('recommended job card keeps salary close to company name', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              height: 352,
+              width: 286,
+              child: JobCard(
+                job: _compactRecommendedJob,
+                matchScore: 95,
+                onTap: () {},
+                onApply: () {},
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final companyBottom = tester
+        .getBottomLeft(find.text('Katinat Quận Cam'))
+        .dy;
+    final salaryTop = tester.getTopLeft(find.text('468 VNĐ/0 giờ')).dy;
+
+    expect(salaryTop - companyBottom, lessThan(48));
+  });
+
+  testWidgets('recommended jobs section keeps cards visible while refreshing', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: RecommendedJobsSection(
+            recommendations: [
+              JobRecommendation(job: _job, matchScore: 72, reasons: const []),
+            ],
+            isLoading: true,
+            hasError: false,
+            onRetry: () {},
+            onSeeAll: () {},
+            onJobTap: (_) {},
+            onApply: (_) {},
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Nhân viên phục vụ'), findsOneWidget);
+    expect(find.text('Phù hợp: 72%'), findsOneWidget);
+  });
 }
 
 Future<void> _pumpHome(
@@ -277,4 +332,20 @@ final _multiShiftJob = JobPost(
   postedAt: DateTime(2026, 6, 12),
   recruitmentStartDate: DateTime(2026, 7, 10),
   recruitmentEndDate: DateTime(2026, 7, 12),
+);
+
+final _compactRecommendedJob = JobPost(
+  id: 'quick-job-compact',
+  idJob: 'quick-job-compact',
+  employerId: 'employer-1',
+  employerName: 'Katinat Quận Cam',
+  title: 'Pha chế',
+  jobType: JobPostType.urgent,
+  location: 'Quận 2',
+  salary: '468 VNĐ/0 giờ',
+  shiftTime: '',
+  description: 'Cần nhân viên pha chế gấp.',
+  tags: const ['F&B'],
+  postedAt: DateTime(2026, 7, 2),
+  isQuickJob: true,
 );

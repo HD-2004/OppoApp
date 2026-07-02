@@ -9,8 +9,8 @@ import '../../../candidate/data/aws_application_repository.dart';
 import '../../../candidate/domain/application_repository.dart';
 import '../../../candidate/domain/job_post.dart';
 import '../../../candidate/notifications/application/notification_controller.dart';
+import '../../../candidate/presentation/application_flow_navigation.dart';
 import '../../../candidate/presentation/user_job_detail_screen.dart';
-import '../../../candidate/presentation/ai_screening_screen.dart';
 import '../../../employer_packages/application/featured_employer_package_providers.dart';
 import '../../../employer_packages/domain/employer_package.dart';
 import '../../../messaging/application/messaging_providers.dart';
@@ -218,7 +218,7 @@ class _CandidateHomePageState extends ConsumerState<CandidateHomePage> {
               style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
               onPressed: selectedId == null
                   ? null
-                  : () {
+                  : () async {
                       Navigator.pop(dialogContext);
                       final chosen = cvs.firstWhere(
                         (cv) => cv['id']?.toString() == selectedId,
@@ -232,18 +232,31 @@ class _CandidateHomePageState extends ConsumerState<CandidateHomePage> {
                       final cvS3Key = chosen['cvS3Key']?.toString();
 
                       if (job.isAiScreeningEnabled) {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => AIScreeningScreen(
-                              job: job,
-                              cvFileName: cvFilename,
-                              cvUrl: cvUrl,
-                              cvS3Key: cvS3Key,
-                            ),
-                          ),
+                        final flowUser = ref
+                            .read(authControllerProvider)
+                            .asData
+                            ?.value
+                            .user;
+                        if (flowUser == null) {
+                          _showMessage('Vui lòng đăng nhập để ứng tuyển.');
+                          return;
+                        }
+                        await openAiApplicationFlow(
+                          context: context,
+                          ref: ref,
+                          job: job,
+                          user: flowUser,
+                          selectedCvUrl: cvUrl,
+                          selectedCvFilename: cvFilename,
+                          selectedCvS3Key: cvS3Key,
                         );
                       } else {
-                        _submitApplication(job, cvUrl, cvFilename);
+                        _submitApplication(
+                          job,
+                          cvUrl,
+                          cvFilename,
+                          cvS3Key: cvS3Key,
+                        );
                       }
                     },
               child: const Text('Nộp đơn'),
@@ -257,8 +270,9 @@ class _CandidateHomePageState extends ConsumerState<CandidateHomePage> {
   Future<void> _submitApplication(
     JobPost job,
     String cvUrl,
-    String cvFilename,
-  ) async {
+    String cvFilename, {
+    String? cvS3Key,
+  }) async {
     _showLoading();
     try {
       final user = ref.read(authControllerProvider).asData?.value.user;
@@ -287,8 +301,24 @@ class _CandidateHomePageState extends ConsumerState<CandidateHomePage> {
       if (!mounted) return;
       Navigator.pop(context);
       final message = error.toString();
+      if (isAlreadyAppliedApplicationError(error)) {
+        final user = ref.read(authControllerProvider).asData?.value.user;
+        if (user != null) {
+          final openedInterview =
+              await openExistingAiInterviewForDuplicateApplication(
+                context: context,
+                ref: ref,
+                job: job,
+                user: user,
+                selectedCvUrl: cvUrl,
+                selectedCvFilename: cvFilename,
+                selectedCvS3Key: cvS3Key,
+              );
+          if (openedInterview || !mounted) return;
+        }
+      }
       _showMessage(
-        message.contains('ALREADY_APPLIED') || message.contains('đã ứng tuyển')
+        isAlreadyAppliedApplicationError(error)
             ? 'Bạn đã ứng tuyển công việc này rồi!'
             : message.replaceAll('Exception: ', ''),
         backgroundColor: Colors.red,

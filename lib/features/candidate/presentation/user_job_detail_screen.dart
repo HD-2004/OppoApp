@@ -80,7 +80,8 @@ class _UserJobDetailScreenState extends ConsumerState<UserJobDetailScreen> {
                   children: [
                     // Quick info cards
                     _QuickInfoSection(job: widget.job),
-                    _WorkScheduleCalendarSection(job: widget.job),
+                    if (_shouldShowWorkScheduleCalendar(widget.job))
+                      _WorkScheduleCalendarSection(job: widget.job),
 
                     if (isExpired) const _ExpiredJobNotice(),
 
@@ -401,6 +402,10 @@ class _QuickInfoSection extends StatelessWidget {
       ),
     );
   }
+}
+
+bool _shouldShowWorkScheduleCalendar(JobPost job) {
+  return job.isQuickJob || job.jobType == JobPostType.urgent;
 }
 
 class _WorkScheduleCalendarSection extends StatefulWidget {
