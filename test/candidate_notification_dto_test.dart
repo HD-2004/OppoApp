@@ -15,6 +15,7 @@ void main() {
       'entityType': 'APPLICATION',
       'entityId': 'app1',
       'deepLink': '/candidate/applications/app1',
+      'data': {'jobTitle': 'Nhân viên phục vụ', 'companyName': 'Katinat'},
       'createdAt': '2026-06-02T10:00:00Z',
       'readAt': null,
     }).toDomain();
@@ -24,6 +25,7 @@ void main() {
     expect(notification.status, CandidateNotificationStatus.unread);
     expect(notification.body, contains('Katinat'));
     expect(notification.deepLink, '/candidate/applications/app1');
+    expect(notification.data['jobTitle'], 'Nhân viên phục vụ');
   });
 
   test('uses legacy message when body is absent', () {
