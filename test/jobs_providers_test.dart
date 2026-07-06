@@ -113,11 +113,14 @@ void main() {
     );
   });
 
-  test('job listings do not auto-refresh by default', () {
+  test('job listings auto-refresh by default to remove stale jobs', () {
     final container = ProviderContainer();
     addTearDown(container.dispose);
 
-    expect(container.read(jobListingsRefreshIntervalProvider), isNull);
+    expect(
+      container.read(jobListingsRefreshIntervalProvider),
+      const Duration(minutes: 5),
+    );
   });
 
   test('quick jobs refresh automatically while watched', () async {

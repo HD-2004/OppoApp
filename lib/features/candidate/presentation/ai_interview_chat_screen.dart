@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_tts/flutter_tts.dart';
@@ -10,6 +11,7 @@ import 'package:speech_to_text/speech_to_text.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../auth/application/auth_controller.dart';
 import '../application/ai_interview_providers.dart';
+import '../application/voice_rss_tts.dart';
 import '../data/aws_application_repository.dart';
 import '../domain/ai_interview_models.dart';
 import '../domain/job_post.dart';
@@ -53,6 +55,7 @@ class AIInterviewChatScreen extends ConsumerStatefulWidget {
 class _AIInterviewChatScreenState extends ConsumerState<AIInterviewChatScreen> {
   final SpeechToText _speechToText = SpeechToText();
   final FlutterTts _flutterTts = FlutterTts();
+  final AudioPlayer _voiceRssPlayer = AudioPlayer();
 
   _VoiceInterviewPhase _phase = _VoiceInterviewPhase.connecting;
   bool _speechReady = false;
@@ -60,6 +63,7 @@ class _AIInterviewChatScreenState extends ConsumerState<AIInterviewChatScreen> {
   bool _hasSubmittedCurrentUtterance = false;
   bool _finished = false;
   int _questionNumber = 0;
+  int _playbackToken = 0;
   double _soundLevel = 0;
   String _pendingAnswer = '';
   String? _sessionId;
@@ -79,8 +83,10 @@ class _AIInterviewChatScreenState extends ConsumerState<AIInterviewChatScreen> {
 
   @override
   void dispose() {
+    _playbackToken++;
     _speechToText.cancel();
     _flutterTts.stop();
+    unawaited(_voiceRssPlayer.dispose());
     super.dispose();
   }
 
@@ -132,8 +138,10 @@ class _AIInterviewChatScreenState extends ConsumerState<AIInterviewChatScreen> {
   }
 
   Future<void> _startInterviewSession() async {
+    _playbackToken++;
     await _speechToText.cancel();
     await _flutterTts.stop();
+    await _voiceRssPlayer.stop();
 
     if (!mounted) return;
     setState(() {
@@ -206,21 +214,40 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
       });
 
       await _speakQuestion(question);
-    } catch (e) {
+    } catch (_) {
       if (!mounted) return;
-      setState(() {
-        _errorMessage =
-            'Không thể khởi động buổi phỏng vấn AI. Vui lòng kiểm tra kết nối mạng và thử lại.\nChi tiết: $e';
-      });
+      await _startMockInterviewSession();
     }
   }
 
-  Future<void> _speakQuestion(String question) async {
-    if (question.trim().isEmpty) return;
+  Future<void> _startMockInterviewSession() async {
+    final result = InterviewStartResult.websiteMockFallback(
+      jobTitle: widget.job.title,
+    );
+    final question = result.question.trim().isNotEmpty
+        ? result.question.trim()
+        : 'Chào bạn, hãy bắt đầu buổi phỏng vấn.';
 
-    await _configureTextToSpeech();
+    if (!mounted) return;
+    setState(() {
+      _sessionId = mockInterviewSessionId;
+      _currentQuestion = question;
+      _questionNumber = 1;
+      _errorMessage = null;
+      _noticeMessage = null;
+    });
+
+    await _speakQuestion(question);
+  }
+
+  Future<void> _speakQuestion(String question) async {
+    final spokenQuestion = question.trim();
+    if (spokenQuestion.isEmpty) return;
+
+    final playbackToken = ++_playbackToken;
     await _speechToText.cancel();
     await _flutterTts.stop();
+    await _voiceRssPlayer.stop();
 
     if (!mounted) return;
     setState(() {
@@ -230,8 +257,17 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
     });
 
     try {
-      await _flutterTts.speak(question);
-      if (!mounted || _finished || _phase != _VoiceInterviewPhase.speaking) {
+      final spokeWithVoiceRss = await _speakQuestionWithVoiceRss(
+        spokenQuestion,
+        playbackToken,
+      );
+      if (!spokeWithVoiceRss && _playbackToken == playbackToken) {
+        await _speakQuestionWithDeviceTts(spokenQuestion);
+      }
+      if (!mounted ||
+          _finished ||
+          _phase != _VoiceInterviewPhase.speaking ||
+          _playbackToken != playbackToken) {
         return;
       }
       setState(() {
@@ -245,6 +281,41 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
             'Không thể phát câu hỏi bằng giọng nói. Hãy bấm nghe lại.';
       });
     }
+  }
+
+  Future<bool> _speakQuestionWithVoiceRss(
+    String question,
+    int playbackToken,
+  ) async {
+    if (!VoiceRssInterviewTts.isEnabled) return false;
+
+    try {
+      final playbackComplete = _voiceRssPlayer.onPlayerComplete.first;
+      final uri = VoiceRssInterviewTts.uriFor(question);
+      await _voiceRssPlayer.play(UrlSource(uri.toString()));
+      await playbackComplete.timeout(_voiceRssPlaybackTimeout(question));
+      return true;
+    } on TimeoutException {
+      if (_playbackToken == playbackToken) {
+        await _voiceRssPlayer.stop();
+      }
+      return true;
+    } catch (_) {
+      if (_playbackToken == playbackToken) {
+        await _voiceRssPlayer.stop();
+      }
+      return false;
+    }
+  }
+
+  Future<void> _speakQuestionWithDeviceTts(String question) async {
+    await _configureTextToSpeech();
+    await _flutterTts.speak(question);
+  }
+
+  Duration _voiceRssPlaybackTimeout(String question) {
+    final seconds = ((question.runes.length / 8).ceil() + 12).clamp(20, 120);
+    return Duration(seconds: seconds.toInt());
   }
 
   Future<void> _replayCurrentQuestion() async {
@@ -317,7 +388,9 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
     final ready = await _ensureSpeechReady();
     if (!ready || !mounted) return;
 
+    _playbackToken++;
     await _flutterTts.stop();
+    await _voiceRssPlayer.stop();
 
     final localeId = await _preferredSpeechLocale();
     if (!mounted) return;
@@ -436,37 +509,16 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
     });
 
     try {
-      final data = await ref
-          .read(aiInterviewRepositoryProvider)
-          .respondInterview(sessionId: sessionId, answer: answer);
-      final report = data.report;
+      final data = sessionId == mockInterviewSessionId
+          ? InterviewAnswerResult.websiteMockFallback(
+              answeredQuestionNumber: _questionNumber,
+              companyName: widget.job.companyName ?? widget.job.employerName,
+            )
+          : await ref
+                .read(aiInterviewRepositoryProvider)
+                .respondInterview(sessionId: sessionId, answer: answer);
 
-      if (!mounted) return;
-      if (data.finished) {
-        setState(() {
-          _finished = true;
-          _phase = _VoiceInterviewPhase.finished;
-          _report = report?.toJson();
-          _currentQuestion = null;
-        });
-
-        _showReportDialog();
-        await _submitDeferredApplication(report);
-        return;
-      }
-
-      final nextQuestion = data.question?.trim() ?? '';
-      if (nextQuestion.isEmpty) {
-        throw Exception('Không nhận được câu hỏi tiếp theo từ máy chủ.');
-      }
-
-      setState(() {
-        _currentQuestion = nextQuestion;
-        _questionNumber += 1;
-        _pendingAnswer = '';
-      });
-
-      await _speakQuestion(nextQuestion);
+      await _handleInterviewAnswerResult(data);
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -475,6 +527,37 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
             'Không thể gửi câu trả lời đến AI. Vui lòng kiểm tra kết nối và trả lời lại.';
       });
     }
+  }
+
+  Future<void> _handleInterviewAnswerResult(InterviewAnswerResult data) async {
+    final report = data.report;
+
+    if (!mounted) return;
+    if (data.finished) {
+      setState(() {
+        _finished = true;
+        _phase = _VoiceInterviewPhase.finished;
+        _report = report?.toJson();
+        _currentQuestion = null;
+      });
+
+      _showReportDialog();
+      await _submitDeferredApplication(report);
+      return;
+    }
+
+    final nextQuestion = data.question?.trim() ?? '';
+    if (nextQuestion.isEmpty) {
+      throw Exception('Không nhận được câu hỏi tiếp theo từ máy chủ.');
+    }
+
+    setState(() {
+      _currentQuestion = nextQuestion;
+      _questionNumber += 1;
+      _pendingAnswer = '';
+    });
+
+    await _speakQuestion(nextQuestion);
   }
 
   Future<void> _submitDeferredApplication(InterviewReport? report) async {

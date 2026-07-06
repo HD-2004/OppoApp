@@ -143,7 +143,7 @@ ExistingAiInterviewContinuation? aiInterviewContinuationForExistingApplication({
   required String selectedCvUrl,
   required String selectedCvFilename,
   String? selectedCvS3Key,
-  bool jobRequiresAiInterview = true,
+  bool jobRequiresAiInterview = false,
 }) {
   final application =
       existingApplicationForJob(applications, jobId) ??
@@ -218,9 +218,9 @@ bool isApplicationReadyForAiInterview(
     'canceled',
   };
   if (terminalStatuses.contains(status)) return false;
+  if (_hasApplicationAiInterviewReport(application)) return false;
 
   if (status == 'approved') {
-    if (_hasApplicationAiInterviewReport(application)) return false;
     return jobRequiresAiInterview ||
         _hasApplicationAiInterviewEvidence(application) ||
         _hasPositiveApplicationScreeningResult(application);
@@ -243,6 +243,8 @@ bool isApplicationReadyForAiInterview(
           _hasApplicationAiInterviewEvidence(application))) {
     return true;
   }
+
+  if (jobRequiresAiInterview) return true;
 
   return _hasPositiveApplicationScreeningResult(application);
 }

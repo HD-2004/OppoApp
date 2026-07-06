@@ -126,13 +126,31 @@ Nhiệm vụ: ${widget.job.responsibilities ?? "Phát triển và bảo trì cá
             );
         _progressController.forward();
       });
-    } catch (e) {
+    } catch (_) {
+      screeningResult = CvScreeningResult.websiteMockFallback(
+        jobTitle: widget.job.title,
+      );
+      if (!mounted) return;
       setState(() {
+        _score = screeningResult.score;
+        _result = screeningResult.result;
+        _strengths = screeningResult.strengths;
+        _weaknesses = screeningResult.weaknesses;
+        _reason = screeningResult.reason;
         _isLoading = false;
-        _errorMessage =
-            'Không thể kết nối đến dịch vụ phỏng vấn AI. Vui lòng kiểm tra kết nối mạng và thử lại.\nChi tiết: $e';
+        _errorMessage = null;
+        _applicationNotice =
+            'Dịch vụ AI đang bận, app tạm dùng quy trình mô phỏng để bạn tiếp tục vòng phỏng vấn.';
+
+        _progressAnimation = Tween<double>(begin: 0, end: _score / 100.0)
+            .animate(
+              CurvedAnimation(
+                parent: _progressController,
+                curve: Curves.easeOutCubic,
+              ),
+            );
+        _progressController.forward(from: 0);
       });
-      return;
     }
 
     if (screeningResult.canContinueToInterview) {

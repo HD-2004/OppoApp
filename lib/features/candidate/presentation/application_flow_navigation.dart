@@ -60,7 +60,7 @@ Future<bool> openExistingAiInterviewForDuplicateApplication({
     selectedCvUrl: selectedCvUrl,
     selectedCvFilename: selectedCvFilename,
     selectedCvS3Key: selectedCvS3Key,
-    jobRequiresAiInterview: job.isAiScreeningEnabled || !job.isQuickJob,
+    jobRequiresAiInterview: job.isAiScreeningEnabled,
   );
   if (continuation == null) return false;
   if (!context.mounted) return true;

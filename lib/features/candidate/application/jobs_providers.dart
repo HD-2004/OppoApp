@@ -7,7 +7,7 @@ import '../domain/job_post.dart';
 import '../domain/job_recruitment_window.dart';
 
 final jobListingsRefreshIntervalProvider = Provider<Duration?>(
-  (_) => null,
+  (_) => const Duration(minutes: 5),
 );
 
 final activeJobsProvider = FutureProvider.autoDispose<List<JobPost>>((

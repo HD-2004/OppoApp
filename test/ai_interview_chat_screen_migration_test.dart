@@ -22,6 +22,11 @@ void main() {
     expect(source, contains('aiInterviewRepositoryProvider'));
   });
 
+  test('chat screen falls back like website when shared ai is unavailable', () {
+    expect(source, contains('mockInterviewSessionId'));
+    expect(source, contains('websiteMockFallback'));
+  });
+
   test('chat screen updates existing application after interview pass', () {
     final start = source.indexOf('Future<void> _submitDeferredApplication');
     expect(start, greaterThanOrEqualTo(0));
@@ -38,6 +43,8 @@ void main() {
   test('interview screen is voice-only instead of typed chat', () {
     expect(source, contains("package:speech_to_text/speech_to_text.dart"));
     expect(source, contains("package:flutter_tts/flutter_tts.dart"));
+    expect(source, contains("package:audioplayers/audioplayers.dart"));
+    expect(source, contains('VoiceRssInterviewTts'));
 
     expect(source, isNot(contains('TextEditingController')));
     expect(source, isNot(contains('TextField')));

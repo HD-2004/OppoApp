@@ -128,6 +128,44 @@ void main() {
     expect(find.byIcon(Icons.bookmark_border_rounded), findsNothing);
   });
 
+  testWidgets('job post card shows AI interview tag only for AI jobs', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: JobPostCard(
+            job: _job.copyWith(isAiScreeningEnabled: true),
+            onDetailsPressed: () {},
+            onApplyPressed: () {},
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Phỏng vấn AI'), findsOneWidget);
+    expect(find.byIcon(Icons.auto_awesome_rounded), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.text('Phỏng vấn AI')).dy,
+      closeTo(tester.getTopLeft(find.text('Nhân viên phục vụ')).dy, 8),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: JobPostCard(
+            job: _job,
+            onDetailsPressed: () {},
+            onApplyPressed: () {},
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Phỏng vấn AI'), findsNothing);
+    expect(find.byIcon(Icons.auto_awesome_rounded), findsNothing);
+  });
+
   testWidgets('job post card disables apply CTA for expired stale data', (
     tester,
   ) async {

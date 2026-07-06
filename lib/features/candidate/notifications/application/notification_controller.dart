@@ -25,6 +25,7 @@ class CandidateNotificationController
 
   @override
   Future<CandidateNotificationList> build() async {
+    final repository = ref.watch(candidateNotificationRepositoryProvider);
     _refreshTimer?.cancel();
     _refreshTimer = Timer.periodic(
       const Duration(seconds: 15),
@@ -33,7 +34,7 @@ class CandidateNotificationController
     ref.onDispose(() => _refreshTimer?.cancel());
 
     try {
-      return await _repository.listNotifications(limit: 50);
+      return await repository.listNotifications(limit: 50);
     } catch (_) {
       return _emptyNotificationList;
     }

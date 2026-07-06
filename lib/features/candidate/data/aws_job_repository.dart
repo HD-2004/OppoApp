@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 
 import '../domain/job_post.dart';
 import '../domain/job_repository.dart';
+import '../domain/job_recruitment_window.dart';
 
 final jobRepositoryProvider = Provider<JobRepository>((ref) {
   final client = http.Client();
@@ -29,7 +30,7 @@ class AwsJobRepository implements JobRepository {
       Uri.parse('$_standardJobsUrl/jobs/active'),
     );
     final data = _decodeJobList(response, source: 'danh sách công việc');
-    return data.map(mapStandardJob).toList()
+    return _visibleActiveJobs(data.map(mapStandardJob))
       ..sort((a, b) => b.postedAt.compareTo(a.postedAt));
   }
 
@@ -39,8 +40,15 @@ class AwsJobRepository implements JobRepository {
       Uri.parse('$_quickJobsUrl/quick-jobs/active'),
     );
     final data = _decodeJobList(response, source: 'danh sách tuyển gấp');
-    return data.map(mapQuickJob).toList()
+    return _visibleActiveJobs(data.map(mapQuickJob))
       ..sort((a, b) => b.postedAt.compareTo(a.postedAt));
+  }
+
+  static List<JobPost> _visibleActiveJobs(Iterable<JobPost> jobs) {
+    final now = DateTime.now();
+    return jobs
+        .where((job) => isJobPostRecruitable(job, now: now))
+        .toList(growable: false);
   }
 
   static List<Map<String, dynamic>> _decodeJobList(
@@ -128,6 +136,7 @@ class AwsJobRepository implements JobRepository {
 
   static JobPost mapQuickJob(Map<String, dynamic> job) {
     final idJob = _firstNonEmpty([job['jobID'], job['idJob']]);
+    final customQuestions = _firstCustomQuestions(job);
     final hourlyRate = _int(job['hourlyRate']);
     final totalHours = _double(job['totalHours']);
     final suppliedTotal = _int(job['totalSalary']);
@@ -191,6 +200,8 @@ class AwsJobRepository implements JobRepository {
       endTime: endTime,
       requirements: _nullableString(job['requirements']),
       isQuickJob: true,
+      isAiScreeningEnabled: _aiWorkflowEnabled(job, customQuestions),
+      customQuestions: customQuestions,
     );
   }
 
@@ -261,11 +272,17 @@ class AwsJobRepository implements JobRepository {
   static List<String> _firstCustomQuestions(Map<String, dynamic> job) {
     for (final key in const [
       'customQuestions',
+      'custom_questions',
       'interviewQuestions',
+      'interview_questions',
       'aiInterviewQuestions',
+      'ai_interview_questions',
       'aiQuestions',
+      'ai_questions',
       'customInterviewQuestions',
+      'custom_interview_questions',
       'screeningQuestions',
+      'screening_questions',
     ]) {
       final questions = _customQuestions(job[key]);
       if (questions.isNotEmpty) return questions;
@@ -273,10 +290,15 @@ class AwsJobRepository implements JobRepository {
 
     for (final key in const [
       'aiInterview',
+      'ai_interview',
       'aiInterviewConfig',
+      'ai_interview_config',
       'aiInterviewSettings',
+      'ai_interview_settings',
       'interviewConfig',
+      'interview_config',
       'screeningConfig',
+      'screening_config',
     ]) {
       final nested = job[key];
       if (nested is Map) {
@@ -298,36 +320,60 @@ class AwsJobRepository implements JobRepository {
 
     for (final key in const [
       'isAiScreeningEnabled',
+      'is_ai_screening_enabled',
       'aiScreeningEnabled',
+      'ai_screening_enabled',
       'enableAiScreening',
+      'enable_ai_screening',
       'requiresAiScreening',
+      'requires_ai_screening',
       'aiScreeningRequired',
+      'ai_screening_required',
       'isAIInterviewEnabled',
       'isAiInterviewEnabled',
+      'is_ai_interview_enabled',
       'aiInterviewEnabled',
+      'ai_interview_enabled',
       'enableAiInterview',
+      'enable_ai_interview',
       'requiresAiInterview',
+      'requires_ai_interview',
       'requireAiInterview',
+      'require_ai_interview',
       'aiInterviewRequired',
+      'ai_interview_required',
       'hasAiInterview',
+      'has_ai_interview',
       'useAiInterview',
+      'use_ai_interview',
       'aiInterview',
+      'ai_interview',
       'aiScreening',
+      'ai_screening',
     ]) {
       if (_truthy(job[key])) return true;
     }
 
     for (final key in const [
       'aiInterview',
+      'ai_interview',
       'aiInterviewConfig',
+      'ai_interview_config',
       'aiInterviewSettings',
+      'ai_interview_settings',
       'interviewConfig',
+      'interview_config',
       'screeningConfig',
+      'screening_config',
     ]) {
       final nested = job[key];
       if (nested is Map &&
           (_truthy(nested['enabled']) ||
+              _truthy(nested['isEnabled']) ||
+              _truthy(nested['is_enabled']) ||
               _truthy(nested['required']) ||
+              _truthy(nested['isRequired']) ||
+              _truthy(nested['is_required']) ||
               _aiWorkflowEnabled(
                 Map<String, dynamic>.from(nested),
                 customQuestions,
@@ -349,6 +395,7 @@ class AwsJobRepository implements JobRepository {
     ]) {
       final value = _string(job[key]).toLowerCase();
       if (value == 'ai' ||
+          value.contains('ai_screening') ||
           value.contains('ai_interview') ||
           value.contains('ai-interview') ||
           value.contains('ai interview') ||

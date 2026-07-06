@@ -134,15 +134,30 @@ class JobPostCard extends StatelessWidget {
                 ],
               ),
               SizedBox(height: headerSpacing),
-              Text(
-                job.title.trim(),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: textTheme.titleMedium?.copyWith(
-                  color: theme.colorScheme.onSurface,
-                  fontWeight: FontWeight.w800,
-                  height: 1.25,
-                ),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Flexible(
+                    fit: FlexFit.loose,
+                    child: Text(
+                      job.title.trim(),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: textTheme.titleMedium?.copyWith(
+                        color: theme.colorScheme.onSurface,
+                        fontWeight: FontWeight.w800,
+                        height: 1.25,
+                      ),
+                    ),
+                  ),
+                  if (job.isAiScreeningEnabled) ...[
+                    const SizedBox(width: 8),
+                    const Padding(
+                      padding: EdgeInsets.only(top: 1),
+                      child: _AiInterviewTag(),
+                    ),
+                  ],
+                ],
               ),
               SizedBox(height: infoSpacing),
               _JobInfoColumn(
@@ -218,6 +233,45 @@ class JobPostCard extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _AiInterviewTag extends StatelessWidget {
+  const _AiInterviewTag();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF3E8FF),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: const Color(0xFFC084FC)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.auto_awesome_rounded,
+            size: 14,
+            color: Color(0xFF7C3AED),
+          ),
+          const SizedBox(width: 5),
+          Text(
+            'Phỏng vấn AI',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: const Color(0xFF7C3AED),
+              fontWeight: FontWeight.w800,
+              height: 1,
+            ),
+          ),
+        ],
       ),
     );
   }

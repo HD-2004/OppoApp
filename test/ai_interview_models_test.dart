@@ -35,6 +35,16 @@ void main() {
     },
   );
 
+  test('builds website-compatible mock screening fallback', () {
+    final result = CvScreeningResult.websiteMockFallback(jobTitle: 'Phục vụ');
+
+    expect(result.score, greaterThanOrEqualTo(60));
+    expect(result.result, 'review');
+    expect(result.canContinueToInterview, isTrue);
+    expect(result.reason, contains('Phục vụ'));
+    expect(result.toApplicationExtraFields()['aiScreeningResult'], 'review');
+  });
+
   test('parses unfinished and finished interview responses', () {
     final next = InterviewAnswerResult.fromJson({
       'question': 'Bạn xử lý khách phàn nàn như thế nào?',
@@ -78,5 +88,31 @@ void main() {
     });
 
     expect(report.isPassed, isTrue);
+  });
+
+  test('builds website-compatible mock interview fallback', () {
+    final start = InterviewStartResult.websiteMockFallback(jobTitle: 'Phục vụ');
+
+    expect(start.sessionId, mockInterviewSessionId);
+    expect(start.question, contains('Phục vụ'));
+
+    final next = InterviewAnswerResult.websiteMockFallback(
+      answeredQuestionNumber: 1,
+      companyName: 'Katinat',
+    );
+
+    expect(next.finished, isFalse);
+    expect(next.question, contains('khách hàng phàn nàn'));
+    expect(next.report, isNull);
+
+    final done = InterviewAnswerResult.websiteMockFallback(
+      answeredQuestionNumber: 3,
+      companyName: 'Katinat',
+    );
+
+    expect(done.finished, isTrue);
+    expect(done.question, isNull);
+    expect(done.report?.isPassed, isTrue);
+    expect(done.report?.reason, contains('Katinat'));
   });
 }

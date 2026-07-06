@@ -23,6 +23,37 @@ void main() {
     expect(notifications.summary.total, 0);
     expect(notifications.summary.unread, 0);
   });
+
+  test(
+    'reloads notifications when the repository dependency changes',
+    () async {
+      var activeRepository = const _StaticNotificationRepository(total: 1);
+      final activeRepositoryProvider =
+          Provider<CandidateNotificationRepository>((_) => activeRepository);
+      final container = ProviderContainer(
+        overrides: [
+          candidateNotificationRepositoryProvider.overrideWith(
+            (ref) => ref.watch(activeRepositoryProvider),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      final initial = await container.read(
+        candidateNotificationControllerProvider.future,
+      );
+      expect(initial.summary.total, 1);
+
+      activeRepository = const _StaticNotificationRepository(total: 2);
+      container.invalidate(activeRepositoryProvider);
+      await Future<void>.delayed(Duration.zero);
+
+      final reloaded = await container.read(
+        candidateNotificationControllerProvider.future,
+      );
+      expect(reloaded.summary.total, 2);
+    },
+  );
 }
 
 class _FailingNotificationRepository
@@ -36,6 +67,33 @@ class _FailingNotificationRepository
     String? nextToken,
   }) {
     throw Exception('network unavailable');
+  }
+
+  @override
+  Future<void> archive(String notificationId) async {}
+
+  @override
+  Future<void> markAllAsRead() async {}
+
+  @override
+  Future<void> markAsRead(String notificationId) async {}
+}
+
+class _StaticNotificationRepository implements CandidateNotificationRepository {
+  const _StaticNotificationRepository({required this.total});
+
+  final int total;
+
+  @override
+  Future<CandidateNotificationList> listNotifications({
+    String status = 'all',
+    int limit = 20,
+    String? nextToken,
+  }) async {
+    return CandidateNotificationList(
+      items: const [],
+      summary: CandidateNotificationSummary(total: total, unread: 0),
+    );
   }
 
   @override

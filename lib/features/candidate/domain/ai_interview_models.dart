@@ -1,3 +1,5 @@
+const mockInterviewSessionId = 'mock-session-id';
+
 class CvScreeningResult {
   const CvScreeningResult({
     required this.score,
@@ -15,6 +17,23 @@ class CvScreeningResult {
       strengths: _stringList(json['strengths']),
       weaknesses: _stringList(json['weaknesses']),
       reason: _string(json['reason']),
+    );
+  }
+
+  factory CvScreeningResult.websiteMockFallback({required String jobTitle}) {
+    final title = jobTitle.trim().isEmpty ? 'công việc này' : jobTitle.trim();
+    return CvScreeningResult(
+      score: 70,
+      result: 'review',
+      strengths: const [
+        'Hồ sơ có thông tin cơ bản phù hợp để tiếp tục trao đổi',
+        'Ứng viên có thể bổ sung kinh nghiệm trực tiếp trong vòng phỏng vấn',
+      ],
+      weaknesses: const [
+        'Chưa thể đối chiếu đầy đủ CV với hệ thống AI tại thời điểm này',
+      ],
+      reason:
+          'Dịch vụ AI đang bận, app tạm dùng chế độ mô phỏng giống website để bạn tiếp tục vòng phỏng vấn cho vị trí $title.',
     );
   }
 
@@ -40,6 +59,16 @@ class CvScreeningResult {
 
 class InterviewStartResult {
   const InterviewStartResult({required this.sessionId, required this.question});
+
+  factory InterviewStartResult.websiteMockFallback({required String jobTitle}) {
+    final title = jobTitle.trim().isEmpty ? 'công việc này' : jobTitle.trim();
+    return InterviewStartResult(
+      sessionId: mockInterviewSessionId,
+      question:
+          'Chào bạn, tôi là AI Interviewer. Cảm ơn bạn đã ứng tuyển vào vị trí $title. '
+          'Bạn có thể tự giới thiệu ngắn gọn về bản thân và kinh nghiệm làm việc liên quan được không?',
+    );
+  }
 
   factory InterviewStartResult.fromJson(Map<String, dynamic> json) {
     return InterviewStartResult(
@@ -67,6 +96,51 @@ class InterviewAnswerResult {
       report: rawReport is Map
           ? InterviewReport.fromJson(Map<String, dynamic>.from(rawReport))
           : null,
+    );
+  }
+
+  factory InterviewAnswerResult.websiteMockFallback({
+    required int answeredQuestionNumber,
+    required String companyName,
+  }) {
+    if (answeredQuestionNumber <= 1) {
+      return const InterviewAnswerResult(
+        question:
+            'Cảm ơn bạn. Bạn có thể chia sẻ thêm về cách bạn giải quyết một tình huống khách hàng phàn nàn hoặc gặp khó khăn khi làm việc nhóm không?',
+        finished: false,
+        report: null,
+      );
+    }
+
+    if (answeredQuestionNumber == 2) {
+      return const InterviewAnswerResult(
+        question:
+            'Tuyệt vời. Cuối cùng, bạn có mong muốn gì về mức lương hoặc chế độ đãi ngộ, và bạn có thể bắt đầu đi làm từ khi nào?',
+        finished: false,
+        report: null,
+      );
+    }
+
+    final company = companyName.trim().isEmpty ? 'công ty' : companyName.trim();
+    const score = 80;
+    return InterviewAnswerResult(
+      question: null,
+      finished: true,
+      report: InterviewReport(
+        totalScore: score,
+        pastExperienceScore: score + 2,
+        situationHandlingScore: score + 3,
+        operationsScore: score + 1,
+        customQuestionsScore: score,
+        recommendToEmployer: true,
+        reason:
+            'Ứng viên trả lời tự tin, mạch lạc. Có thái độ dịch vụ tốt, phù hợp với yêu cầu công việc tại $company.',
+        strengths: const [
+          'Thái độ phục vụ khách hàng tốt',
+          'Giao tiếp rõ ràng, tự tin',
+        ],
+        weaknesses: const ['Cần làm quen với môi trường mới'],
+      ),
     );
   }
 

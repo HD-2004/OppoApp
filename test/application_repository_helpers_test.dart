@@ -80,27 +80,41 @@ void main() {
     },
   );
 
-  test(
-    'accepted application continues for standard AI flow even without job flag',
-    () {
-      final continuation = aiInterviewContinuationForExistingApplication(
-        applications: const [
-          {
-            'applicationId': 'app-web-ai',
-            'jobId': 'job-web-ai',
-            'status': 'cvAccepted',
-          },
-        ],
-        jobId: 'job-web-ai',
-        selectedCvUrl: 'https://example.com/selected.pdf',
-        selectedCvFilename: 'selected.pdf',
-        jobRequiresAiInterview: true,
-      );
+  test('accepted application continues when the job AI flag is enabled', () {
+    final continuation = aiInterviewContinuationForExistingApplication(
+      applications: const [
+        {
+          'applicationId': 'app-web-ai',
+          'jobId': 'job-web-ai',
+          'status': 'cvAccepted',
+        },
+      ],
+      jobId: 'job-web-ai',
+      selectedCvUrl: 'https://example.com/selected.pdf',
+      selectedCvFilename: 'selected.pdf',
+      jobRequiresAiInterview: true,
+    );
 
-      expect(continuation?.applicationId, 'app-web-ai');
-      expect(continuation?.aiScreeningResult, 'pass');
-    },
-  );
+    expect(continuation?.applicationId, 'app-web-ai');
+    expect(continuation?.aiScreeningResult, 'pass');
+  });
+
+  test('plain accepted application does not assume AI by default', () {
+    final continuation = aiInterviewContinuationForExistingApplication(
+      applications: const [
+        {
+          'applicationId': 'app-default-non-ai',
+          'jobId': 'job-default-non-ai',
+          'status': 'accepted',
+        },
+      ],
+      jobId: 'job-default-non-ai',
+      selectedCvUrl: 'https://example.com/selected.pdf',
+      selectedCvFilename: 'selected.pdf',
+    );
+
+    expect(continuation, isNull);
+  });
 
   test('plain accepted application does not continue when job is non-AI', () {
     final continuation = aiInterviewContinuationForExistingApplication(
@@ -157,6 +171,46 @@ void main() {
       );
 
       expect(continuation?.applicationId, 'app-approved');
+      expect(continuation?.aiScreeningResult, 'pass');
+    },
+  );
+
+  test(
+    'pending standard application continues AI interview when report is missing',
+    () {
+      final continuation = aiInterviewContinuationForExistingApplication(
+        applications: const [
+          {
+            'applicationId': 'app-pending',
+            'jobId': 'job-ai',
+            'status': 'pending',
+          },
+        ],
+        jobId: 'job-ai',
+        selectedCvUrl: 'https://example.com/selected.pdf',
+        selectedCvFilename: 'selected.pdf',
+        jobRequiresAiInterview: true,
+      );
+
+      expect(continuation?.applicationId, 'app-pending');
+      expect(continuation?.aiScreeningResult, 'pass');
+    },
+  );
+
+  test(
+    'statusless standard application continues AI interview when report is missing',
+    () {
+      final continuation = aiInterviewContinuationForExistingApplication(
+        applications: const [
+          {'applicationId': 'app-statusless', 'jobId': 'job-ai'},
+        ],
+        jobId: 'job-ai',
+        selectedCvUrl: 'https://example.com/selected.pdf',
+        selectedCvFilename: 'selected.pdf',
+        jobRequiresAiInterview: true,
+      );
+
+      expect(continuation?.applicationId, 'app-statusless');
       expect(continuation?.aiScreeningResult, 'pass');
     },
   );
