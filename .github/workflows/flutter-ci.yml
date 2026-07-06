@@ -53,7 +53,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     needs: analyze-and-test
-    if: github.event_name != 'pull_request'
+    if: github.event_name != 'pull_request' && vars.COGNITO_HOSTED_UI_DOMAIN != ''
 
     environment:
       name: github-pages
@@ -84,11 +84,6 @@ jobs:
             --base-href "/${repo_name}/"
             --dart-define "COGNITO_WEB_REDIRECT_URI=${page_url}"
           )
-
-          if [ -z "$COGNITO_HOSTED_UI_DOMAIN" ]; then
-            echo "::error::Missing repository variable COGNITO_HOSTED_UI_DOMAIN. Set it to the same Cognito Hosted UI domain used by the website."
-            exit 1
-          fi
 
           build_args+=(--dart-define "COGNITO_HOSTED_UI_DOMAIN=${COGNITO_HOSTED_UI_DOMAIN}")
 

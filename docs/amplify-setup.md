@@ -350,6 +350,10 @@ COGNITO_HOSTED_UI_DOMAIN
 COGNITO_USER_POOL_CLIENT_ID
 ```
 
+Job deploy GitHub Pages chỉ chạy khi `COGNITO_HOSTED_UI_DOMAIN` đã được cấu
+hình. Nếu biến này chưa có, workflow vẫn chạy analyze/test nhưng bỏ qua deploy
+để không tạo bản web Google sign-in sai cấu hình.
+
 Trong GitHub:
 
 1. Vào **Settings** → **Secrets and variables** → **Actions**.

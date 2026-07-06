@@ -14,12 +14,14 @@ class NotificationDto {
     this.entityId,
     this.deepLink,
     this.readAt,
+    this.data = const {},
   });
 
   factory NotificationDto.fromJson(Map<String, dynamic> json) {
     final readValue = json['read'];
     final createdAtValue = json['createdAt'] as String?;
     final readAtValue = json['readAt'] as String?;
+    final rawData = json['data'];
     return NotificationDto(
       id: (json['id'] ?? json['notificationId'] ?? '').toString(),
       type: (json['type'] ?? 'SYSTEM').toString(),
@@ -29,12 +31,18 @@ class NotificationDto {
         json['status'] as String?,
         read: readValue is bool ? readValue : null,
       ),
-      createdAt: DateTime.tryParse(createdAtValue ?? '')?.toLocal() ??
+      createdAt:
+          DateTime.tryParse(createdAtValue ?? '')?.toLocal() ??
           DateTime.fromMillisecondsSinceEpoch(0),
       entityType: json['entityType']?.toString(),
       entityId: json['entityId']?.toString(),
       deepLink: (json['deepLink'] ?? json['actionUrl'])?.toString(),
-      readAt: readAtValue == null ? null : DateTime.tryParse(readAtValue)?.toLocal(),
+      readAt: readAtValue == null
+          ? null
+          : DateTime.tryParse(readAtValue)?.toLocal(),
+      data: rawData is Map
+          ? Map<String, dynamic>.from(rawData)
+          : const <String, dynamic>{},
     );
   }
 
@@ -48,6 +56,7 @@ class NotificationDto {
   final String? entityId;
   final String? deepLink;
   final DateTime? readAt;
+  final Map<String, dynamic> data;
 
   CandidateNotification toDomain() {
     return CandidateNotification(
@@ -61,6 +70,7 @@ class NotificationDto {
       entityId: entityId,
       deepLink: deepLink,
       readAt: readAt,
+      data: data,
     );
   }
 }

@@ -5,22 +5,25 @@ import 'package:oppo_temp_jobs/features/candidate/notifications/domain/notificat
 import 'package:oppo_temp_jobs/features/candidate/notifications/domain/notification_type.dart';
 
 void main() {
-  test('maps website application detail links to mobile application detail', () {
-    final destination = resolveCandidateNotificationDestination(
-      _notification(
-        deepLink: 'https://oppo.example.com/candidate/applications/app-1',
-        entityType: 'APPLICATION',
-      ),
-    );
+  test(
+    'maps website application detail links to mobile application detail',
+    () {
+      final destination = resolveCandidateNotificationDestination(
+        _notification(
+          deepLink: 'https://oppo.example.com/candidate/applications/app-1',
+          entityType: 'APPLICATION',
+        ),
+      );
 
-    expect(
-      destination.kind,
-      CandidateNotificationDestinationKind.applicationDetail,
-    );
-    expect(destination.entityId, 'app-1');
-    expect(destination.route, isNull);
-    expect(destination.label, 'Xem hồ sơ ứng tuyển');
-  });
+      expect(
+        destination.kind,
+        CandidateNotificationDestinationKind.applicationDetail,
+      );
+      expect(destination.entityId, 'app-1');
+      expect(destination.route, isNull);
+      expect(destination.label, 'Xem hồ sơ ứng tuyển');
+    },
+  );
 
   test('uses notification entity id for application links without an id', () {
     final destination = resolveCandidateNotificationDestination(
@@ -49,10 +52,7 @@ void main() {
     expect(jobDestination.kind, CandidateNotificationDestinationKind.route);
     expect(jobDestination.route, '/jobs/job-1');
     expect(jobDestination.label, 'Xem công việc');
-    expect(
-      bookingDestination.kind,
-      CandidateNotificationDestinationKind.route,
-    );
+    expect(bookingDestination.kind, CandidateNotificationDestinationKind.route);
     expect(bookingDestination.route, '/bookings/booking-1');
     expect(bookingDestination.label, 'Xem ca làm');
   });

@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 
 import 'package:oppo_temp_jobs/core/theme/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../application/notification_controller.dart';
 import '../domain/candidate_notification.dart';
+import 'candidate_notification_detail_screen.dart';
 import 'widgets/notification_card.dart';
 import 'widgets/notification_empty_state.dart';
 
@@ -296,11 +296,13 @@ class _NotificationListView extends ConsumerWidget {
                     .read(candidateNotificationControllerProvider.notifier)
                     .markAsRead(item.id);
               }
-              // Deep link navigation nếu có
-              if (context.mounted &&
-                  item.deepLink != null &&
-                  item.deepLink!.startsWith('/')) {
-                context.go(item.deepLink!);
+              if (context.mounted) {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        CandidateNotificationDetailScreen(notification: item),
+                  ),
+                );
               }
             },
             onArchive: () => ref

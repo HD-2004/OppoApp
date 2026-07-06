@@ -13,6 +13,7 @@ class CandidateNotification {
     this.entityId,
     this.deepLink,
     this.readAt,
+    this.data = const {},
   });
 
   final String id;
@@ -25,6 +26,7 @@ class CandidateNotification {
   final String? entityId;
   final String? deepLink;
   final DateTime? readAt;
+  final Map<String, dynamic> data;
 
   bool get isUnread => status == CandidateNotificationStatus.unread;
 
@@ -43,6 +45,7 @@ class CandidateNotification {
       entityId: entityId,
       deepLink: deepLink,
       readAt: readAt ?? this.readAt,
+      data: data,
     );
   }
 }
