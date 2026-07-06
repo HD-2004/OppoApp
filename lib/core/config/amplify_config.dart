@@ -33,6 +33,15 @@ const cognitoHostedUiDomain = String.fromEnvironment(
   defaultValue: '',
 );
 
+// Web deployments must redirect back to the HTTPS origin that hosts Flutter
+// Web. For GitHub Pages this should be:
+//   https://<owner>.github.io/<repo>/
+// Native mobile keeps using the app-owned custom scheme below.
+const cognitoWebRedirectUri = String.fromEnvironment(
+  'COGNITO_WEB_REDIRECT_URI',
+  defaultValue: '',
+);
+
 // App-owned redirect URI. Derived from the Android applicationId / iOS bundle
 // id (com.oppo.tempjobs) so it is a real scheme this app controls. This exact
 // value must be added to the Cognito App Client's Allowed callback URLs and
@@ -42,8 +51,57 @@ const cognitoRedirectScheme = String.fromEnvironment(
   defaultValue: 'com.oppo.tempjobs',
 );
 
-String get cognitoSignInRedirectUri => '$cognitoRedirectScheme://';
-String get cognitoSignOutRedirectUri => '$cognitoRedirectScheme://';
+String get cognitoSignInRedirectUri => resolveCognitoRedirectUri(
+  isWeb: kIsWeb,
+  webRedirectUri: cognitoWebRedirectUri,
+  redirectScheme: cognitoRedirectScheme,
+);
+
+String get cognitoSignOutRedirectUri => cognitoSignInRedirectUri;
+
+String resolveCognitoRedirectUri({
+  required bool isWeb,
+  required String redirectScheme,
+  String? webRedirectUri,
+  Uri? baseUri,
+}) {
+  if (!isWeb) {
+    return '${redirectScheme.trim()}://';
+  }
+
+  final configuredUri = _normalizeWebRedirectUri(webRedirectUri);
+  if (configuredUri != null) {
+    return configuredUri;
+  }
+
+  final currentUri = baseUri ?? Uri.base;
+  final basePath = _webBasePath(currentUri.path);
+  return _normalizeWebRedirectUri('${currentUri.origin}$basePath') ??
+      '${currentUri.origin}/';
+}
+
+String _webBasePath(String path) {
+  if (path.isEmpty || path == '/') {
+    return '/';
+  }
+  if (path.endsWith('/')) {
+    return path;
+  }
+
+  final lastSegment = path.split('/').last;
+  if (lastSegment.contains('.')) {
+    return path.replaceFirst(RegExp(r'[^/]*$'), '');
+  }
+  return '$path/';
+}
+
+String? _normalizeWebRedirectUri(String? value) {
+  final text = value?.trim();
+  if (text == null || text.isEmpty) {
+    return null;
+  }
+  return text.endsWith('/') ? text : '$text/';
+}
 
 // Social sign-in (Hosted UI) can only be configured when we actually know the
 // Hosted UI domain. Without it, Amplify would fail at signInWithWebUI time.

@@ -73,7 +73,30 @@ jobs:
         run: flutter pub get
 
       - name: Build Flutter web
-        run: flutter build web --release --base-href "/OppoApp/"
+        env:
+          COGNITO_HOSTED_UI_DOMAIN: ${{ vars.COGNITO_HOSTED_UI_DOMAIN }}
+          COGNITO_USER_POOL_CLIENT_ID: ${{ vars.COGNITO_USER_POOL_CLIENT_ID }}
+        run: |
+          repo_name="${GITHUB_REPOSITORY#*/}"
+          page_url="https://${GITHUB_REPOSITORY_OWNER}.github.io/${repo_name}/"
+          build_args=(
+            --release
+            --base-href "/${repo_name}/"
+            --dart-define "COGNITO_WEB_REDIRECT_URI=${page_url}"
+          )
+
+          if [ -z "$COGNITO_HOSTED_UI_DOMAIN" ]; then
+            echo "::error::Missing repository variable COGNITO_HOSTED_UI_DOMAIN. Set it to the same Cognito Hosted UI domain used by the website."
+            exit 1
+          fi
+
+          build_args+=(--dart-define "COGNITO_HOSTED_UI_DOMAIN=${COGNITO_HOSTED_UI_DOMAIN}")
+
+          if [ -n "$COGNITO_USER_POOL_CLIENT_ID" ]; then
+            build_args+=(--dart-define "COGNITO_USER_POOL_CLIENT_ID=${COGNITO_USER_POOL_CLIENT_ID}")
+          fi
+
+          flutter build web "${build_args[@]}"
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5

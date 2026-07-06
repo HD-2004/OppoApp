@@ -338,6 +338,64 @@ Trước khi test thật:
 - Reset password đổi được mật khẩu mới
 - Login lại được bằng mật khẩu mới
 
+## PHASE 10: Google Hosted UI Cho Web/GitHub Pages
+
+Để đăng nhập / đăng ký Google trên bản web giống website, Flutter Web phải dùng
+đúng Cognito Hosted UI domain và redirect HTTPS của trang đang deploy.
+
+GitHub Actions đã đọc các biến repo-level sau:
+
+```text
+COGNITO_HOSTED_UI_DOMAIN
+COGNITO_USER_POOL_CLIENT_ID
+```
+
+Trong GitHub:
+
+1. Vào **Settings** → **Secrets and variables** → **Actions**.
+2. Mở tab **Variables**.
+3. Tạo biến `COGNITO_HOSTED_UI_DOMAIN` với giá trị domain Hosted UI thật của
+   website, chỉ nhập domain trần, ví dụ:
+
+```text
+your-domain.auth.ap-southeast-1.amazoncognito.com
+```
+
+4. Nếu cần override App Client, tạo thêm `COGNITO_USER_POOL_CLIENT_ID`. Nếu
+   không tạo, app dùng App Client ID đã audit:
+
+```text
+2mv7qt4gpmq03dmlm0or9724n8
+```
+
+Trong Cognito App Client đang dùng cho Google Hosted UI, thêm các URL này vào
+**Allowed callback URLs** và **Allowed sign-out URLs**:
+
+```text
+com.oppo.tempjobs://
+https://hd-2004.github.io/OppoApp/
+```
+
+Nếu tên owner/repo GitHub khác, thay URL GitHub Pages theo dạng:
+
+```text
+https://<github-owner>.github.io/<repo-name>/
+```
+
+Local web có thể chạy thử bằng:
+
+```powershell
+flutter run -d chrome `
+  --dart-define=COGNITO_HOSTED_UI_DOMAIN=your-domain.auth.ap-southeast-1.amazoncognito.com `
+  --dart-define=COGNITO_WEB_REDIRECT_URI=http://localhost:PORT/
+```
+
+Android/iOS vẫn dùng redirect scheme:
+
+```text
+com.oppo.tempjobs://
+```
+
 Nguồn chính thức:
 
 - Amplify Flutter dùng Cognito User Pool hiện có: https://docs.amplify.aws/flutter/build-a-backend/auth/use-existing-cognito-resources/
