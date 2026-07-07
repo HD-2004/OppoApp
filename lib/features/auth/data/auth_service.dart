@@ -152,7 +152,16 @@ class AuthService {
     } on AuthFailure {
       rethrow;
     } on Exception catch (error) {
-      safePrint('[AuthService] signInWithSocialProvider error: $error');
+      // ── Log chi tiết lỗi gốc để debug ──────────────────────────────────
+      safePrint('[AuthService] signInWithSocialProvider error '
+          'type=${error.runtimeType}: $error');
+      if (error is AuthException) {
+        safePrint('[AuthService]   .message        = ${error.message}');
+        safePrint('[AuthService]   .recoverySuggestion = '
+            '${error.recoverySuggestion}');
+        safePrint('[AuthService]   .underlyingException = '
+            '${error.underlyingException}');
+      }
       throw _mapAuthError(error);
     }
   }

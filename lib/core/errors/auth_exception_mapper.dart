@@ -1,4 +1,5 @@
 import 'package:amplify_flutter/amplify_flutter.dart';
+import 'package:flutter/foundation.dart';
 
 import 'auth_failure.dart';
 
@@ -113,10 +114,24 @@ class AuthExceptionMapper {
         combined.contains('redirectsignout') ||
         combined.contains('socialproviders') ||
         combined.contains('signinwithwebui')) {
-      // Log message gốc để biết lý do thực sự
-      safePrint(
-        '[AuthExceptionMapper] social sign-in config error: ${error.message}',
-      );
+      // Log đầy đủ để debug — lỗi thật thường nằm trong underlyingException
+      safePrint('[AuthExceptionMapper] social sign-in error branch hit:');
+      safePrint('  type              = ${error.runtimeTypeName}');
+      safePrint('  message           = ${error.message}');
+      safePrint('  recoverySuggestion= ${error.recoverySuggestion}');
+      safePrint('  underlyingException = ${error.underlyingException}');
+      // Trong debug mode: trả về raw message thay vì chuỗi cố định
+      // để lỗi gốc hiện thẳng lên UI cho dễ debug.
+      if (kDebugMode) {
+        final debugMsg = StringBuffer()
+          ..writeln('[DEBUG] Social sign-in thất bại:')
+          ..writeln('  type: ${error.runtimeTypeName}')
+          ..writeln('  message: ${error.message}');
+        if (error.underlyingException != null) {
+          debugMsg.writeln('  cause: ${error.underlyingException}');
+        }
+        return AuthFailure(debugMsg.toString().trim(), code: 'social_debug');
+      }
       return AuthFailure.socialSignInConfiguration;
     }
     if (combined.contains('invalid_scope') ||
