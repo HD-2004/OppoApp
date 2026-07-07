@@ -78,8 +78,7 @@ flutter:
   uses-material-design: true
 
   assets:
-    - img/intro.png
-    - img/oppo-logo-color.png
+    - img/
     - assets/fonts/
 
   # To add assets to your application, add an assets section, like this:

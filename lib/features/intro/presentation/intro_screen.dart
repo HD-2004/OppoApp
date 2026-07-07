@@ -1,19 +1,15 @@
 import 'package:flutter/material.dart';
 
 import 'package:oppo_temp_jobs/core/theme/app_colors.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
-import '../providers/intro_controller.dart';
-
-class IntroScreen extends ConsumerStatefulWidget {
+class IntroScreen extends StatefulWidget {
   const IntroScreen({super.key});
 
   @override
-  ConsumerState<IntroScreen> createState() => _IntroScreenState();
+  State<IntroScreen> createState() => _IntroScreenState();
 }
 
-class _IntroScreenState extends ConsumerState<IntroScreen>
+class _IntroScreenState extends State<IntroScreen>
     with SingleTickerProviderStateMixin {
   static const _logoAsset = 'img/oppo-logo-color.png';
   static const _deepBlue = AppColors.primary;
@@ -24,7 +20,6 @@ class _IntroScreenState extends ConsumerState<IntroScreen>
   late final AnimationController _animationController;
   late final Animation<double> _fadeAnimation;
   late final Animation<Offset> _slideAnimation;
-  bool _isNavigating = false;
 
   @override
   void initState() {
@@ -53,25 +48,11 @@ class _IntroScreenState extends ConsumerState<IntroScreen>
     super.dispose();
   }
 
-  Future<void> _continueToLogin() async {
-    if (_isNavigating) {
-      return;
-    }
-    setState(() => _isNavigating = true);
-    await ref.read(introControllerProvider.notifier).markIntroAsSeen();
-    if (!mounted) {
-      return;
-    }
-    context.go('/login');
-  }
-
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
-    final availableWidth = (width - 48).clamp(0.0, 360.0).toDouble();
     final logoTileSize = (width * 0.46).clamp(160.0, 196.0).toDouble();
     final logoImageWidth = (logoTileSize * 0.72).clamp(0.0, 140.0).toDouble();
-    final buttonWidth = availableWidth.clamp(0.0, 280.0).toDouble();
 
     return Scaffold(
       body: DecoratedBox(
@@ -106,21 +87,6 @@ class _IntroScreenState extends ConsumerState<IntroScreen>
                               size: logoTileSize,
                               logoWidth: logoImageWidth,
                             ),
-                            const SizedBox(height: 28),
-                            _ScaleTapButton(
-                              width: buttonWidth,
-                              isLoading: _isNavigating,
-                              onPressed: _continueToLogin,
-                              child: const Text('Bắt đầu ngay'),
-                            ),
-                            const SizedBox(height: 14),
-                            _SecondaryIntroButton(
-                              width: buttonWidth,
-                              onPressed: _isNavigating
-                                  ? null
-                                  : _continueToLogin,
-                              child: const Text('Đăng nhập'),
-                            ),
                           ],
                         ),
                       ),
@@ -130,155 +96,6 @@ class _IntroScreenState extends ConsumerState<IntroScreen>
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ScaleTapButton extends StatefulWidget {
-  const _ScaleTapButton({
-    required this.child,
-    required this.onPressed,
-    required this.width,
-    this.isLoading = false,
-  });
-
-  final Widget child;
-  final VoidCallback? onPressed;
-  final double width;
-  final bool isLoading;
-
-  @override
-  State<_ScaleTapButton> createState() => _ScaleTapButtonState();
-}
-
-class _ScaleTapButtonState extends State<_ScaleTapButton> {
-  bool _isPressed = false;
-
-  void _setPressed(bool value) {
-    if (_isPressed != value) {
-      setState(() => _isPressed = value);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: widget.onPressed == null ? null : (_) => _setPressed(true),
-      onTapCancel: () => _setPressed(false),
-      onTapUp: widget.onPressed == null
-          ? null
-          : (_) {
-              _setPressed(false);
-              widget.onPressed?.call();
-            },
-      child: AnimatedScale(
-        scale: _isPressed ? 0.98 : 1,
-        duration: const Duration(milliseconds: 110),
-        curve: Curves.easeOut,
-        child: SizedBox(
-          width: widget.width,
-          height: 56,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: _IntroScreenState._deepBlue,
-              borderRadius: BorderRadius.circular(999),
-              boxShadow: [
-                BoxShadow(
-                  color: _IntroScreenState._deepBlue.withValues(alpha: 0.22),
-                  blurRadius: 22,
-                  offset: const Offset(0, 12),
-                ),
-              ],
-            ),
-            child: Center(
-              child: widget.isLoading
-                  ? const SizedBox.square(
-                      dimension: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : DefaultTextStyle(
-                      style: Theme.of(context).textTheme.titleMedium!.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w900,
-                        height: 1,
-                      ),
-                      child: widget.child,
-                    ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SecondaryIntroButton extends StatefulWidget {
-  const _SecondaryIntroButton({
-    required this.child,
-    required this.onPressed,
-    required this.width,
-  });
-
-  final Widget child;
-  final VoidCallback? onPressed;
-  final double width;
-
-  @override
-  State<_SecondaryIntroButton> createState() => _SecondaryIntroButtonState();
-}
-
-class _SecondaryIntroButtonState extends State<_SecondaryIntroButton> {
-  bool _isPressed = false;
-
-  void _setPressed(bool value) {
-    if (_isPressed != value) {
-      setState(() => _isPressed = value);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final borderColor = _IntroScreenState._deepBlue.withValues(alpha: 0.24);
-
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTapDown: widget.onPressed == null ? null : (_) => _setPressed(true),
-      onTapCancel: () => _setPressed(false),
-      onTapUp: widget.onPressed == null
-          ? null
-          : (_) {
-              _setPressed(false);
-              widget.onPressed?.call();
-            },
-      child: AnimatedScale(
-        scale: _isPressed ? 0.98 : 1,
-        duration: const Duration(milliseconds: 110),
-        curve: Curves.easeOut,
-        child: SizedBox(
-          width: widget.width,
-          height: 56,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: borderColor),
-            ),
-            child: Center(
-              child: DefaultTextStyle(
-                style: Theme.of(context).textTheme.titleMedium!.copyWith(
-                  color: _IntroScreenState._deepBlue,
-                  fontWeight: FontWeight.w900,
-                  height: 1,
-                ),
-                child: widget.child,
-              ),
-            ),
-          ),
         ),
       ),
     );

@@ -54,19 +54,16 @@ void main() {
     );
   }
 
-  testWidgets('splash opens intro when intro has not been seen', (
+  testWidgets('splash opens login automatically when intro has not been seen', (
     WidgetTester tester,
   ) async {
     await pumpIntroFlow(tester, hasSeenIntro: false);
     await tester.pumpAndSettle();
 
-    expect(find.byType(IntroScreen), findsOneWidget);
-    expect(
-      find.image(const AssetImage('img/oppo-logo-color.png')),
-      findsOneWidget,
-    );
-    expect(find.text('Bắt đầu ngay'), findsOneWidget);
-    expect(find.text('Tìm việc linh hoạt, thu nhập tức thì'), findsNothing);
+    final preferences = await SharedPreferences.getInstance();
+    expect(preferences.getBool('has_seen_intro'), isTrue);
+    expect(find.byType(LoginScreen), findsOneWidget);
+    expect(find.text('Bắt đầu ngay'), findsNothing);
   });
 
   testWidgets('splash uses bundled logo asset while routing', (
@@ -84,6 +81,32 @@ void main() {
     await tester.pumpAndSettle();
   });
 
+  testWidgets('bundled logo asset loads non-empty bytes', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) {
+            return FutureBuilder<int>(
+              future: DefaultAssetBundle.of(context)
+                  .load('img/oppo-logo-color.png')
+                  .then((data) => data.lengthInBytes),
+              builder: (context, snapshot) {
+                return Text('${snapshot.data ?? 0}');
+              },
+            );
+          },
+        ),
+      ),
+    );
+
+    await tester.pumpAndSettle();
+
+    final logoBytes = int.parse(tester.widget<Text>(find.byType(Text)).data!);
+    expect(logoBytes, greaterThan(0));
+  });
+
   testWidgets('splash opens login when intro has already been seen', (
     WidgetTester tester,
   ) async {
@@ -94,18 +117,21 @@ void main() {
     expect(find.text('Email'), findsOneWidget);
   });
 
-  testWidgets('intro primary button marks intro as seen and replaces login', (
+  testWidgets('intro screen is logo-only without entry buttons', (
     WidgetTester tester,
   ) async {
-    await pumpIntroFlow(tester, hasSeenIntro: false);
-    await tester.pumpAndSettle();
+    SharedPreferences.setMockInitialValues({});
 
-    await tester.ensureVisible(find.text('Bắt đầu ngay'));
-    await tester.tap(find.text('Bắt đầu ngay'));
-    await tester.pumpAndSettle();
+    await tester.pumpWidget(
+      const ProviderScope(child: MaterialApp(home: IntroScreen())),
+    );
 
-    final preferences = await SharedPreferences.getInstance();
-    expect(preferences.getBool('has_seen_intro'), isTrue);
-    expect(find.byType(LoginScreen), findsOneWidget);
+    expect(find.byType(IntroScreen), findsOneWidget);
+    expect(
+      find.image(const AssetImage('img/oppo-logo-color.png')),
+      findsOneWidget,
+    );
+    expect(find.text('Bắt đầu ngay'), findsNothing);
+    expect(find.text('Đăng nhập'), findsNothing);
   });
 }

@@ -33,15 +33,22 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   }
 
   Future<void> _routeFromIntroState() async {
+    final introRepository = ref.read(introRepositoryProvider);
     final results = await Future.wait([
-      ref.read(introRepositoryProvider).hasSeenIntro(),
+      introRepository.hasSeenIntro(),
       Future<void>.delayed(const Duration(milliseconds: 700)),
     ]);
     final hasSeenIntro = results.first as bool;
     if (!mounted) {
       return;
     }
-    context.go(hasSeenIntro ? '/login' : '/intro');
+    if (!hasSeenIntro) {
+      await introRepository.markIntroAsSeen();
+      if (!mounted) {
+        return;
+      }
+    }
+    context.go('/login');
   }
 
   @override

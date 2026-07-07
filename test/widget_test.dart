@@ -22,32 +22,26 @@ void main() {
       findsOneWidget,
     );
     expect(find.image(const AssetImage('img/intro.png')), findsNothing);
+    expect(find.text('Bắt đầu ngay'), findsNothing);
+    expect(find.text('Đăng nhập'), findsNothing);
     expect(find.text('Bắt đầu hành trình sự nghiệp F&B của bạn'), findsNothing);
     expect(find.text('Tìm việc linh hoạt, thu nhập tức thì'), findsNothing);
   });
 
-  testWidgets('shows introduction when unauthenticated', (
+  testWidgets('opens login automatically after logo introduction', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const ProviderScope(child: TempJobsApp()));
     await tester.pumpAndSettle();
 
-    expect(
-      find.image(const AssetImage('img/oppo-logo-color.png')),
-      findsOneWidget,
-    );
-    expect(find.text('Bắt đầu ngay'), findsOneWidget);
-    expect(find.text('Đăng nhập'), findsOneWidget);
+    expect(find.text('Email'), findsOneWidget);
+    expect(find.text('Mật khẩu'), findsOneWidget);
+    expect(find.text('Bắt đầu ngay'), findsNothing);
     expect(find.text('Tìm việc linh hoạt, thu nhập tức thì'), findsNothing);
   });
 
   testWidgets('opens login from introduction', (WidgetTester tester) async {
     await tester.pumpWidget(const ProviderScope(child: TempJobsApp()));
-    await tester.pumpAndSettle();
-
-    await tester.ensureVisible(find.text('Bắt đầu ngay'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Bắt đầu ngay'));
     await tester.pumpAndSettle();
 
     expect(find.text('Đăng nhập'), findsWidgets);
@@ -64,11 +58,6 @@ void main() {
     await tester.pumpWidget(const ProviderScope(child: TempJobsApp()));
     await tester.pumpAndSettle();
 
-    await tester.ensureVisible(find.text('Bắt đầu ngay'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Bắt đầu ngay'));
-    await tester.pumpAndSettle();
-
     await tester.ensureVisible(find.text('Quên mật khẩu'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Quên mật khẩu'));
@@ -82,11 +71,6 @@ void main() {
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const ProviderScope(child: TempJobsApp()));
-    await tester.pumpAndSettle();
-
-    await tester.ensureVisible(find.text('Bắt đầu ngay'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Bắt đầu ngay'));
     await tester.pumpAndSettle();
 
     await tester.ensureVisible(
@@ -119,11 +103,6 @@ void main() {
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const ProviderScope(child: TempJobsApp()));
-    await tester.pumpAndSettle();
-
-    await tester.ensureVisible(find.text('Bắt đầu ngay'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Bắt đầu ngay'));
     await tester.pumpAndSettle();
 
     final loginFields = tester.widgetList<EditableText>(
