@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:amplify_flutter/amplify_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -24,8 +27,45 @@ Future<void> main() async {
   if (kIsWeb) {
     try {
       await AuthService().configureAmplify();
-    } catch (_) {
+    } catch (e) {
       // Configuration errors are handled later in authControllerProvider.build()
+      safePrint('[main] Amplify configuration failed: $e');
+    }
+
+    // ── OAuth callback guard ──────────────────────────────────────────────────
+    // After Google sign-in, Cognito redirects back with ?code=&state= in the
+    // URL. Amplify needs a moment to exchange the authorization code for tokens
+    // before the app's auth check runs. Without this delay, authController
+    // calls checkAuthSession() while the exchange is still in-flight and gets
+    // unauthenticated — causing GoRouter to navigate away and lose the ?code=.
+    //
+    // We only add the wait when the OAuth callback parameters are present so
+    // normal app launches are unaffected.
+    final uri = Uri.base;
+    final hasOAuthCallback =
+        uri.queryParameters.containsKey('code') &&
+        uri.queryParameters.containsKey('state');
+    if (hasOAuthCallback) {
+      safePrint('[main] OAuth callback detected — waiting for token exchange.');
+      // Wait for Amplify Hub to emit signedIn (token exchange complete)
+      // with a 10 s safety-net timeout so the app never hangs.
+      final completer = Completer<void>();
+      StreamSubscription<AuthHubEvent>? sub;
+      sub = Amplify.Hub.listen(HubChannel.Auth, (AuthHubEvent event) {
+        if (event.type == AuthHubEventType.signedIn && !completer.isCompleted) {
+          completer.complete();
+          sub?.cancel();
+        }
+      });
+      await completer.future
+          .timeout(
+            const Duration(seconds: 10),
+            onTimeout: () {
+              sub?.cancel();
+              safePrint('[main] OAuth token exchange timeout — starting app anyway.');
+            },
+          );
+      safePrint('[main] OAuth token exchange complete — starting app.');
     }
   }
 

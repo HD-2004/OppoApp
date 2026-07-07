@@ -191,8 +191,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           .signInWithSocialProvider(provider);
     } on AuthFailure catch (f) {
       _showError(f.message);
-    } catch (_) {
-      _showError(l10n.unknownError);
+    } catch (e) {
+      _showError('${l10n.unknownError}\n[debug] $e');
     } finally {
       if (mounted) setState(() => _socialProviderSubmitting = null);
     }
