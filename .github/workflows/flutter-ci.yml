@@ -83,18 +83,33 @@ jobs:
           owner="${GITHUB_REPOSITORY_OWNER,,}"
           page_url="https://${owner}.github.io/${repo_name}/"
 
-          # Write dart-defines to a JSON file to avoid shell quoting/splitting issues
-          cat > dart_defines.json <<EOF
-          {
-            "COGNITO_WEB_REDIRECT_URI": "${page_url}",
-            "COGNITO_HOSTED_UI_DOMAIN": "${COGNITO_HOSTED_UI_DOMAIN}",
-            "COGNITO_REGION": "${COGNITO_REGION}",
-            "COGNITO_USER_POOL_ID": "${COGNITO_USER_POOL_ID}",
-            "COGNITO_USER_POOL_CLIENT_ID": "${COGNITO_USER_POOL_CLIENT_ID}"
+          # Use Python3 (always available on ubuntu-latest) to write a valid
+          # JSON file. This avoids all shell quoting and string-splitting bugs
+          # that occur when passing --dart-define values directly on the CLI.
+          python3 - <<PYEOF
+          import json, os
+          defines = {
+              "COGNITO_WEB_REDIRECT_URI":    os.environ["page_url"],
+              "COGNITO_HOSTED_UI_DOMAIN":    os.environ["COGNITO_HOSTED_UI_DOMAIN"],
+              "COGNITO_REGION":              os.environ["COGNITO_REGION"],
+              "COGNITO_USER_POOL_ID":        os.environ["COGNITO_USER_POOL_ID"],
+              "COGNITO_USER_POOL_CLIENT_ID": os.environ["COGNITO_USER_POOL_CLIENT_ID"],
           }
-          EOF
+          with open("dart_defines.json", "w") as f:
+              json.dump(defines, f, indent=2)
+          print("dart_defines.json written:")
+          print(json.dumps(defines, indent=2))
+          PYEOF
 
-          flutter build web --release --base-href "/${repo_name}/" --dart-define-from-file dart_defines.json
+          flutter build web --release \
+            --base-href "/${repo_name}/" \
+            --dart-define-from-file dart_defines.json
+        env:
+          COGNITO_HOSTED_UI_DOMAIN: ${{ vars.COGNITO_HOSTED_UI_DOMAIN }}
+          COGNITO_USER_POOL_CLIENT_ID: ${{ vars.COGNITO_USER_POOL_CLIENT_ID }}
+          COGNITO_REGION: ${{ vars.COGNITO_REGION }}
+          COGNITO_USER_POOL_ID: ${{ vars.COGNITO_USER_POOL_ID }}
+          page_url: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
