@@ -10,14 +10,20 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  testWidgets('introduction uses bundled F&B image asset', (
+  testWidgets('introduction uses bundled logo asset only', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
       const ProviderScope(child: MaterialApp(home: IntroductionScreen())),
     );
 
-    expect(find.image(const AssetImage('img/intro.png')), findsOneWidget);
+    expect(
+      find.image(const AssetImage('img/oppo-logo-color.png')),
+      findsOneWidget,
+    );
+    expect(find.image(const AssetImage('img/intro.png')), findsNothing);
+    expect(find.text('Bắt đầu hành trình sự nghiệp F&B của bạn'), findsNothing);
+    expect(find.text('Tìm việc linh hoạt, thu nhập tức thì'), findsNothing);
   });
 
   testWidgets('shows introduction when unauthenticated', (
@@ -26,13 +32,13 @@ void main() {
     await tester.pumpWidget(const ProviderScope(child: TempJobsApp()));
     await tester.pumpAndSettle();
 
-    expect(find.text('Ốp Pờ'), findsOneWidget);
     expect(
-      find.text('Bắt đầu hành trình sự nghiệp F&B của bạn'),
+      find.image(const AssetImage('img/oppo-logo-color.png')),
       findsOneWidget,
     );
-    expect(find.text('Tìm việc linh hoạt, thu nhập tức thì'), findsOneWidget);
     expect(find.text('Bắt đầu ngay'), findsOneWidget);
+    expect(find.text('Đăng nhập'), findsOneWidget);
+    expect(find.text('Tìm việc linh hoạt, thu nhập tức thì'), findsNothing);
   });
 
   testWidgets('opens login from introduction', (WidgetTester tester) async {

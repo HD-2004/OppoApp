@@ -61,7 +61,27 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(IntroScreen), findsOneWidget);
-    expect(find.text('Tìm việc linh hoạt, thu nhập tức thì'), findsOneWidget);
+    expect(
+      find.image(const AssetImage('img/oppo-logo-color.png')),
+      findsOneWidget,
+    );
+    expect(find.text('Bắt đầu ngay'), findsOneWidget);
+    expect(find.text('Tìm việc linh hoạt, thu nhập tức thì'), findsNothing);
+  });
+
+  testWidgets('splash uses bundled logo asset while routing', (
+    WidgetTester tester,
+  ) async {
+    await pumpIntroFlow(tester, hasSeenIntro: false);
+    await tester.pump();
+
+    expect(find.byType(SplashScreen), findsOneWidget);
+    expect(
+      find.image(const AssetImage('img/oppo-logo-color.png')),
+      findsOneWidget,
+    );
+
+    await tester.pumpAndSettle();
   });
 
   testWidgets('splash opens login when intro has already been seen', (

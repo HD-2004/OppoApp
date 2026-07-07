@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import 'package:oppo_temp_jobs/core/theme/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -70,18 +69,13 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 class _SplashLogo extends StatelessWidget {
   const _SplashLogo();
 
-  static const _brandTeal = AppColors.secondary;
+  static const _logoAsset = 'img/oppo-logo-color.png';
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      'Ốp Pờ',
-      textAlign: TextAlign.center,
-      style: Theme.of(context).textTheme.displayMedium?.copyWith(
-        color: _brandTeal,
-        fontWeight: FontWeight.w900,
-        height: 1,
-      ),
-    );
+    final width = MediaQuery.sizeOf(context).width;
+    final logoWidth = (width * 0.38).clamp(132.0, 160.0).toDouble();
+
+    return Image.asset(_logoAsset, width: logoWidth, fit: BoxFit.contain);
   }
 }
