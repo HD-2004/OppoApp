@@ -142,14 +142,33 @@ class AuthRepository {
     }
 
     final role = await _service.fetchUserRole();
-    return _userProfileRepository.upsertAfterLogin(
-      userId: currentUser.userId,
-      username: currentUser.username,
-      email: email,
-      fullName: fullName,
-      role: role,
-      dateOfBirth: dateOfBirth,
-    );
+
+    try {
+      return await _userProfileRepository.upsertAfterLogin(
+        userId: currentUser.userId,
+        username: currentUser.username,
+        email: email,
+        fullName: fullName,
+        role: role,
+        dateOfBirth: dateOfBirth,
+      );
+    } catch (error) {
+      // The user is already authenticated with Cognito at this point. If the
+      // profile API is unreachable (e.g. network error or missing CORS headers
+      // on Flutter Web), we must not fail the whole login. Fall back to a
+      // profile derived purely from Cognito attributes so the user can proceed.
+      safePrint('Profile sync failed, using Cognito-derived profile: $error');
+      return AuthUserProfile(
+        userId: currentUser.userId,
+        username: currentUser.username,
+        role: role ?? AppRole.candidate,
+        email: email,
+        fullName: fullName,
+        kycCompleted: false,
+        profileCompleted: false,
+        dateOfBirth: dateOfBirth,
+      );
+    }
   }
 
   Future<AuthUserProfile> updateKycCompleted({

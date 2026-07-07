@@ -274,9 +274,14 @@ class SponsoredBannerSection extends StatefulWidget {
   /// Standard ad-banner aspect ratio (width : height). Banners are a fixed ad
   /// slot, so the frame keeps this ratio and derives its height from the
   /// available phone width — staying correct across all screen sizes without a
-  /// hardcoded pixel height. Images uploaded by employers should target this
-  /// ratio so they display full-bleed without cropping.
-  static const double bannerAspectRatio = 16 / 9;
+  /// hardcoded pixel height.
+  ///
+  /// This is the official banner ratio (~3:1). Employer web uploads should
+  /// target 1500x500 or 1600x517 so images fill the frame without letterboxing
+  /// or cropping. Images that deviate from this ratio still display safely:
+  /// they are shown uncropped ([BoxFit.contain]) over a blurred fill, so text
+  /// and logos are never cut off.
+  static const double bannerAspectRatio = 1600 / 517;
 
   final List<BannerAd> banners;
   final bool isLoading;
