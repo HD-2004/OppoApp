@@ -85,7 +85,7 @@ jobs:
           # Use Python3 (always available on ubuntu-latest) to write a valid
           # JSON file. This avoids all shell quoting and string-splitting bugs
           # that occur when passing --dart-define values directly on the CLI.
-          python3 -c "
+          python3 <<'PY'
           import json, os
           def clean(name):
               return os.environ[name].strip()
@@ -102,7 +102,7 @@ jobs:
           with open('dart_defines.json', 'w') as f:
               json.dump(defines, f, indent=2)
           print('dart_defines.json:', json.dumps(defines, indent=2))
-          "
+          PY
 
           flutter build web --release \
             --base-href "/${repo_name}/" \
