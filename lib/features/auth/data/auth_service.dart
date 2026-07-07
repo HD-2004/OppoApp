@@ -30,7 +30,12 @@ class AuthService {
     } on AmplifyAlreadyConfiguredException {
       return;
     } on Exception catch (error) {
-      safePrint('Amplify Auth configuration failed: $error');
+      safePrint(
+        'Amplify Auth configuration failed: $error\n'
+        'userPoolId=$cognitoUserPoolId '
+        'clientId=$cognitoUserPoolClientId '
+        'region=$cognitoRegion',
+      );
       throw AuthFailure.configuration;
     }
   }
