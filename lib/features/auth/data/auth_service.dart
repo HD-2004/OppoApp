@@ -120,6 +120,10 @@ class AuthService {
         await Amplify.Auth.signOut();
       }
 
+      // Trên Web: signInWithWebUI() sẽ redirect toàn trang sang Cognito
+      // Hosted UI (qua window.open(url, '_self')). Trang sẽ bị unload nên
+      // await này không bao giờ complete. Khi Cognito redirect về với ?code=,
+      // app load lại và Amplify tự xử lý exchange token trong configure().
       return await Amplify.Auth.signInWithWebUI(provider: provider);
     } on Exception catch (error) {
       throw _mapAuthError(error);

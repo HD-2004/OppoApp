@@ -39,6 +39,12 @@ class AuthExceptionMapper {
     final typeName = error.runtimeTypeName.toLowerCase();
     final combined = '$typeName $message';
 
+    // Log chi tiết để debug — giúp tìm root cause khi exception bị re-map
+    safePrint(
+      '[AuthExceptionMapper] type=${error.runtimeTypeName} '
+      'message="${error.message}"',
+    );
+
     if (combined.contains('usernotfound') ||
         combined.contains('user not found') ||
         combined.contains('username/client id combination not found')) {
@@ -107,6 +113,10 @@ class AuthExceptionMapper {
         combined.contains('redirectsignout') ||
         combined.contains('socialproviders') ||
         combined.contains('signinwithwebui')) {
+      // Log message gốc để biết lý do thực sự
+      safePrint(
+        '[AuthExceptionMapper] social sign-in config error: ${error.message}',
+      );
       return AuthFailure.socialSignInConfiguration;
     }
     if (combined.contains('invalid_scope') ||
