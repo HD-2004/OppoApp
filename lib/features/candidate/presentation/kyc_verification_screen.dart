@@ -1107,7 +1107,7 @@ class _KycVerificationScreenState extends ConsumerState<KycVerificationScreen> {
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 14,
-                    color: Color(0xFF475569),
+                    color: Color(0xFF64748B),
                     height: 1.6,
                   ),
                 ),

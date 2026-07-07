@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import 'package:oppo_temp_jobs/core/theme/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -15,6 +14,8 @@ class SplashScreen extends ConsumerStatefulWidget {
 
 class _SplashScreenState extends ConsumerState<SplashScreen>
     with SingleTickerProviderStateMixin {
+  static const _splashVisibleDuration = Duration(milliseconds: 2500);
+
   late final AnimationController _animationController;
   late final Animation<double> _fadeAnimation;
 
@@ -34,15 +35,22 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   }
 
   Future<void> _routeFromIntroState() async {
+    final introRepository = ref.read(introRepositoryProvider);
     final results = await Future.wait([
-      ref.read(introRepositoryProvider).hasSeenIntro(),
-      Future<void>.delayed(const Duration(milliseconds: 700)),
+      introRepository.hasSeenIntro(),
+      Future<void>.delayed(_splashVisibleDuration),
     ]);
     final hasSeenIntro = results.first as bool;
     if (!mounted) {
       return;
     }
-    context.go(hasSeenIntro ? '/login' : '/intro');
+    if (!hasSeenIntro) {
+      await introRepository.markIntroAsSeen();
+      if (!mounted) {
+        return;
+      }
+    }
+    context.go('/login');
   }
 
   @override
@@ -70,18 +78,13 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 class _SplashLogo extends StatelessWidget {
   const _SplashLogo();
 
-  static const _brandTeal = AppColors.secondary;
+  static const _logoAsset = 'img/oppo-logo-color.png';
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      'Ốp Pờ',
-      textAlign: TextAlign.center,
-      style: Theme.of(context).textTheme.displayMedium?.copyWith(
-        color: _brandTeal,
-        fontWeight: FontWeight.w900,
-        height: 1,
-      ),
-    );
+    final width = MediaQuery.sizeOf(context).width;
+    final logoWidth = (width * 0.38).clamp(132.0, 160.0).toDouble();
+
+    return Image.asset(_logoAsset, width: logoWidth, fit: BoxFit.contain);
   }
 }

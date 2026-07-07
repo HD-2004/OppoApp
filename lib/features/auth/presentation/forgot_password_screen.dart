@@ -190,10 +190,10 @@ class _StepInfo extends StatelessWidget {
           width: 40,
           height: 40,
           decoration: BoxDecoration(
-            color: const Color(0xFF0F766E).withValues(alpha: 0.10),
+            color: const Color(0xFF10B981).withValues(alpha: 0.10),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Icon(icon, color: const Color(0xFF0F766E), size: 20),
+          child: Icon(icon, color: const Color(0xFF10B981), size: 20),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -205,7 +205,7 @@ class _StepInfo extends StatelessWidget {
                 style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w800,
-                  color: Color(0xFF0F172A),
+                  color: Color(0xFF1E293B),
                 ),
               ),
               const SizedBox(height: 3),

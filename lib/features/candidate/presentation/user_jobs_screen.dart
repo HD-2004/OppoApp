@@ -880,7 +880,7 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
                         ),
                         decoration: const BoxDecoration(
                           gradient: LinearGradient(
-                            colors: [AppColors.primary, Color(0xFF3B82F6)],
+                            colors: [AppColors.primary, Color(0xFF4FACFE)],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),

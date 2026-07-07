@@ -206,7 +206,7 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
                 children: [
                   _ActionTile(
                     icon: Icons.support_agent_outlined,
-                    iconColor: const Color(0xFF1E3A8A),
+                    iconColor: const Color(0xFF1E40AF),
                     iconBg: const Color(0xFFEFF6FF),
                     title: 'Hỗ trợ',
                     subtitle: 'Liên hệ hỗ trợ kỹ thuật',
@@ -294,14 +294,14 @@ class _HeroCard extends StatelessWidget {
       margin: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFF1E3A8A), Color(0xFF1E40AF)],
+          colors: [Color(0xFF1E40AF), Color(0xFF1E40AF)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF1E3A8A).withValues(alpha: 0.25),
+            color: const Color(0xFF1E40AF).withValues(alpha: 0.25),
             blurRadius: 16,
             offset: const Offset(0, 8),
           ),
@@ -588,7 +588,7 @@ class _InitialsAvatar extends StatelessWidget {
           style: const TextStyle(
             fontSize: 26,
             fontWeight: FontWeight.w800,
-            color: Color(0xFF1E3A8A),
+            color: Color(0xFF1E40AF),
           ),
         ),
       ),
@@ -628,7 +628,7 @@ class _KycSection extends StatelessWidget {
       children: [
         const Row(
           children: [
-            Icon(Icons.shield_outlined, size: 20, color: Color(0xFF1E3A8A)),
+            Icon(Icons.shield_outlined, size: 20, color: Color(0xFF1E40AF)),
             SizedBox(width: 8),
             Text(
               'Xác Minh eKYC',
@@ -786,7 +786,7 @@ class _PersonalInformationSection extends StatelessWidget {
             Icon(
               Icons.person_outline_rounded,
               size: 20,
-              color: Color(0xFF1E3A8A),
+              color: Color(0xFF1E40AF),
             ),
             SizedBox(width: 8),
             Text(
@@ -1203,7 +1203,7 @@ class _CvSectionState extends ConsumerState<_CvSection> {
             Icon(
               Icons.description_outlined,
               size: 20,
-              color: Color(0xFF1E3A8A),
+              color: Color(0xFF1E40AF),
             ),
             SizedBox(width: 8),
             Text(
@@ -1245,7 +1245,7 @@ class _CvSectionState extends ConsumerState<_CvSection> {
                         width: 44,
                         height: 44,
                         decoration: BoxDecoration(
-                          color: const Color(0xFF2563EB),
+                          color: const Color(0xFF1E40AF),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: const Icon(
@@ -1284,7 +1284,7 @@ class _CvSectionState extends ConsumerState<_CvSection> {
                         onPressed: () => _openCv(cv),
                         icon: const Icon(
                           Icons.visibility_outlined,
-                          color: Color(0xFF2563EB),
+                          color: Color(0xFF1E40AF),
                         ),
                       ),
                       IconButton(
@@ -1440,7 +1440,7 @@ class _WorkHistorySection extends ConsumerWidget {
                                 style: const TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w600,
-                                  color: Color(0xFF475569),
+                                  color: Color(0xFF64748B),
                                 ),
                               ),
                             ],
@@ -1525,7 +1525,7 @@ class _WorkHistorySection extends ConsumerWidget {
                                   '"${item.comment!.trim()}"',
                                   style: const TextStyle(
                                     fontSize: 13.5,
-                                    color: Color(0xFF475569),
+                                    color: Color(0xFF64748B),
                                     fontStyle: FontStyle.italic,
                                   ),
                                 ),

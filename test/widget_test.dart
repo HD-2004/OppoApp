@@ -6,43 +6,52 @@ import 'package:oppo_temp_jobs/features/auth/presentation/introduction_screen.da
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  const splashVisibleDuration = Duration(milliseconds: 2500);
+
   setUp(() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  testWidgets('introduction uses bundled F&B image asset', (
+  Future<void> pumpAppPastSplash(WidgetTester tester) async {
+    await tester.pumpWidget(const ProviderScope(child: TempJobsApp()));
+    await tester.pumpAndSettle();
+    await tester.pump(
+      splashVisibleDuration + const Duration(milliseconds: 100),
+    );
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('introduction uses bundled logo asset only', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
       const ProviderScope(child: MaterialApp(home: IntroductionScreen())),
     );
 
-    expect(find.image(const AssetImage('img/intro.png')), findsOneWidget);
-  });
-
-  testWidgets('shows introduction when unauthenticated', (
-    WidgetTester tester,
-  ) async {
-    await tester.pumpWidget(const ProviderScope(child: TempJobsApp()));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Ốp Pờ'), findsOneWidget);
     expect(
-      find.text('Bắt đầu hành trình sự nghiệp F&B của bạn'),
+      find.image(const AssetImage('img/oppo-logo-color.png')),
       findsOneWidget,
     );
-    expect(find.text('Tìm việc linh hoạt, thu nhập tức thì'), findsOneWidget);
-    expect(find.text('Bắt đầu ngay'), findsOneWidget);
+    expect(find.image(const AssetImage('img/intro.png')), findsNothing);
+    expect(find.text('Bắt đầu ngay'), findsNothing);
+    expect(find.text('Đăng nhập'), findsNothing);
+    expect(find.text('Bắt đầu hành trình sự nghiệp F&B của bạn'), findsNothing);
+    expect(find.text('Tìm việc linh hoạt, thu nhập tức thì'), findsNothing);
+  });
+
+  testWidgets('opens login automatically after logo introduction', (
+    WidgetTester tester,
+  ) async {
+    await pumpAppPastSplash(tester);
+
+    expect(find.text('Email'), findsOneWidget);
+    expect(find.text('Mật khẩu'), findsOneWidget);
+    expect(find.text('Bắt đầu ngay'), findsNothing);
+    expect(find.text('Tìm việc linh hoạt, thu nhập tức thì'), findsNothing);
   });
 
   testWidgets('opens login from introduction', (WidgetTester tester) async {
-    await tester.pumpWidget(const ProviderScope(child: TempJobsApp()));
-    await tester.pumpAndSettle();
-
-    await tester.ensureVisible(find.text('Bắt đầu ngay'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Bắt đầu ngay'));
-    await tester.pumpAndSettle();
+    await pumpAppPastSplash(tester);
 
     expect(find.text('Đăng nhập'), findsWidgets);
     expect(find.text('Email'), findsOneWidget);
@@ -55,13 +64,7 @@ void main() {
   });
 
   testWidgets('opens forgot password screen', (WidgetTester tester) async {
-    await tester.pumpWidget(const ProviderScope(child: TempJobsApp()));
-    await tester.pumpAndSettle();
-
-    await tester.ensureVisible(find.text('Bắt đầu ngay'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Bắt đầu ngay'));
-    await tester.pumpAndSettle();
+    await pumpAppPastSplash(tester);
 
     await tester.ensureVisible(find.text('Quên mật khẩu'));
     await tester.pumpAndSettle();
@@ -75,13 +78,7 @@ void main() {
   testWidgets('opens candidate register screen from login', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(const ProviderScope(child: TempJobsApp()));
-    await tester.pumpAndSettle();
-
-    await tester.ensureVisible(find.text('Bắt đầu ngay'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Bắt đầu ngay'));
-    await tester.pumpAndSettle();
+    await pumpAppPastSplash(tester);
 
     await tester.ensureVisible(
       find.textContaining('Đăng ký ngay', findRichText: true),
@@ -112,20 +109,14 @@ void main() {
   testWidgets('auth input text uses high-contrast auth color', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(const ProviderScope(child: TempJobsApp()));
-    await tester.pumpAndSettle();
-
-    await tester.ensureVisible(find.text('Bắt đầu ngay'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Bắt đầu ngay'));
-    await tester.pumpAndSettle();
+    await pumpAppPastSplash(tester);
 
     final loginFields = tester.widgetList<EditableText>(
       find.byType(EditableText),
     );
     expect(loginFields.length, 2);
     for (final field in loginFields) {
-      expect(field.style.color, const Color(0xFF0F172A));
+      expect(field.style.color, const Color(0xFF1E293B));
     }
 
     await tester.ensureVisible(
@@ -140,7 +131,7 @@ void main() {
     );
     expect(registerFields.length, 5);
     for (final field in registerFields) {
-      expect(field.style.color, const Color(0xFF0F172A));
+      expect(field.style.color, const Color(0xFF1E293B));
     }
   });
 }
