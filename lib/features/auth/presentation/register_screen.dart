@@ -9,8 +9,10 @@ import '../../../shared/domain/app_role.dart';
 import '../../candidate/presentation/policy_terms_screen.dart';
 import '../application/auth_controller.dart';
 import '../data/auth_repository.dart';
+import '../data/check_email_service.dart';
 import '../domain/candidate_age_policy.dart';
 import 'auth_form_fields.dart';
+import 'widgets/auth_colors.dart';
 import 'widgets/auth_footer_link.dart';
 import 'widgets/auth_header.dart';
 import 'widgets/auth_primary_button.dart';
@@ -37,6 +39,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   bool _isSubmitting = false;
   AuthProvider? _socialProviderSubmitting;
   bool _canSubmit = false;
+  // Lỗi inline hiển thị ngay dưới ô Email (từ check-email API).
+  String? _emailError;
 
   @override
   void initState() {
@@ -79,13 +83,39 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     } else {
       setState(() {});
     }
+    // Xóa lỗi inline khi user thay đổi email
+    if (_emailError != null) setState(() => _emailError = null);
   }
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     final l10n = AppLocalizations.of(context);
-    setState(() => _isSubmitting = true);
+    setState(() {
+      _isSubmitting = true;
+      _emailError = null;
+    });
     try {
+      // ── Bước 1: kiểm tra email trước khi gọi signUp ───────────────────────
+      final checker = const CheckEmailService();
+      final result = await checker.check(_emailController.text.trim());
+
+      if (result.isGoogle) {
+        // Email đã đăng ký qua Google
+        setState(() {
+          _emailError = 'Email đã tồn tại, vui lòng sử dụng gmail khác.';
+        });
+        return;
+      }
+
+      if (result.isNative) {
+        // Email đã đăng ký bằng email/password — hiện link điều hướng
+        setState(() {
+          _emailError = _kNativeExistsMessage;
+        });
+        return;
+      }
+
+      // ── Bước 2: email chưa tồn tại → gọi signUp bình thường ──────────────
       await ref
           .read(authControllerProvider.notifier)
           .register(
@@ -97,7 +127,28 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               dateOfBirth: _dateOfBirthController.text.trim(),
             ),
           );
+    } on CheckEmailException catch (e) {
+      // Lỗi gọi check-email API — vẫn cho phép tiếp tục (Cognito là lớp phòng vệ cuối)
+      _showError(e.message);
+      try {
+        await ref
+            .read(authControllerProvider.notifier)
+            .register(
+              RegisterRequest(
+                fullName: _fullNameController.text.trim(),
+                email: _emailController.text.trim(),
+                password: _passwordController.text,
+                role: AppRole.candidate,
+                dateOfBirth: _dateOfBirthController.text.trim(),
+              ),
+            );
+      } on AuthFailure catch (f) {
+        _showError(f.message);
+      } catch (_) {
+        _showError(l10n.unknownError);
+      }
     } on AuthFailure catch (f) {
+      // Lớp phòng vệ cuối — lỗi từ Cognito Pre Sign-up Lambda hoặc Amplify
       _showError(f.message);
     } catch (_) {
       _showError(l10n.unknownError);
@@ -105,6 +156,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       if (mounted) setState(() => _isSubmitting = false);
     }
   }
+
+  /// Marker để widget build nhận biết cần hiển thị dạng "có link điều hướng"
+  static const String _kNativeExistsMessage = '__native_exists__';
 
   Future<void> _selectDateOfBirth() async {
     var initialDate = DateTime.now().subtract(
@@ -137,8 +191,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           .signInWithSocialProvider(provider);
     } on AuthFailure catch (f) {
       _showError(f.message);
-    } catch (_) {
-      _showError(l10n.unknownError);
+    } catch (e) {
+      _showError('${l10n.unknownError}\n[debug] $e');
     } finally {
       if (mounted) setState(() => _socialProviderSubmitting = null);
     }
@@ -165,6 +219,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         isSubmitting: _isSubmitting,
         socialProviderSubmitting: _socialProviderSubmitting,
         canSubmit: _canSubmit,
+        emailError: _emailError,
         onTogglePassword: () =>
             setState(() => _obscurePassword = !_obscurePassword),
         onToggleConfirmPassword: () =>
@@ -172,6 +227,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         onSelectDateOfBirth: _selectDateOfBirth,
         onSubmit: _submit,
         onSubmitSocial: _submitSocial,
+        onNavigateToLogin: () => context.go('/login'),
         l10n: l10n,
       ),
     );
@@ -197,6 +253,8 @@ class _RegisterFormStep extends StatelessWidget {
     required this.onSubmit,
     required this.onSubmitSocial,
     required this.l10n,
+    this.emailError,
+    this.onNavigateToLogin,
   });
 
   final GlobalKey<FormState> formKey;
@@ -216,6 +274,10 @@ class _RegisterFormStep extends StatelessWidget {
   final VoidCallback onSubmit;
   final ValueChanged<AuthProvider> onSubmitSocial;
   final AppLocalizations l10n;
+  /// Lỗi inline hiển thị dưới ô Email (null = không có lỗi).
+  final String? emailError;
+  /// Điều hướng sang màn đăng nhập (dùng khi email đã có tài khoản native).
+  final VoidCallback? onNavigateToLogin;
 
   @override
   Widget build(BuildContext context) {
@@ -257,6 +319,48 @@ class _RegisterFormStep extends StatelessWidget {
                     invalidMessage: l10n.text('invalidEmail'),
                   ),
                 ),
+                // Lỗi inline từ check-email API
+                if (emailError != null && emailError != _RegisterScreenState._kNativeExistsMessage)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6, left: 14),
+                    child: Text(
+                      emailError!,
+                      style: const TextStyle(
+                        color: AuthColors.danger,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                // Trường hợp đặc biệt: email đã có tài khoản native → hiện link đăng nhập
+                if (emailError == _RegisterScreenState._kNativeExistsMessage)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4, left: 8),
+                    child: Row(
+                      children: [
+                        const Text(
+                          'Email này đã được đăng ký. ',
+                          style: TextStyle(
+                            color: AuthColors.danger,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: onNavigateToLogin,
+                          child: const Text(
+                            'Đăng nhập ngay?',
+                            style: TextStyle(
+                              color: AuthColors.primary,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w900,
+                              decoration: TextDecoration.underline,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 const SizedBox(height: 14),
                 AuthTextField(
                   controller: dateOfBirthController,

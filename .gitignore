@@ -48,3 +48,6 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Local dev scripts (contain env-specific values, not for CI)
+run_web.bat

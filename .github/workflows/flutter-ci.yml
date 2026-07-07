@@ -76,22 +76,37 @@ jobs:
         env:
           COGNITO_HOSTED_UI_DOMAIN: ${{ vars.COGNITO_HOSTED_UI_DOMAIN }}
           COGNITO_USER_POOL_CLIENT_ID: ${{ vars.COGNITO_USER_POOL_CLIENT_ID }}
+          COGNITO_REGION: ${{ vars.COGNITO_REGION }}
+          COGNITO_USER_POOL_ID: ${{ vars.COGNITO_USER_POOL_ID }}
+          PAGE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
         run: |
           repo_name="${GITHUB_REPOSITORY#*/}"
-          page_url="https://${GITHUB_REPOSITORY_OWNER}.github.io/${repo_name}/"
-          build_args=(
-            --release
-            --base-href "/${repo_name}/"
-            --dart-define "COGNITO_WEB_REDIRECT_URI=${page_url}"
-          )
 
-          build_args+=(--dart-define "COGNITO_HOSTED_UI_DOMAIN=${COGNITO_HOSTED_UI_DOMAIN}")
+          # Use Python3 (always available on ubuntu-latest) to write a valid
+          # JSON file. This avoids all shell quoting and string-splitting bugs
+          # that occur when passing --dart-define values directly on the CLI.
+          python3 <<'PY'
+          import json, os
+          def clean(name):
+              return os.environ[name].strip()
+          defines = {
+              'COGNITO_WEB_REDIRECT_URI':    clean('PAGE_URL'),
+              'COGNITO_HOSTED_UI_DOMAIN':    clean('COGNITO_HOSTED_UI_DOMAIN'),
+              'COGNITO_REGION':              clean('COGNITO_REGION'),
+              'COGNITO_USER_POOL_ID':        clean('COGNITO_USER_POOL_ID'),
+              'COGNITO_USER_POOL_CLIENT_ID': clean('COGNITO_USER_POOL_CLIENT_ID'),
+          }
+          missing = [k for k, v in defines.items() if not v]
+          if missing:
+              raise SystemExit(f'Missing required dart defines: {", ".join(missing)}')
+          with open('dart_defines.json', 'w') as f:
+              json.dump(defines, f, indent=2)
+          print('dart_defines.json:', json.dumps(defines, indent=2))
+          PY
 
-          if [ -n "$COGNITO_USER_POOL_CLIENT_ID" ]; then
-            build_args+=(--dart-define "COGNITO_USER_POOL_CLIENT_ID=${COGNITO_USER_POOL_CLIENT_ID}")
-          fi
-
-          flutter build web "${build_args[@]}"
+          flutter build web --release \
+            --base-href "/${repo_name}/" \
+            --dart-define-from-file dart_defines.json
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5

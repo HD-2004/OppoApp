@@ -1,4 +1,5 @@
 import 'package:amplify_flutter/amplify_flutter.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -7,6 +8,7 @@ import '../../../core/errors/auth_failure.dart';
 import '../../../core/localization/app_localizations.dart';
 import '../../candidate/presentation/policy_terms_screen.dart';
 import '../application/auth_controller.dart';
+import '../data/check_email_service.dart';
 import 'auth_form_fields.dart';
 import 'widgets/auth_colors.dart';
 import 'widgets/auth_footer_link.dart';
@@ -30,6 +32,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _isSubmitting = false;
   AuthProvider? _socialProviderSubmitting;
   bool _canSubmit = false;
+  // Lỗi inline hiển thị ngay dưới ô Email (từ check-email API).
+  String? _emailError;
 
   @override
   void initState() {
@@ -52,19 +56,60 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         _emailController.text.trim().isNotEmpty &&
         _passwordController.text.isNotEmpty;
     if (next != _canSubmit) setState(() => _canSubmit = next);
+    // Xóa lỗi inline khi user thay đổi email
+    if (_emailError != null) setState(() => _emailError = null);
   }
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     final l10n = AppLocalizations.of(context);
-    setState(() => _isSubmitting = true);
+    setState(() {
+      _isSubmitting = true;
+      _emailError = null;
+    });
     try {
+      // ── Bước 1: kiểm tra email trước khi đăng nhập bằng password ──────────
+      final checker = const CheckEmailService();
+      final result = await checker.check(_emailController.text.trim());
+
+      if (result.isGoogle) {
+        // Email đã đăng ký qua Google — dừng lại, hiện lỗi inline
+        setState(() {
+          _emailError =
+              "Tài khoản này đăng ký qua Google. Vui lòng dùng nút 'Đăng nhập với Google' bên dưới.";
+        });
+        return;
+      }
+
+      // Nếu native hoặc không tồn tại → tiếp tục, để backend tự báo lỗi
+      // ── Bước 2: đăng nhập thông thường ────────────────────────────────────
       await ref
           .read(authControllerProvider.notifier)
           .signIn(
             email: _emailController.text.trim(),
             password: _passwordController.text,
           );
+    } on CheckEmailException catch (e) {
+      // Lỗi gọi check-email API — hiện snackbar và vẫn cho phép thử đăng nhập
+      _showError(e.message);
+      // Fallthrough: không block luồng đăng nhập khi API check lỗi
+      try {
+        await ref
+            .read(authControllerProvider.notifier)
+            .signIn(
+              email: _emailController.text.trim(),
+              password: _passwordController.text,
+            );
+      } on AuthFailure catch (failure) {
+        _showError(failure.message);
+        if (failure.code == 'user_unconfirmed' && mounted) {
+          context.go(
+            '/confirm-signup?email=${Uri.encodeComponent(_emailController.text)}',
+          );
+        }
+      } catch (_) {
+        _showError(l10n.unknownError);
+      }
     } on AuthFailure catch (failure) {
       _showError(failure.message);
       if (failure.code == 'user_unconfirmed' && mounted) {
@@ -88,12 +133,46 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           .read(authControllerProvider.notifier)
           .signInWithSocialProvider(provider);
     } on AuthFailure catch (f) {
-      _showError(f.message);
-    } catch (_) {
-      _showError(l10n.unknownError);
+      // Trong debug mode: hiện dialog với lỗi gốc đầy đủ thay vì snackbar
+      // cụt để dễ đọc (snackbar tự ẩn quá nhanh với message dài).
+      if (kDebugMode && f.code == 'social_debug') {
+        _showDebugDialog('[DEBUG] Social sign-in failure', f.message);
+      } else {
+        _showError(f.message);
+      }
+    } catch (e) {
+      final raw = e.toString();
+      debugPrint('[LoginScreen] _submitSocial unexpected error: $raw');
+      if (kDebugMode) {
+        _showDebugDialog('[DEBUG] Unexpected error', raw);
+      } else {
+        _showError(l10n.unknownError);
+      }
     } finally {
       if (mounted) setState(() => _socialProviderSubmitting = null);
     }
+  }
+
+  void _showDebugDialog(String title, String body) {
+    if (!mounted) return;
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title, style: const TextStyle(fontSize: 14)),
+        content: SingleChildScrollView(
+          child: SelectableText(
+            body,
+            style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showError(String message) {
@@ -142,6 +221,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       invalidMessage: l10n.text('invalidEmail'),
                     ),
                   ),
+                  // Lỗi inline từ check-email API (email đã đăng ký qua Google)
+                  if (_emailError != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6, left: 14),
+                      child: Text(
+                        _emailError!,
+                        style: const TextStyle(
+                          color: AuthColors.danger,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
                   const SizedBox(height: 14),
                   AuthTextField(
                     controller: _passwordController,
