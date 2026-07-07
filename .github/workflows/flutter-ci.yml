@@ -82,14 +82,19 @@ jobs:
           repo_name="${GITHUB_REPOSITORY#*/}"
           owner="${GITHUB_REPOSITORY_OWNER,,}"
           page_url="https://${owner}.github.io/${repo_name}/"
-          flutter build web \
-            --release \
-            --base-href "/${repo_name}/" \
-            --dart-define "COGNITO_WEB_REDIRECT_URI=${page_url}" \
-            --dart-define "COGNITO_HOSTED_UI_DOMAIN=${COGNITO_HOSTED_UI_DOMAIN}" \
-            --dart-define "COGNITO_REGION=${COGNITO_REGION}" \
-            --dart-define "COGNITO_USER_POOL_ID=${COGNITO_USER_POOL_ID}" \
-            --dart-define "COGNITO_USER_POOL_CLIENT_ID=${COGNITO_USER_POOL_CLIENT_ID}"
+
+          # Write dart-defines to a JSON file to avoid shell quoting/splitting issues
+          cat > dart_defines.json <<EOF
+          {
+            "COGNITO_WEB_REDIRECT_URI": "${page_url}",
+            "COGNITO_HOSTED_UI_DOMAIN": "${COGNITO_HOSTED_UI_DOMAIN}",
+            "COGNITO_REGION": "${COGNITO_REGION}",
+            "COGNITO_USER_POOL_ID": "${COGNITO_USER_POOL_ID}",
+            "COGNITO_USER_POOL_CLIENT_ID": "${COGNITO_USER_POOL_CLIENT_ID}"
+          }
+          EOF
+
+          flutter build web --release --base-href "/${repo_name}/" --dart-define-from-file dart_defines.json
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
