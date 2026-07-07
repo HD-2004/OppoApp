@@ -127,9 +127,15 @@ class AuthExceptionMapper {
         code: 'invalid_scope',
       );
     }
-    if (combined.contains('configuration') ||
-        combined.contains('config') ||
-        combined.contains('appclientid')) {
+    // Only map to configuration error when it's clearly a Cognito setup issue,
+    // not a generic exception that happens to contain the word "config".
+    if (combined.contains('appclientid') ||
+        combined.contains('user pool') ||
+        combined.contains('userpool') ||
+        (combined.contains('configuration') &&
+            (combined.contains('amplify') ||
+                combined.contains('cognito') ||
+                combined.contains('plugin')))) {
       return AuthFailure.configuration;
     }
 

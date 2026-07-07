@@ -178,7 +178,10 @@ class AuthService {
     }
   }
 
-  Future<AuthSession> checkAuthSession() {
+  Future<AuthSession> checkAuthSession() async {
+    // configureAmplify is idempotent — safe to call here for mobile where
+    // Amplify is configured lazily (not eagerly in main() like on web).
+    await configureAmplify();
     return fetchAuthSession();
   }
 
