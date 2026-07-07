@@ -129,16 +129,17 @@ class AuthExceptionMapper {
     }
     // Only map to configuration error when it's clearly a Cognito setup issue,
     // not a generic exception that happens to contain the word "config".
+    // Note: configureAmplify() already throws AuthFailure.configuration directly,
+    // so reaching here with a config-related exception is unexpected.
     if (combined.contains('appclientid') ||
-        combined.contains('user pool') ||
         combined.contains('userpool') ||
         (combined.contains('configuration') &&
-            (combined.contains('amplify') ||
-                combined.contains('cognito') ||
-                combined.contains('plugin')))) {
+            combined.contains('amplify'))) {
       return AuthFailure.configuration;
     }
 
+    // Fall back: surface the raw Amplify message so we can debug unknown errors.
+    safePrint('[AuthExceptionMapper] unmapped error — type=${error.runtimeTypeName} message="${error.message}"');
     return AuthFailure(error.message, code: error.runtimeTypeName);
   }
 }

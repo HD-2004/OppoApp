@@ -20,18 +20,29 @@ class AuthService {
 
     if (!hasCognitoAppClientId) {
       safePrint('Amplify Auth skipped: missing Cognito App Client ID.');
+      // Don't throw here — treat missing client ID as unconfigured,
+      // _ensureConfigured() will catch Amplify.isConfigured == false.
       return;
     }
+
+    safePrint(
+      '[AuthService] configureAmplify: '
+      'poolId=$cognitoUserPoolId '
+      'clientId=$cognitoUserPoolClientId '
+      'region=$cognitoRegion '
+      'hostedUiDomain=$cognitoHostedUiDomain '
+      'redirectUri=$cognitoSignInRedirectUri',
+    );
 
     try {
       await Amplify.addPlugin(AmplifyAuthCognito());
       await Amplify.configure(amplifyconfig);
-      safePrint('Amplify Auth configured for $cognitoUserPoolId.');
+      safePrint('[AuthService] configureAmplify: success.');
     } on AmplifyAlreadyConfiguredException {
       return;
     } on Exception catch (error) {
       safePrint(
-        'Amplify Auth configuration failed: $error\n'
+        '[AuthService] configureAmplify FAILED: $error\n'
         'userPoolId=$cognitoUserPoolId '
         'clientId=$cognitoUserPoolClientId '
         'region=$cognitoRegion',
@@ -116,8 +127,16 @@ class AuthService {
     await _ensureConfigured();
 
     if (!hasHostedUiConfig) {
+      safePrint('[AuthService] signInWithSocialProvider: no Hosted UI domain configured.');
       throw AuthFailure.socialSignInConfiguration;
     }
+
+    safePrint(
+      '[AuthService] signInWithSocialProvider: '
+      'provider=$provider '
+      'hostedUiDomain=$cognitoHostedUiDomain '
+      'redirectUri=$cognitoSignInRedirectUri',
+    );
 
     try {
       final existingSession = await Amplify.Auth.fetchAuthSession();
@@ -130,7 +149,10 @@ class AuthService {
       // await này không bao giờ complete. Khi Cognito redirect về với ?code=,
       // app load lại và Amplify tự xử lý exchange token trong configure().
       return await Amplify.Auth.signInWithWebUI(provider: provider);
+    } on AuthFailure {
+      rethrow;
     } on Exception catch (error) {
+      safePrint('[AuthService] signInWithSocialProvider error: $error');
       throw _mapAuthError(error);
     }
   }
@@ -387,12 +409,14 @@ class AuthService {
 
   Future<void> _ensureConfigured() async {
     if (!hasCognitoAppClientId) {
+      safePrint('[AuthService] _ensureConfigured: no app client ID → throwing configuration failure.');
       throw AuthFailure.configuration;
     }
 
     await configureAmplify();
 
     if (!Amplify.isConfigured) {
+      safePrint('[AuthService] _ensureConfigured: Amplify still not configured after configureAmplify() → throwing configuration failure.');
       throw AuthFailure.configuration;
     }
   }
