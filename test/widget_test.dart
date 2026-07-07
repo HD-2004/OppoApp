@@ -6,9 +6,20 @@ import 'package:oppo_temp_jobs/features/auth/presentation/introduction_screen.da
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  const splashVisibleDuration = Duration(milliseconds: 2500);
+
   setUp(() {
     SharedPreferences.setMockInitialValues({});
   });
+
+  Future<void> pumpAppPastSplash(WidgetTester tester) async {
+    await tester.pumpWidget(const ProviderScope(child: TempJobsApp()));
+    await tester.pumpAndSettle();
+    await tester.pump(
+      splashVisibleDuration + const Duration(milliseconds: 100),
+    );
+    await tester.pumpAndSettle();
+  }
 
   testWidgets('introduction uses bundled logo asset only', (
     WidgetTester tester,
@@ -31,8 +42,7 @@ void main() {
   testWidgets('opens login automatically after logo introduction', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(const ProviderScope(child: TempJobsApp()));
-    await tester.pumpAndSettle();
+    await pumpAppPastSplash(tester);
 
     expect(find.text('Email'), findsOneWidget);
     expect(find.text('Mật khẩu'), findsOneWidget);
@@ -41,8 +51,7 @@ void main() {
   });
 
   testWidgets('opens login from introduction', (WidgetTester tester) async {
-    await tester.pumpWidget(const ProviderScope(child: TempJobsApp()));
-    await tester.pumpAndSettle();
+    await pumpAppPastSplash(tester);
 
     expect(find.text('Đăng nhập'), findsWidgets);
     expect(find.text('Email'), findsOneWidget);
@@ -55,8 +64,7 @@ void main() {
   });
 
   testWidgets('opens forgot password screen', (WidgetTester tester) async {
-    await tester.pumpWidget(const ProviderScope(child: TempJobsApp()));
-    await tester.pumpAndSettle();
+    await pumpAppPastSplash(tester);
 
     await tester.ensureVisible(find.text('Quên mật khẩu'));
     await tester.pumpAndSettle();
@@ -70,8 +78,7 @@ void main() {
   testWidgets('opens candidate register screen from login', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(const ProviderScope(child: TempJobsApp()));
-    await tester.pumpAndSettle();
+    await pumpAppPastSplash(tester);
 
     await tester.ensureVisible(
       find.textContaining('Đăng ký ngay', findRichText: true),
@@ -102,8 +109,7 @@ void main() {
   testWidgets('auth input text uses high-contrast auth color', (
     WidgetTester tester,
   ) async {
-    await tester.pumpWidget(const ProviderScope(child: TempJobsApp()));
-    await tester.pumpAndSettle();
+    await pumpAppPastSplash(tester);
 
     final loginFields = tester.widgetList<EditableText>(
       find.byType(EditableText),

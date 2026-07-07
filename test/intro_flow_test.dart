@@ -14,6 +14,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   const logoAsset = 'img/oppo-logo-color.png';
+  const splashVisibleDuration = Duration(milliseconds: 2500);
 
   Future<void> pumpIntroFlow(
     WidgetTester tester, {
@@ -57,11 +58,19 @@ void main() {
     );
   }
 
+  Future<void> pumpPastSplash(WidgetTester tester) async {
+    await tester.pump();
+    await tester.pump(
+      splashVisibleDuration + const Duration(milliseconds: 100),
+    );
+    await tester.pumpAndSettle();
+  }
+
   testWidgets('splash opens login automatically when intro has not been seen', (
     WidgetTester tester,
   ) async {
     await pumpIntroFlow(tester, hasSeenIntro: false);
-    await tester.pumpAndSettle();
+    await pumpPastSplash(tester);
 
     final preferences = await SharedPreferences.getInstance();
     expect(preferences.getBool('has_seen_intro'), isTrue);
@@ -81,7 +90,31 @@ void main() {
       findsOneWidget,
     );
 
+    await tester.pump(
+      splashVisibleDuration + const Duration(milliseconds: 100),
+    );
     await tester.pumpAndSettle();
+  });
+
+  testWidgets('splash keeps logo visible for a few seconds before login', (
+    WidgetTester tester,
+  ) async {
+    await pumpIntroFlow(tester, hasSeenIntro: false);
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pump();
+
+    expect(find.byType(SplashScreen), findsOneWidget);
+    expect(
+      find.image(const AssetImage('img/oppo-logo-color.png')),
+      findsOneWidget,
+    );
+    expect(find.byType(LoginScreen), findsNothing);
+
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(LoginScreen), findsOneWidget);
   });
 
   testWidgets('bundled logo asset loads non-empty bytes', (
@@ -126,7 +159,7 @@ void main() {
     WidgetTester tester,
   ) async {
     await pumpIntroFlow(tester, hasSeenIntro: true);
-    await tester.pumpAndSettle();
+    await pumpPastSplash(tester);
 
     expect(find.byType(LoginScreen), findsOneWidget);
     expect(find.text('Email'), findsOneWidget);

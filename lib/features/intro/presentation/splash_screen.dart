@@ -14,6 +14,8 @@ class SplashScreen extends ConsumerStatefulWidget {
 
 class _SplashScreenState extends ConsumerState<SplashScreen>
     with SingleTickerProviderStateMixin {
+  static const _splashVisibleDuration = Duration(milliseconds: 2500);
+
   late final AnimationController _animationController;
   late final Animation<double> _fadeAnimation;
 
@@ -36,7 +38,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     final introRepository = ref.read(introRepositoryProvider);
     final results = await Future.wait([
       introRepository.hasSeenIntro(),
-      Future<void>.delayed(const Duration(milliseconds: 700)),
+      Future<void>.delayed(_splashVisibleDuration),
     ]);
     final hasSeenIntro = results.first as bool;
     if (!mounted) {
