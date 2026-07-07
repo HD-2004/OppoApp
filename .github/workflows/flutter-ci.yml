@@ -80,19 +80,16 @@ jobs:
           COGNITO_USER_POOL_ID: ${{ vars.COGNITO_USER_POOL_ID }}
         run: |
           repo_name="${GITHUB_REPOSITORY#*/}"
-          page_url="https://${GITHUB_REPOSITORY_OWNER}.github.io/${repo_name}/"
-          build_args=(
-            --release
-            --base-href "/${repo_name}/"
-            --dart-define "COGNITO_WEB_REDIRECT_URI=${page_url}"
-          )
-          build_args+=(--dart-define "COGNITO_HOSTED_UI_DOMAIN=${COGNITO_HOSTED_UI_DOMAIN}")
-          build_args+=(--dart-define "COGNITO_REGION=${COGNITO_REGION}")
-          build_args+=(--dart-define "COGNITO_USER_POOL_ID=${COGNITO_USER_POOL_ID}")
-          if [ -n "$COGNITO_USER_POOL_CLIENT_ID" ]; then
-            build_args+=(--dart-define "COGNITO_USER_POOL_CLIENT_ID=${COGNITO_USER_POOL_CLIENT_ID}")
-          fi
-          flutter build web "${build_args[@]}"
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          page_url="https://${owner}.github.io/${repo_name}/"
+          flutter build web \
+            --release \
+            --base-href "/${repo_name}/" \
+            --dart-define "COGNITO_WEB_REDIRECT_URI=${page_url}" \
+            --dart-define "COGNITO_HOSTED_UI_DOMAIN=${COGNITO_HOSTED_UI_DOMAIN}" \
+            --dart-define "COGNITO_REGION=${COGNITO_REGION}" \
+            --dart-define "COGNITO_USER_POOL_ID=${COGNITO_USER_POOL_ID}" \
+            --dart-define "COGNITO_USER_POOL_CLIENT_ID=${COGNITO_USER_POOL_CLIENT_ID}"
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
