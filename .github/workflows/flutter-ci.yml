@@ -87,13 +87,18 @@ jobs:
           # that occur when passing --dart-define values directly on the CLI.
           python3 -c "
           import json, os
+          def clean(name):
+              return os.environ[name].strip()
           defines = {
-              'COGNITO_WEB_REDIRECT_URI':    os.environ['PAGE_URL'],
-              'COGNITO_HOSTED_UI_DOMAIN':    os.environ['COGNITO_HOSTED_UI_DOMAIN'],
-              'COGNITO_REGION':              os.environ['COGNITO_REGION'],
-              'COGNITO_USER_POOL_ID':        os.environ['COGNITO_USER_POOL_ID'],
-              'COGNITO_USER_POOL_CLIENT_ID': os.environ['COGNITO_USER_POOL_CLIENT_ID'],
+              'COGNITO_WEB_REDIRECT_URI':    clean('PAGE_URL'),
+              'COGNITO_HOSTED_UI_DOMAIN':    clean('COGNITO_HOSTED_UI_DOMAIN'),
+              'COGNITO_REGION':              clean('COGNITO_REGION'),
+              'COGNITO_USER_POOL_ID':        clean('COGNITO_USER_POOL_ID'),
+              'COGNITO_USER_POOL_CLIENT_ID': clean('COGNITO_USER_POOL_CLIENT_ID'),
           }
+          missing = [k for k, v in defines.items() if not v]
+          if missing:
+              raise SystemExit(f'Missing required dart defines: {", ".join(missing)}')
           with open('dart_defines.json', 'w') as f:
               json.dump(defines, f, indent=2)
           print('dart_defines.json:', json.dumps(defines, indent=2))
