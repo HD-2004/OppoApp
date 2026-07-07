@@ -27,9 +27,10 @@ class EmailCheckResult {
   bool get isNative => provider == EmailCheckProvider.native;
 }
 
-/// Service gọi API GET /auth/check-email?email=<email>
+/// Service gọi API GET `/auth/check-email?email=<email>`
 /// Dùng chung cho cả màn Đăng ký và Đăng nhập.
 class CheckEmailService {
+  // ignore: prefer_initializing_formals
   const CheckEmailService({http.Client? client}) : _client = client;
 
   final http.Client? _client;
