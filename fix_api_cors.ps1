@@ -13,13 +13,21 @@ $region = "ap-southeast-1"
 $stageName = "prod"
 $apiBaseUrl = "https://$apiId.execute-api.$region.amazonaws.com/$stageName"
 
-# HTTP API v2 did not emit CORS response headers for this API when AllowOrigins
-# was configured as "*". Keep explicit browser origins and run Flutter Web on a
-# fixed local port so the preflight origin matches exactly.
+# HTTP API v2 rejects wildcard ports (for example, http://localhost:*), and
+# this API did not emit CORS response headers when AllowOrigins was "*".
+# Keep explicit local dev ports plus production web origins.
 $allowOrigins = @(
-    "http://localhost:64746",
-    "http://127.0.0.1:64746",
-    "https://hd-2004.github.io"
+    "http://localhost:3000",
+    "http://localhost:5000",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:5000"
+)
+$allowOrigins += 64740..64760 | ForEach-Object { "http://localhost:$_" }
+$allowOrigins += 64740..64760 | ForEach-Object { "http://127.0.0.1:$_" }
+$allowOrigins += @(
+    "https://hd-2004.github.io",
+    "https://hd-2004.github.io/OppoApp",
+    "https://hd-2004.github.io/OppoApp/"
 )
 $allowOriginCsv = $allowOrigins -join ","
 $corsResponseOrigin = $allowOrigins[0]
