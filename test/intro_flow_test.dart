@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image/image.dart' as image;
 import 'package:oppo_temp_jobs/core/localization/app_localizations.dart';
 import 'package:oppo_temp_jobs/features/auth/presentation/login_screen.dart';
 import 'package:oppo_temp_jobs/features/intro/presentation/intro_screen.dart';
@@ -11,6 +13,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  const logoAsset = 'img/oppo-logo-color.png';
 
   Future<void> pumpIntroFlow(
     WidgetTester tester, {
@@ -89,9 +92,9 @@ void main() {
         home: Builder(
           builder: (context) {
             return FutureBuilder<int>(
-              future: DefaultAssetBundle.of(context)
-                  .load('img/oppo-logo-color.png')
-                  .then((data) => data.lengthInBytes),
+              future: DefaultAssetBundle.of(
+                context,
+              ).load(logoAsset).then((data) => data.lengthInBytes),
               builder: (context, snapshot) {
                 return Text('${snapshot.data ?? 0}');
               },
@@ -105,6 +108,18 @@ void main() {
 
     final logoBytes = int.parse(tester.widget<Text>(find.byType(Text)).data!);
     expect(logoBytes, greaterThan(0));
+  });
+
+  testWidgets('bundled logo asset decodes as transparent logo artwork', (
+    WidgetTester tester,
+  ) async {
+    final bytes = await rootBundle.load(logoAsset);
+    final decodedLogo = image.decodePng(bytes.buffer.asUint8List());
+
+    expect(decodedLogo, isNotNull);
+    expect(decodedLogo!.width, 2000);
+    expect(decodedLogo.height, 2000);
+    expect(decodedLogo.getPixel(1000, 1700).a, 0);
   });
 
   testWidgets('splash opens login when intro has already been seen', (
