@@ -95,7 +95,7 @@ class _CandidateAgeVerificationScreenState
                     const Icon(
                       Icons.verified_user_outlined,
                       size: 46,
-                      color: Color(0xFF0F766E),
+                      color: Color(0xFF10B981),
                     ),
                     const SizedBox(height: 18),
                     Text(
@@ -103,7 +103,7 @@ class _CandidateAgeVerificationScreenState
                       textAlign: TextAlign.center,
                       style: theme.textTheme.headlineSmall?.copyWith(
                         fontWeight: FontWeight.w800,
-                        color: const Color(0xFF0F172A),
+                        color: const Color(0xFF1E293B),
                       ),
                     ),
                     const SizedBox(height: 8),

@@ -125,7 +125,7 @@ void main() {
     );
     expect(loginFields.length, 2);
     for (final field in loginFields) {
-      expect(field.style.color, const Color(0xFF0F172A));
+      expect(field.style.color, const Color(0xFF1E293B));
     }
 
     await tester.ensureVisible(
@@ -140,7 +140,7 @@ void main() {
     );
     expect(registerFields.length, 5);
     for (final field in registerFields) {
-      expect(field.style.color, const Color(0xFF0F172A));
+      expect(field.style.color, const Color(0xFF1E293B));
     }
   });
 }

@@ -204,7 +204,7 @@ class _HotJobCard extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
-                  color: Color(0xFF1E3A8A),
+                  color: Color(0xFF1E40AF),
                   fontSize: 13,
                   fontWeight: FontWeight.w800,
                 ),

@@ -223,7 +223,7 @@ class _ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                     width: 11,
                     height: 11,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF22C55E),
+                      color: const Color(0xFF10B981),
                       shape: BoxShape.circle,
                       border: Border.all(
                         color: AppColors.surface(context),
@@ -272,7 +272,7 @@ class _ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                     color: isCompleted
                         ? AppColors.textMutedFor(context)
                         : (isOnline
-                              ? const Color(0xFF22C55E)
+                              ? const Color(0xFF10B981)
                               : AppColors.textMutedFor(context)),
                     fontWeight: FontWeight.w500,
                   ),

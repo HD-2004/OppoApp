@@ -83,11 +83,11 @@ class _EmployerFallback extends StatelessWidget {
       ),
       child: Center(
         child: initial == null
-            ? const Icon(Icons.business_rounded, color: Color(0xFF1E3A8A))
+            ? const Icon(Icons.business_rounded, color: Color(0xFF1E40AF))
             : Text(
                 initial,
                 style: const TextStyle(
-                  color: Color(0xFF1E3A8A),
+                  color: Color(0xFF1E40AF),
                   fontSize: 20,
                   fontWeight: FontWeight.w800,
                 ),

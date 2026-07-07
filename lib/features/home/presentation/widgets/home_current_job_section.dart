@@ -114,7 +114,7 @@ class HomeCurrentJobSection extends ConsumerWidget {
             children: [
               Icon(
                 Icons.work_outline_rounded,
-                color: Color(0xFF1E3A8A),
+                color: Color(0xFF1E40AF),
                 size: 23,
               ),
               SizedBox(width: 8),
@@ -313,7 +313,7 @@ class _CurrentJobCardState extends State<_CurrentJobCard> {
                     _isOpeningRating ? 'Đang mở...' : 'Đánh giá Nhà tuyển dụng',
                   ),
                   style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFF1E3A8A),
+                    backgroundColor: const Color(0xFF1E40AF),
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -325,7 +325,7 @@ class _CurrentJobCardState extends State<_CurrentJobCard> {
                 icon: const Icon(Icons.visibility_outlined, size: 18),
                 label: const Text('Xem chi tiết'),
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFF1E3A8A),
+                  foregroundColor: const Color(0xFF1E40AF),
                   side: const BorderSide(color: Color(0xFFB8C6EA)),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -439,7 +439,7 @@ class _Meta extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 16, color: const Color(0xFF1E3A8A)),
+        Icon(icon, size: 16, color: const Color(0xFF1E40AF)),
         const SizedBox(width: 5),
         ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 360),
