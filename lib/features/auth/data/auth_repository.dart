@@ -116,40 +116,7 @@ class AuthRepository {
   }
 
   Future<AuthUserProfile?> fetchCurrentProfile() {
-    return _fetchAndUpsertProfile();
-  }
-
-  Future<AuthUserProfile?> _fetchAndUpsertProfile() async {
-    final currentUser = await _service.getCurrentUser();
-    if (currentUser == null) {
-      return null;
-    }
-
-    final attributes = await _service.fetchUserAttributes();
-    String email = '';
-    String fullName = '';
-    String? dateOfBirth;
-    for (final attribute in attributes) {
-      if (attribute.userAttributeKey.key == 'email') {
-        email = attribute.value;
-      }
-      if (attribute.userAttributeKey.key == 'name') {
-        fullName = attribute.value;
-      }
-      if (attribute.userAttributeKey.key == 'birthdate') {
-        dateOfBirth = attribute.value;
-      }
-    }
-
-    final role = await _service.fetchUserRole();
-    return _userProfileRepository.upsertAfterLogin(
-      userId: currentUser.userId,
-      username: currentUser.username,
-      email: email,
-      fullName: fullName,
-      role: role,
-      dateOfBirth: dateOfBirth,
-    );
+    return _service.fetchCurrentProfile();
   }
 
   Future<AuthUserProfile> updateKycCompleted({

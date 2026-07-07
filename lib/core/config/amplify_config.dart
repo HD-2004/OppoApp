@@ -30,7 +30,7 @@ const cognitoUserPoolClientId = String.fromEnvironment(
 // Provide the bare domain (no scheme, no path).
 const cognitoHostedUiDomain = String.fromEnvironment(
   'COGNITO_HOSTED_UI_DOMAIN',
-  defaultValue: '',
+  defaultValue: 'opporeview.auth.ap-southeast-1.amazoncognito.com',
 );
 
 // Web deployments must redirect back to the HTTPS origin that hosts Flutter
@@ -147,7 +147,7 @@ String get _oauthBlock {
             }''';
 }
 
-String get _socialProviders => hasHostedUiConfig ? '"Google"' : '';
+String get _socialProviders => hasHostedUiConfig ? '"GOOGLE"' : '';
 
 final amplifyconfig =
     '''

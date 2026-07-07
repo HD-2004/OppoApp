@@ -7,6 +7,7 @@ import '../../../core/errors/auth_failure.dart';
 import '../../../core/localization/app_localizations.dart';
 import '../../candidate/presentation/policy_terms_screen.dart';
 import '../application/auth_controller.dart';
+import '../data/check_email_service.dart';
 import 'auth_form_fields.dart';
 import 'widgets/auth_colors.dart';
 import 'widgets/auth_footer_link.dart';
@@ -30,6 +31,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _isSubmitting = false;
   AuthProvider? _socialProviderSubmitting;
   bool _canSubmit = false;
+  // Lỗi inline hiển thị ngay dưới ô Email (từ check-email API).
+  String? _emailError;
 
   @override
   void initState() {
@@ -52,19 +55,60 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         _emailController.text.trim().isNotEmpty &&
         _passwordController.text.isNotEmpty;
     if (next != _canSubmit) setState(() => _canSubmit = next);
+    // Xóa lỗi inline khi user thay đổi email
+    if (_emailError != null) setState(() => _emailError = null);
   }
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     final l10n = AppLocalizations.of(context);
-    setState(() => _isSubmitting = true);
+    setState(() {
+      _isSubmitting = true;
+      _emailError = null;
+    });
     try {
+      // ── Bước 1: kiểm tra email trước khi đăng nhập bằng password ──────────
+      final checker = const CheckEmailService();
+      final result = await checker.check(_emailController.text.trim());
+
+      if (result.isGoogle) {
+        // Email đã đăng ký qua Google — dừng lại, hiện lỗi inline
+        setState(() {
+          _emailError =
+              "Tài khoản này đăng ký qua Google. Vui lòng dùng nút 'Đăng nhập với Google' bên dưới.";
+        });
+        return;
+      }
+
+      // Nếu native hoặc không tồn tại → tiếp tục, để backend tự báo lỗi
+      // ── Bước 2: đăng nhập thông thường ────────────────────────────────────
       await ref
           .read(authControllerProvider.notifier)
           .signIn(
             email: _emailController.text.trim(),
             password: _passwordController.text,
           );
+    } on CheckEmailException catch (e) {
+      // Lỗi gọi check-email API — hiện snackbar và vẫn cho phép thử đăng nhập
+      _showError(e.message);
+      // Fallthrough: không block luồng đăng nhập khi API check lỗi
+      try {
+        await ref
+            .read(authControllerProvider.notifier)
+            .signIn(
+              email: _emailController.text.trim(),
+              password: _passwordController.text,
+            );
+      } on AuthFailure catch (failure) {
+        _showError(failure.message);
+        if (failure.code == 'user_unconfirmed' && mounted) {
+          context.go(
+            '/confirm-signup?email=${Uri.encodeComponent(_emailController.text)}',
+          );
+        }
+      } catch (_) {
+        _showError(l10n.unknownError);
+      }
     } on AuthFailure catch (failure) {
       _showError(failure.message);
       if (failure.code == 'user_unconfirmed' && mounted) {
@@ -142,6 +186,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       invalidMessage: l10n.text('invalidEmail'),
                     ),
                   ),
+                  // Lỗi inline từ check-email API (email đã đăng ký qua Google)
+                  if (_emailError != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6, left: 14),
+                      child: Text(
+                        _emailError!,
+                        style: const TextStyle(
+                          color: AuthColors.danger,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
                   const SizedBox(height: 14),
                   AuthTextField(
                     controller: _passwordController,

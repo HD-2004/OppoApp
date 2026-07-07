@@ -49,12 +49,17 @@ class AuthController extends AsyncNotifier<AuthState> {
       }
       return AuthState.authenticated(profile);
     } on AuthFailure catch (failure) {
-      if (failure.code == 'configuration') {
-        safePrint(failure.message);
-        return const AuthState.unauthenticated();
-      }
-      rethrow;
+      // Any AuthFailure at startup (configuration errors, 400 Bad Request from
+      // Cognito when there is no session, invalid_scope, etc.) should resolve
+      // to unauthenticated rather than rethrowing — a rethrow causes Riverpod
+      // to schedule an infinite retry loop that floods the network with
+      // repeated GetUser requests.
+      safePrint('Auth session check failed at startup: ${failure.message}');
+      return const AuthState.unauthenticated();
     } on SignedOutException {
+      return const AuthState.unauthenticated();
+    } on Exception catch (e) {
+      safePrint('Auth session check failed at startup: $e');
       return const AuthState.unauthenticated();
     }
   }

@@ -109,6 +109,14 @@ class AuthExceptionMapper {
         combined.contains('signinwithwebui')) {
       return AuthFailure.socialSignInConfiguration;
     }
+    if (combined.contains('invalid_scope') ||
+        combined.contains('invalidscope') ||
+        combined.contains('invalid scope')) {
+      return const AuthFailure(
+        'Scope không hợp lệ. Hãy bật "aws.cognito.signin.user.admin" trong Cognito App Client scopes.',
+        code: 'invalid_scope',
+      );
+    }
     if (combined.contains('configuration') ||
         combined.contains('config') ||
         combined.contains('appclientid')) {

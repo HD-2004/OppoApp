@@ -1,5 +1,8 @@
+import 'dart:convert';
+
 import 'package:amplify_auth_cognito/amplify_auth_cognito.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../../core/config/amplify_config.dart';
 import '../../../core/errors/auth_exception_mapper.dart';
@@ -9,12 +12,11 @@ import '../domain/auth_user_profile.dart';
 
 class AuthService {
   Future<void> configureAmplify() async {
-    logAmplifyConfigForDebug();
-
     if (Amplify.isConfigured) {
-      safePrint('Amplify Auth already configured.');
       return;
     }
+
+    logAmplifyConfigForDebug();
 
     if (!hasCognitoAppClientId) {
       safePrint('Amplify Auth skipped: missing Cognito App Client ID.');
@@ -184,12 +186,33 @@ class AuthService {
   Future<AppRole?> fetchUserRole() async {
     await _ensureConfigured();
 
+    // Try custom attribute first (only when enabled), then fall back to groups
+    // decoded directly from the access token — no GetUser API call needed.
     final roleFromAttributes = await _fetchRoleFromUserAttributes();
     if (roleFromAttributes != null) {
       return roleFromAttributes;
     }
 
-    return await _fetchRoleFromCognitoGroups() ?? AppRole.candidate;
+    try {
+      final cognitoPlugin = Amplify.Auth.getPlugin(
+        AmplifyAuthCognito.pluginKey,
+      );
+      final session = await cognitoPlugin.fetchAuthSession();
+      final tokens = session.userPoolTokensResult.valueOrNull;
+      final accessClaims = _decodeJwtClaims(tokens?.accessToken.raw ?? '');
+      final groups =
+          (accessClaims['cognito:groups'] as List<dynamic>?)
+              ?.cast<String>() ??
+          const <String>[];
+
+      for (final group in groups) {
+        return AppRoleParser.fromCognitoValue(group);
+      }
+
+      return AppRole.candidate;
+    } on Exception catch (error) {
+      throw _mapAuthError(error);
+    }
   }
 
   Future<void> resetPassword({required String email}) async {
@@ -233,38 +256,96 @@ class AuthService {
   }
 
   Future<AuthUserProfile?> fetchCurrentProfile() async {
-    final user = await getCurrentUser();
-    if (user == null) {
-      return null;
-    }
+    await _ensureConfigured();
 
-    final role = await fetchUserRole();
-    final attributes = await fetchUserAttributes();
-    String email = '';
-    String fullName = '';
-    String? dateOfBirth;
-    for (final attribute in attributes) {
-      if (attribute.userAttributeKey.key == 'email') {
-        email = attribute.value;
-      }
-      if (attribute.userAttributeKey.key == 'name') {
-        fullName = attribute.value;
-      }
-      if (attribute.userAttributeKey.key == 'birthdate') {
-        dateOfBirth = attribute.value;
-      }
-    }
+    try {
+      final cognitoPlugin = Amplify.Auth.getPlugin(
+        AmplifyAuthCognito.pluginKey,
+      );
+      final session = await cognitoPlugin.fetchAuthSession();
 
-    return AuthUserProfile(
-      userId: user.userId,
-      username: user.username,
-      role: role,
-      email: email,
-      fullName: fullName,
-      kycCompleted: false,
-      profileCompleted: false,
-      dateOfBirth: dateOfBirth,
-    );
+      // Not signed in — no profile to return.
+      if (!session.isSignedIn) {
+        return null;
+      }
+
+      final tokens = session.userPoolTokensResult.valueOrNull;
+      if (tokens == null) {
+        return null;
+      }
+
+      // ── Read everything from the ID token (JWT claims) ──────────────────
+      // This avoids calling GetUser API (which needs the
+      // aws.cognito.signin.user.admin scope and would 400 if the token was
+      // issued before that scope was added or the Cognito console wasn't
+      // saved yet).
+      final idClaims = _decodeJwtClaims(tokens.idToken.raw);
+
+      final userId = (idClaims['sub'] as String?) ?? '';
+      final username =
+          (idClaims['cognito:username'] as String?) ??
+          (idClaims['email'] as String?) ??
+          userId;
+      final email = (idClaims['email'] as String?) ?? '';
+      final fullName =
+          (idClaims['name'] as String?) ??
+          (idClaims['given_name'] as String?) ??
+          '';
+      final dateOfBirth = idClaims['birthdate'] as String?;
+
+      // ── Determine role from access token groups (no extra network call) ──
+      final accessClaims = _decodeJwtClaims(tokens.accessToken.raw);
+      final groups =
+          (accessClaims['cognito:groups'] as List<dynamic>?)
+              ?.cast<String>() ??
+          const <String>[];
+
+      AppRole role = AppRole.candidate;
+      for (final group in groups) {
+        role = AppRoleParser.fromCognitoValue(group);
+        break;
+      }
+
+      if (kDebugMode) {
+        safePrint('fetchCurrentProfile: userId=$userId email=$email '
+            'role=${role.cognitoValue} groups=$groups');
+      }
+
+      return AuthUserProfile(
+        userId: userId,
+        username: username,
+        role: role,
+        email: email,
+        fullName: fullName,
+        kycCompleted: false,
+        profileCompleted: false,
+        dateOfBirth: dateOfBirth,
+      );
+    } on Exception catch (error) {
+      throw _mapAuthError(error);
+    }
+  }
+
+  /// Decode the payload section of a JWT without verifying the signature.
+  /// We trust Amplify has already verified the token; we only need the claims.
+  static Map<String, dynamic> _decodeJwtClaims(String jwt) {
+    try {
+      final parts = jwt.split('.');
+      if (parts.length < 2) return {};
+      // Base64url → base64 padding
+      var payload = parts[1];
+      payload = payload.replaceAll('-', '+').replaceAll('_', '/');
+      switch (payload.length % 4) {
+        case 2:
+          payload += '==';
+        case 3:
+          payload += '=';
+      }
+      final decoded = utf8.decode(base64.decode(payload));
+      return json.decode(decoded) as Map<String, dynamic>;
+    } catch (_) {
+      return {};
+    }
   }
 
   String routeAfterLogin(AuthUserProfile profile) {
@@ -276,30 +357,16 @@ class AuthService {
       return null;
     }
 
-    final attributes = await fetchUserAttributes();
-    for (final attribute in attributes) {
-      if (attribute.userAttributeKey.key == 'custom:role' ||
-          attribute.userAttributeKey.key == 'role') {
-        return AppRoleParser.fromCognitoValue(attribute.value);
-      }
-    }
-
-    return null;
-  }
-
-  Future<AppRole?> _fetchRoleFromCognitoGroups() async {
+    // fetchUserAttributes() calls GetUser API — only used when the custom
+    // attribute feature is explicitly enabled.
     try {
-      final cognitoPlugin = Amplify.Auth.getPlugin(
-        AmplifyAuthCognito.pluginKey,
-      );
-      final session = await cognitoPlugin.fetchAuthSession();
-      final tokens = session.userPoolTokensResult.valueOrNull;
-      final groups = tokens?.accessToken.groups ?? const <String>[];
-
-      for (final group in groups) {
-        return AppRoleParser.fromCognitoValue(group);
+      final attributes = await fetchUserAttributes();
+      for (final attribute in attributes) {
+        if (attribute.userAttributeKey.key == 'custom:role' ||
+            attribute.userAttributeKey.key == 'role') {
+          return AppRoleParser.fromCognitoValue(attribute.value);
+        }
       }
-
       return null;
     } on Exception catch (error) {
       throw _mapAuthError(error);
