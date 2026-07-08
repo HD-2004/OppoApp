@@ -11,8 +11,6 @@ import '../application/jobs_providers.dart';
 import '../data/aws_application_repository.dart';
 import '../domain/application_repository.dart';
 import '../domain/job_post.dart';
-import '../../recommendations/application/job_recommendation_providers.dart';
-import '../../recommendations/domain/job_recommendation.dart';
 import 'application_flow_navigation.dart';
 import 'quick_job_intro_page.dart';
 import 'user_job_detail_screen.dart';
@@ -21,7 +19,7 @@ import 'widgets/job_post_card.dart';
 
 const double _urgentJobSearchRadiusKm = 10;
 const double _unknownJobDistanceKm = 9999;
-const int _jobsTabRecommended = 0;
+const int _jobsTabAll = 0;
 const int _jobsTabStandard = 1;
 const int _jobsTabUrgent = 2;
 const int _jobsTabSaved = 3;
@@ -45,7 +43,7 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
   String _searchKeyword = '';
   String _searchLocation = '';
 
-  int _activeTab = _jobsTabRecommended;
+  int _activeTab = _jobsTabAll;
 
   // Filters
   bool _filterFullTime = false;
@@ -277,7 +275,7 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
 
   // Filter logic
   List<JobPost> _getFilteredJobs(
-    List<JobPost> recommendedJobs,
+    List<JobPost> allJobs,
     List<JobPost> allStandard,
     List<JobPost> allQuick,
     List<String> savedJobIds,
@@ -285,7 +283,7 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
   ) {
     return _getFilteredJobsForTab(
       _activeTab,
-      recommendedJobs,
+      allJobs,
       allStandard,
       allQuick,
       savedJobIds,
@@ -295,51 +293,23 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
 
   List<JobPost> _getFilteredJobsForTab(
     int tab,
-    List<JobPost> recommendedJobs,
+    List<JobPost> allJobs,
     List<JobPost> allStandard,
     List<JobPost> allQuick,
     List<String> savedJobIds,
     AuthUserProfile? user,
   ) {
     List<JobPost> baseList;
-    if (tab == _jobsTabRecommended) {
-      baseList = recommendedJobs;
+    if (tab == _jobsTabAll) {
+      baseList = allJobs;
     } else if (tab == _jobsTabStandard) {
       baseList = allStandard;
     } else if (tab == _jobsTabUrgent) {
-      final status = user?.verificationStatus ?? 'PENDING';
-      final isApproved = status == 'APPROVED';
-      final isActive = user?.isActive == true;
-
-      if (!isApproved || !isActive) {
-        return [];
-      }
-
-      final double? userLat = user?.latitude;
-      final double? userLng = user?.longitude;
-
-      if (userLat != null && userLng != null) {
-        _jobDistances.clear();
-        baseList = [];
-        for (final job in allQuick) {
-          final double? jobLat = job.latitude;
-          final double? jobLng = job.longitude;
-          if (jobLat != null && jobLng != null) {
-            final distance = _calculateDistance(
-              userLat,
-              userLng,
-              jobLat,
-              jobLng,
-            );
-            if (distance <= _urgentJobSearchRadiusKm) {
-              _jobDistances[job.id] = distance;
-              baseList.add(job);
-            }
-          }
-        }
-      } else {
-        baseList = [];
-      }
+      baseList = _urgentJobsAvailableForUser(
+        allQuick,
+        user,
+        trackDistances: true,
+      );
     } else {
       // Saved Jobs Tab - merges standard and quick jobs that match saved IDs
       baseList = [
@@ -393,10 +363,6 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
         if (_filterSalaryOver40 && rate > 40000) return true;
         return false;
       }).toList();
-    }
-
-    if (tab == _jobsTabRecommended && _sortBy == 'newest') {
-      return baseList;
     }
 
     if (tab == _jobsTabUrgent) {
@@ -785,16 +751,45 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
     );
   }
 
-  List<JobPost> _recommendedJobsFrom(
-    List<JobRecommendation>? recommendations, {
-    required List<JobPost> fallbackJobs,
+  List<JobPost> _urgentJobsAvailableForUser(
+    List<JobPost> allQuick,
+    AuthUserProfile? user, {
+    bool trackDistances = false,
   }) {
-    if (recommendations == null || recommendations.isEmpty) {
-      return fallbackJobs;
+    final status = user?.verificationStatus ?? 'PENDING';
+    final isApproved = status == 'APPROVED';
+    final isActive = user?.isActive == true;
+    final userLat = user?.latitude;
+    final userLng = user?.longitude;
+
+    if (!isApproved || !isActive || userLat == null || userLng == null) {
+      if (trackDistances) {
+        _jobDistances.clear();
+      }
+      return [];
     }
-    return _uniqueJobPosts(
-      recommendations.map((recommendation) => recommendation.job).toList(),
-    );
+
+    if (trackDistances) {
+      _jobDistances.clear();
+    }
+
+    final availableJobs = <JobPost>[];
+    for (final job in allQuick) {
+      final jobLat = job.latitude;
+      final jobLng = job.longitude;
+      if (jobLat == null || jobLng == null) {
+        continue;
+      }
+
+      final distance = _calculateDistance(userLat, userLng, jobLat, jobLng);
+      if (distance <= _urgentJobSearchRadiusKm) {
+        if (trackDistances) {
+          _jobDistances[job.id] = distance;
+        }
+        availableJobs.add(job);
+      }
+    }
+    return availableJobs;
   }
 
   List<JobPost> _uniqueJobPosts(List<JobPost> jobs) {
@@ -824,9 +819,6 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
     // Async jobs data
     final standardJobsAsync = ref.watch(activeJobsProvider);
     final quickJobsAsync = ref.watch(activeQuickJobsProvider);
-    final recommendationsAsync = ref.watch(
-      personalizedJobRecommendationsProvider,
-    );
 
     // Profile sync
     final user = ref.watch(authControllerProvider).asData?.value.user;
@@ -838,14 +830,14 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
           data: (standardJobs) {
             return quickJobsAsync.when(
               data: (quickJobs) {
-                final allActiveJobs = _uniqueJobPosts([
-                  ...standardJobs,
-                  ...quickJobs,
-                ]);
-                final recommendedJobs = _recommendedJobsFrom(
-                  recommendationsAsync.value,
-                  fallbackJobs: allActiveJobs,
+                final enabledQuickJobs = _urgentJobsAvailableForUser(
+                  quickJobs,
+                  user,
                 );
+                final allJobs = _uniqueJobPosts([
+                  ...standardJobs,
+                  ...enabledQuickJobs,
+                ]);
                 final savedJobIds = _validSavedJobIds(
                   rawSavedJobIds,
                   standardJobs,
@@ -853,7 +845,7 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
                 );
                 _pruneExpiredSavedJobs(rawSavedJobIds, savedJobIds);
                 final filteredJobs = _getFilteredJobs(
-                  recommendedJobs,
+                  allJobs,
                   standardJobs,
                   quickJobs,
                   savedJobIds,
@@ -861,7 +853,7 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
                 );
                 final urgentJobsCount = _getFilteredJobsForTab(
                   _jobsTabUrgent,
-                  recommendedJobs,
+                  allJobs,
                   standardJobs,
                   quickJobs,
                   savedJobIds,
@@ -1020,7 +1012,7 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
                         ),
                         child: _JobCategoryTabs(
                           activeTab: _activeTab,
-                          recommendedCount: recommendedJobs.length,
+                          allCount: allJobs.length,
                           standardCount: standardJobs.length,
                           urgentCount: urgentJobsCount,
                           savedCount: savedJobIds.length,
@@ -1268,11 +1260,7 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
                                   items: [
                                     DropdownMenuItem(
                                       value: 'newest',
-                                      child: Text(
-                                        _activeTab == _jobsTabRecommended
-                                            ? 'Phù hợp nhất'
-                                            : 'Mới nhất',
-                                      ),
+                                      child: Text('Mới nhất'),
                                     ),
                                     const DropdownMenuItem(
                                       value: 'salary_desc',
@@ -1423,7 +1411,7 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
 class _JobCategoryTabs extends StatefulWidget {
   const _JobCategoryTabs({
     required this.activeTab,
-    required this.recommendedCount,
+    required this.allCount,
     required this.standardCount,
     required this.urgentCount,
     required this.savedCount,
@@ -1431,7 +1419,7 @@ class _JobCategoryTabs extends StatefulWidget {
   });
 
   final int activeTab;
-  final int recommendedCount;
+  final int allCount;
   final int standardCount;
   final int urgentCount;
   final int savedCount;
@@ -1452,7 +1440,7 @@ class _JobCategoryTabsState extends State<_JobCategoryTabs> {
   @override
   Widget build(BuildContext context) {
     final selectedIcon = switch (widget.activeTab) {
-      _jobsTabRecommended => Icons.track_changes_outlined,
+      _jobsTabAll => Icons.all_inbox_outlined,
       _jobsTabUrgent => Icons.flash_on_outlined,
       _ => Icons.work_outline,
     };
@@ -1482,7 +1470,7 @@ class _JobCategoryTabsState extends State<_JobCategoryTabs> {
           const SizedBox(height: 10),
           _JobTypeDropdownPanel(
             activeTab: widget.activeTab,
-            recommendedCount: widget.recommendedCount,
+            allCount: widget.allCount,
             standardCount: widget.standardCount,
             urgentCount: widget.urgentCount,
             onSelected: _selectTab,
@@ -1666,14 +1654,14 @@ class _SavedJobsIconButton extends StatelessWidget {
 class _JobTypeDropdownPanel extends StatelessWidget {
   const _JobTypeDropdownPanel({
     required this.activeTab,
-    required this.recommendedCount,
+    required this.allCount,
     required this.standardCount,
     required this.urgentCount,
     required this.onSelected,
   });
 
   final int activeTab;
-  final int recommendedCount;
+  final int allCount;
   final int standardCount;
   final int urgentCount;
   final ValueChanged<int> onSelected;
@@ -1699,11 +1687,11 @@ class _JobTypeDropdownPanel extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           _JobTypeOption(
-            label: 'Phù hợp với bạn',
-            count: recommendedCount,
-            icon: Icons.track_changes_outlined,
-            isActive: activeTab == _jobsTabRecommended,
-            onTap: () => onSelected(_jobsTabRecommended),
+            label: 'Tất cả công việc',
+            count: allCount,
+            icon: Icons.all_inbox_outlined,
+            isActive: activeTab == _jobsTabAll,
+            onTap: () => onSelected(_jobsTabAll),
           ),
           Divider(height: 1, color: theme.colorScheme.outlineVariant),
           _JobTypeOption(

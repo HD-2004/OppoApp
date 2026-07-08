@@ -93,12 +93,12 @@ void main() {
 
     expect(find.text('Loại công việc'), findsOneWidget);
     expect(find.text('Công việc tiêu chuẩn'), findsNothing);
-    expect(find.text('Tìm thấy 2 công việc phù hợp'), findsOneWidget);
+    expect(find.text('Tìm thấy 3 công việc phù hợp'), findsOneWidget);
 
     await tester.tap(find.text('Loại công việc'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Phù hợp với bạn'), findsOneWidget);
+    expect(find.text('Tất cả công việc'), findsOneWidget);
     expect(find.text('Công việc tiêu chuẩn'), findsOneWidget);
     expect(find.text('Công việc Tuyển gấp'), findsOneWidget);
 
@@ -108,7 +108,7 @@ void main() {
     expect(find.text('Tìm thấy 1 công việc phù hợp'), findsOneWidget);
   });
 
-  testWidgets('jobs screen defaults to web recommendation order', (
+  testWidgets('all jobs tab combines standard jobs with enabled urgent jobs', (
     tester,
   ) async {
     final olderQuickJob = _quickJobAt(
@@ -155,11 +155,62 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Tìm thấy 2 công việc phù hợp'), findsOneWidget);
+    expect(find.text('Tìm thấy 3 công việc phù hợp'), findsOneWidget);
+    expect(find.text('Nhân viên phục vụ'), findsOneWidget);
+    expect(find.text('Thu ngân'), findsOneWidget);
+    expect(find.text('Phụ ca gấp'), findsOneWidget);
+
     final quickTop = tester.getTopLeft(find.text('Phụ ca gấp')).dy;
     final standardTop = tester.getTopLeft(find.text('Thu ngân')).dy;
-    expect(quickTop, lessThan(standardTop));
+    expect(quickTop, greaterThan(standardTop));
   });
+
+  testWidgets(
+    'all jobs tab excludes urgent jobs when urgent jobs are disabled',
+    (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            authControllerProvider.overrideWithBuild(
+              (_, _) => AuthState.authenticated(_candidateUser),
+            ),
+            activeJobsProvider.overrideWith((_) async => [_job, _secondJob]),
+            activeQuickJobsProvider.overrideWith((_) async => [_quickJob]),
+            personalizedJobRecommendationsProvider.overrideWith(
+              (_) async => [
+                JobRecommendation(
+                  job: _quickJob,
+                  matchScore: 95,
+                  reasons: const [],
+                ),
+              ],
+            ),
+          ],
+          child: const MaterialApp(
+            localizationsDelegates: [
+              AppLocalizations.delegate,
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: UserJobsScreen(showBackButton: false),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Tìm thấy 2 công việc phù hợp'), findsOneWidget);
+      expect(find.text('Nhân viên phục vụ'), findsOneWidget);
+      expect(find.text('Thu ngân'), findsOneWidget);
+      expect(find.text('Phụ ca gấp'), findsNothing);
+
+      await tester.tap(find.text('Loại công việc'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Tất cả công việc'), findsOneWidget);
+    },
+  );
 
   testWidgets('urgent jobs include 10km radius and prioritize closest first', (
     tester,
