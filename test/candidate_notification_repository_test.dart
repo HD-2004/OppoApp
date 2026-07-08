@@ -106,5 +106,37 @@ void main() {
       expect(repository.listNotifications(), throwsA(isA<StateError>()));
       expect(requested, isFalse);
     });
+
+    test('marks notifications read using the live API update route', () async {
+      final requests = <http.Request>[];
+      final repository = HttpCandidateNotificationRepository(
+        NotificationRemoteDataSource(
+          baseUrl: 'https://notifications.example.com',
+          client: MockClient((request) async {
+            requests.add(request);
+            return http.Response(jsonEncode({'success': true}), 200);
+          }),
+          tokenProvider: () async => 'auth-token',
+          userIdProvider: () async => 'candidate-1',
+        ),
+      );
+
+      await repository.markAsRead('NOTIF-1');
+      await repository.markAllAsRead();
+      await repository.archive('NOTIF-2');
+
+      expect(requests.map((request) => request.method), [
+        'PUT',
+        'PUT',
+        'DELETE',
+      ]);
+      expect(requests.map((request) => request.url.path), [
+        '/notifications/NOTIF-1',
+        '/notifications/mark-all-read/candidate-1',
+        '/notifications/NOTIF-2',
+      ]);
+      expect(jsonDecode(requests.first.body), {'read': true});
+      expect(requests.first.headers['Authorization'], 'Bearer auth-token');
+    });
   });
 }

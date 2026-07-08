@@ -21,7 +21,8 @@ String formatRecruitmentDate(DateTime date) {
 }
 
 String recruitmentWindowLabel(JobPost job) {
-  return 'Tuyển dụng: ${recruitmentWindowValue(job)}';
+  final value = recruitmentWindowValue(job);
+  return value.isEmpty ? 'Tuyển dụng' : 'Tuyển dụng: $value';
 }
 
 String recruitmentWindowValue(JobPost job) {
@@ -29,7 +30,7 @@ String recruitmentWindowValue(JobPost job) {
   final end = job.recruitmentEndDate;
 
   if (start == null && end == null) {
-    return 'Không công khai';
+    return '';
   }
   if (start == null) {
     return 'Đến ${formatRecruitmentDate(end!)}';

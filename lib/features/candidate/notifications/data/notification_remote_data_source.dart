@@ -63,28 +63,32 @@ class NotificationRemoteDataSource {
   Future<void> markAsRead(String notificationId) async {
     _ensureOnline();
     final uri = Uri.parse(
-      '$_baseUrl/notifications/${Uri.encodeComponent(notificationId)}/read',
+      '$_baseUrl/notifications/${Uri.encodeComponent(notificationId)}',
     );
-    final response = await _client.patch(uri, headers: await _headers());
+    final response = await _client.put(
+      uri,
+      headers: await _headers(),
+      body: jsonEncode({'read': true}),
+    );
     _decodeResponse(response);
   }
 
   Future<void> markAllAsRead() async {
     _ensureOnline();
     final userId = await _requireCurrentUserId();
-    final uri = Uri.parse('$_baseUrl/notifications/read-all').replace(
-      queryParameters: {'recipientRole': 'candidate', 'recipientId': userId},
+    final uri = Uri.parse(
+      '$_baseUrl/notifications/mark-all-read/${Uri.encodeComponent(userId)}',
     );
-    final response = await _client.patch(uri, headers: await _headers());
+    final response = await _client.put(uri, headers: await _headers());
     _decodeResponse(response);
   }
 
   Future<void> archive(String notificationId) async {
     _ensureOnline();
     final uri = Uri.parse(
-      '$_baseUrl/notifications/${Uri.encodeComponent(notificationId)}/archive',
+      '$_baseUrl/notifications/${Uri.encodeComponent(notificationId)}',
     );
-    final response = await _client.patch(uri, headers: await _headers());
+    final response = await _client.delete(uri, headers: await _headers());
     _decodeResponse(response);
   }
 

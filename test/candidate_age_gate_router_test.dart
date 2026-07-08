@@ -5,22 +5,22 @@ import 'package:oppo_temp_jobs/features/auth/domain/auth_user_profile.dart';
 import 'package:oppo_temp_jobs/shared/domain/app_role.dart';
 
 void main() {
-  test('redirects authenticated candidate without DOB to age verification', () {
+  test('does not redirect authenticated candidate without DOB', () {
     final redirect = candidateAgeGateRedirect(
       AuthState.authenticated(_candidate(dateOfBirth: null)),
       '/candidate',
     );
 
-    expect(redirect, '/candidate/age-verification');
+    expect(redirect, isNull);
   });
 
-  test('does not redirect candidate who is already on age verification', () {
+  test('redirects legacy age verification route back to candidate', () {
     final redirect = candidateAgeGateRedirect(
       AuthState.authenticated(_candidate(dateOfBirth: null)),
       '/candidate/age-verification',
     );
 
-    expect(redirect, isNull);
+    expect(redirect, '/candidate');
   });
 
   test('redirects candidate with DOB away from age verification', () {

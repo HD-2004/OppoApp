@@ -49,6 +49,29 @@ void main() {
     expect(find.byIcon(Icons.comment_rounded), findsNothing);
   });
 
+  testWidgets('candidate can open employer info from top companies', (
+    tester,
+  ) async {
+    await _pumpHome(
+      tester,
+      standardJobs: [_job, _sameEmployerJob],
+      recommendations: const [],
+      banners: const [],
+    );
+
+    await tester.tap(find.text('Oppo Coffee'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Thông tin nhà tuyển dụng'), findsOneWidget);
+    expect(find.text('Oppo Coffee'), findsWidgets);
+    expect(find.text('2 việc đang tuyển'), findsWidgets);
+    expect(find.text('Nhân viên phục vụ'), findsOneWidget);
+    expect(find.text('Barista cuối tuần'), findsOneWidget);
+    expect(find.text('Quận 1, TP.HCM'), findsOneWidget);
+    expect(find.text('Thủ Đức'), findsOneWidget);
+    expect(find.text('Katinat Quận Cam'), findsNothing);
+  });
+
   testWidgets(
     'candidate home shows recommendation empty state for empty API data',
     (tester) async {
@@ -159,6 +182,32 @@ void main() {
 
     expect(find.text('Ca 3: 13:00 - 17:00'), findsOneWidget);
     expect(find.text('Thu gọn'), findsOneWidget);
+  });
+
+  testWidgets('recommended job card hides undisclosed schedule placeholder', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              height: 352,
+              width: 286,
+              child: JobCard(
+                job: _shiftOnlyJob,
+                matchScore: 88,
+                onTap: () {},
+                onApply: () {},
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Không công khai'), findsNothing);
+    expect(find.text('Ca 1: 07:00 - 12:00'), findsOneWidget);
   });
 
   testWidgets('recommended job card keeps salary close to company name', (
@@ -348,4 +397,19 @@ final _compactRecommendedJob = JobPost(
   tags: const ['F&B'],
   postedAt: DateTime(2026, 7, 2),
   isQuickJob: true,
+);
+
+final _shiftOnlyJob = JobPost(
+  id: 'job-shift-only',
+  idJob: 'job-shift-only',
+  employerId: 'employer-1',
+  employerName: 'Katinat Quận Cam',
+  title: 'Phụ ca sáng',
+  jobType: JobPostType.partTime,
+  location: 'Quận 2',
+  salary: '30.000đ/giờ',
+  shiftTime: '07:00 - 12:00',
+  description: 'Phụ ca buổi sáng.',
+  tags: const ['F&B'],
+  postedAt: DateTime(2026, 7, 2),
 );

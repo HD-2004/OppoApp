@@ -187,42 +187,6 @@ class AuthController extends AsyncNotifier<AuthState> {
     state = AsyncData(AuthState.authenticated(updated));
   }
 
-  Future<void> saveDateOfBirth(String dateOfBirth) async {
-    final current = state.asData?.value.user;
-    if (current == null) {
-      return;
-    }
-
-    try {
-      final updated = await ref
-          .read(authRepositoryProvider)
-          .updateProfileCompleted(
-            userId: current.userId,
-            completed: current.profileCompleted,
-            fullName: current.fullName,
-            phone: current.phone,
-            cccd: current.cccd,
-            dateOfBirth: dateOfBirth,
-            location: current.location,
-            title: current.title,
-            bio: current.bio,
-            skills: current.skills,
-            profileImage: current.profileImage,
-            socialLinks: current.socialLinks,
-            savedJobs: current.savedJobs,
-          );
-      state = AsyncData(AuthState.authenticated(updated));
-    } catch (error) {
-      // If the profile API is unreachable (e.g. network error or missing CORS
-      // headers on Flutter Web), still apply the date of birth locally so the
-      // user can clear the age gate instead of getting stuck on this screen.
-      safePrint('Saving date of birth to API failed, applying locally: $error');
-      state = AsyncData(
-        AuthState.authenticated(current.copyWith(dateOfBirth: dateOfBirth)),
-      );
-    }
-  }
-
   Future<void> toggleSavedJob(String jobId) async {
     final current = state.asData?.value.user;
     if (current == null) {

@@ -137,6 +137,23 @@ class _CandidateHomePageState extends ConsumerState<CandidateHomePage> {
     _showMessage('Tin tuyển dụng cho banner này hiện không khả dụng.');
   }
 
+  void _openEmployerInfo(CompanyRankItem company) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return EmployerInfoSheet(
+          item: company,
+          onJobTap: (job) {
+            Navigator.of(sheetContext).pop();
+            _openJobDetail(job);
+          },
+        );
+      },
+    );
+  }
+
   Future<void> _handleApply(JobPost job, AuthUserProfile? user) async {
     if (user == null) {
       _showMessage('Vui lòng đăng nhập để ứng tuyển.');
@@ -442,6 +459,7 @@ class _CandidateHomePageState extends ConsumerState<CandidateHomePage> {
                   companies: topCompanies.take(5).toList(growable: false),
                   isLoading: dataLoading,
                   onSeeAll: widget.onSeeAllJobsTap,
+                  onCompanyTap: _openEmployerInfo,
                 ),
               ),
             ),
@@ -506,16 +524,18 @@ class _CandidateHomePageState extends ConsumerState<CandidateHomePage> {
     final grouped = <String, _CompanyBucket>{};
     for (final job in jobs) {
       final name = companyNameOf(job);
+      final employerId = job.employerId.trim();
       final key = job.employerId.trim().isNotEmpty
-          ? job.employerId.trim()
+          ? employerId
           : name.toLowerCase();
       grouped.update(
         key,
-        (bucket) => bucket.copyWith(count: bucket.count + 1),
+        (bucket) => bucket.addJob(job),
         ifAbsent: () => _CompanyBucket(
+          employerId: employerId,
           name: name,
           logoUrl: job.employerAvatarUrl,
-          count: 1,
+          jobs: [job],
         ),
       );
     }
@@ -532,8 +552,10 @@ class _CandidateHomePageState extends ConsumerState<CandidateHomePage> {
         CompanyRankItem(
           rank: index + 1,
           name: sorted[index].name,
+          employerId: sorted[index].employerId,
           logoUrl: sorted[index].logoUrl,
           activeJobCount: sorted[index].count,
+          jobs: sorted[index].jobs,
         ),
     ];
   }
@@ -556,17 +578,26 @@ class _PageWidth extends StatelessWidget {
 }
 
 class _CompanyBucket {
-  const _CompanyBucket({required this.name, required this.count, this.logoUrl});
+  const _CompanyBucket({
+    required this.employerId,
+    required this.name,
+    required this.jobs,
+    this.logoUrl,
+  });
 
+  final String employerId;
   final String name;
-  final int count;
+  final List<JobPost> jobs;
   final String? logoUrl;
 
-  _CompanyBucket copyWith({int? count}) {
+  int get count => jobs.length;
+
+  _CompanyBucket addJob(JobPost job) {
     return _CompanyBucket(
+      employerId: employerId,
       name: name,
-      count: count ?? this.count,
-      logoUrl: logoUrl,
+      jobs: [...jobs, job],
+      logoUrl: logoUrl ?? job.employerAvatarUrl,
     );
   }
 }

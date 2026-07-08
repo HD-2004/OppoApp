@@ -19,8 +19,10 @@ $apiBaseUrl = "https://$apiId.execute-api.$region.amazonaws.com/$stageName"
 $allowOrigins = @(
     "http://localhost:3000",
     "http://localhost:5000",
+    "http://localhost:59520",
     "http://127.0.0.1:3000",
-    "http://127.0.0.1:5000"
+    "http://127.0.0.1:5000",
+    "http://127.0.0.1:59520"
 )
 $allowOrigins += 64740..64760 | ForEach-Object { "http://localhost:$_" }
 $allowOrigins += 64740..64760 | ForEach-Object { "http://127.0.0.1:$_" }
@@ -31,11 +33,11 @@ $allowOrigins += @(
 )
 $allowOriginCsv = $allowOrigins -join ","
 $corsResponseOrigin = $allowOrigins[0]
-$allowMethods = "GET,POST,PUT,DELETE,OPTIONS"
-$allowHeaders = "content-type,authorization"
+$allowMethods = "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+$allowHeaders = "content-type,authorization,accept"
 
 $profileTestUserId = "c91a85cc-80d1-705d-996d-865a8781a144"
-$preflightOrigin = "http://localhost:64746"
+$preflightOrigin = "http://localhost:59520"
 
 function Invoke-AwsCli {
     param(

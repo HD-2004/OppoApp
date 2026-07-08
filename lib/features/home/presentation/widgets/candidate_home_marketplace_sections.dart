@@ -586,11 +586,13 @@ class TopCompaniesSection extends StatelessWidget {
     required this.companies,
     required this.isLoading,
     required this.onSeeAll,
+    required this.onCompanyTap,
   });
 
   final List<CompanyRankItem> companies;
   final bool isLoading;
   final VoidCallback onSeeAll;
+  final ValueChanged<CompanyRankItem> onCompanyTap;
 
   @override
   Widget build(BuildContext context) {
@@ -613,7 +615,10 @@ class TopCompaniesSection extends StatelessWidget {
                 child: Column(
                   children: [
                     for (var index = 0; index < companies.length; index++) ...[
-                      CompanyRankCard(item: companies[index]),
+                      CompanyRankCard(
+                        item: companies[index],
+                        onTap: () => onCompanyTap(companies[index]),
+                      ),
                       if (index < companies.length - 1)
                         const Divider(height: 1, color: AppColors.border),
                     ],
@@ -735,6 +740,8 @@ class _JobCardState extends State<JobCard> {
   Widget build(BuildContext context) {
     final job = widget.job;
     final companyName = companyNameOf(job);
+    final salaryLabel = publicOrHidden(job.salary);
+    final locationLabel = publicOrHidden(job.location);
     return SizedBox(
       width: 286,
       child: Material(
@@ -840,7 +847,7 @@ class _JobCardState extends State<JobCard> {
                             ),
                           Text(
                             job.title.trim().isEmpty
-                                ? 'Không công khai'
+                                ? 'Tin tuyển dụng'
                                 : job.title.trim(),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
@@ -870,16 +877,17 @@ class _JobCardState extends State<JobCard> {
                   ],
                 ),
                 const SizedBox(height: 18),
-                _MetaLine(
-                  icon: Icons.payments_outlined,
-                  label: publicOrHidden(job.salary),
-                ),
-                const SizedBox(height: 9),
-                _MetaLine(
-                  icon: Icons.location_on_outlined,
-                  label: publicOrHidden(job.location),
-                ),
-                const SizedBox(height: 9),
+                if (salaryLabel.isNotEmpty) ...[
+                  _MetaLine(icon: Icons.payments_outlined, label: salaryLabel),
+                  const SizedBox(height: 9),
+                ],
+                if (locationLabel.isNotEmpty) ...[
+                  _MetaLine(
+                    icon: Icons.location_on_outlined,
+                    label: locationLabel,
+                  ),
+                  const SizedBox(height: 9),
+                ],
                 _ScheduleMetaBlock(
                   job: job,
                   isExpanded: _isScheduleExpanded,
@@ -947,74 +955,81 @@ class _JobCardState extends State<JobCard> {
 }
 
 class CompanyRankCard extends StatelessWidget {
-  const CompanyRankCard({super.key, required this.item});
+  const CompanyRankCard({super.key, required this.item, required this.onTap});
 
   final CompanyRankItem item;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 44,
-            child: Center(
-              child: item.rank <= 3
-                  ? Icon(
-                      Icons.workspace_premium_rounded,
-                      color: switch (item.rank) {
-                        1 => AppColors.primary,
-                        2 => AppColors.primaryLight,
-                        _ => AppColors.accent,
-                      },
-                      size: 34,
-                    )
-                  : Text(
-                      '${item.rank}',
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 44,
+                child: Center(
+                  child: item.rank <= 3
+                      ? Icon(
+                          Icons.workspace_premium_rounded,
+                          color: switch (item.rank) {
+                            1 => AppColors.primary,
+                            2 => AppColors.primaryLight,
+                            _ => AppColors.accent,
+                          },
+                          size: 34,
+                        )
+                      : Text(
+                          '${item.rank}',
+                          style: TextStyle(
+                            color: AppColors.textSecondaryFor(context),
+                            fontSize: 22,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                ),
+              ),
+              const SizedBox(width: 14),
+              LogoBox(name: item.name, imageUrl: item.logoUrl, size: 58),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        color: AppColors.textSecondaryFor(context),
-                        fontSize: 22,
-                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimaryFor(context),
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        height: 1.16,
                       ),
                     ),
-            ),
-          ),
-          const SizedBox(width: 14),
-          LogoBox(name: item.name, imageUrl: item.logoUrl, size: 58),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item.name,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: AppColors.textPrimaryFor(context),
-                    fontSize: 18,
-                    fontWeight: FontWeight.w900,
-                    height: 1.16,
-                  ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${item.activeJobCount} việc đang tuyển',
+                      style: TextStyle(
+                        color: AppColors.textPrimaryFor(context),
+                        fontSize: 16,
+                        height: 1.25,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  '${item.activeJobCount} việc đang tuyển',
-                  style: TextStyle(
-                    color: AppColors.textPrimaryFor(context),
-                    fontSize: 16,
-                    height: 1.25,
-                  ),
-                ),
-              ],
-            ),
+              ),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: AppColors.textPrimaryFor(context),
+              ),
+            ],
           ),
-          Icon(
-            Icons.chevron_right_rounded,
-            color: AppColors.textPrimaryFor(context),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -1025,13 +1040,253 @@ class CompanyRankItem {
     required this.rank,
     required this.name,
     required this.activeJobCount,
+    this.employerId = '',
     this.logoUrl,
+    this.jobs = const [],
   });
 
   final int rank;
   final String name;
   final int activeJobCount;
+  final String employerId;
   final String? logoUrl;
+  final List<JobPost> jobs;
+}
+
+class EmployerInfoSheet extends StatelessWidget {
+  const EmployerInfoSheet({
+    super.key,
+    required this.item,
+    required this.onJobTap,
+  });
+
+  final CompanyRankItem item;
+  final ValueChanged<JobPost> onJobTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final jobs = item.jobs.take(5).toList(growable: false);
+    final maxHeight = MediaQuery.sizeOf(context).height * 0.84;
+
+    return SafeArea(
+      top: false,
+      child: Align(
+        alignment: Alignment.bottomCenter,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: maxHeight),
+          child: Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: AppColors.surface(context),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(28),
+              ),
+            ),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 42,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: AppColors.borderFor(context),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Text(
+                    'Thông tin nhà tuyển dụng',
+                    style: TextStyle(
+                      color: AppColors.textPrimaryFor(context),
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                      height: 1.15,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      LogoBox(
+                        name: item.name,
+                        imageUrl: item.logoUrl,
+                        size: 64,
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              item.name,
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: AppColors.textPrimaryFor(context),
+                                fontSize: 19,
+                                fontWeight: FontWeight.w900,
+                                height: 1.18,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              '${item.activeJobCount} việc đang tuyển',
+                              style: TextStyle(
+                                color: AppColors.textSecondaryFor(context),
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 22),
+                  Text(
+                    'Tin đang tuyển',
+                    style: TextStyle(
+                      color: AppColors.textPrimaryFor(context),
+                      fontSize: 16,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  if (jobs.isEmpty)
+                    Text(
+                      'Chưa có tin tuyển dụng khả dụng.',
+                      style: TextStyle(
+                        color: AppColors.textSecondaryFor(context),
+                        fontSize: 14,
+                      ),
+                    )
+                  else
+                    for (var index = 0; index < jobs.length; index++) ...[
+                      _EmployerInfoJobTile(
+                        job: jobs[index],
+                        onTap: () => onJobTap(jobs[index]),
+                      ),
+                      if (index < jobs.length - 1) const SizedBox(height: 10),
+                    ],
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EmployerInfoJobTile extends StatelessWidget {
+  const _EmployerInfoJobTile({required this.job, required this.onTap});
+
+  final JobPost job;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final location = job.location.trim();
+    final schedule = scheduleOf(job);
+    final salary = publicOrHidden(job.salary);
+
+    return Material(
+      color: AppColors.cardBackground(context),
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.borderFor(context)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                job.title.trim().isEmpty ? 'Tin tuyển dụng' : job.title.trim(),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: AppColors.textPrimaryFor(context),
+                  fontSize: 15,
+                  fontWeight: FontWeight.w900,
+                  height: 1.2,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 10,
+                runSpacing: 6,
+                children: [
+                  if (location.isNotEmpty)
+                    _EmployerInfoMeta(
+                      icon: Icons.location_on_outlined,
+                      label: location,
+                    ),
+                  if (schedule.isNotEmpty)
+                    _EmployerInfoMeta(
+                      icon: Icons.schedule_rounded,
+                      label: schedule,
+                    ),
+                  if (salary.isNotEmpty)
+                    _EmployerInfoMeta(
+                      icon: Icons.payments_outlined,
+                      label: salary,
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _EmployerInfoMeta extends StatelessWidget {
+  const _EmployerInfoMeta({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final availableWidth = MediaQuery.sizeOf(context).width - 72;
+
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        maxWidth: availableWidth < 160 ? 160 : availableWidth,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 15, color: AppColors.textMutedFor(context)),
+          const SizedBox(width: 4),
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: AppColors.textSecondaryFor(context),
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class LogoBox extends StatelessWidget {
@@ -1277,10 +1532,7 @@ class _ScheduleMetaBlock extends StatelessWidget {
   Widget build(BuildContext context) {
     final preview = _SchedulePreviewData.fromJob(job);
     if (!preview.hasContent) {
-      return const _MetaLine(
-        icon: Icons.schedule_rounded,
-        label: 'Không công khai',
-      );
+      return const SizedBox.shrink();
     }
 
     final visibleShiftTimes = isExpanded
@@ -1301,18 +1553,19 @@ class _ScheduleMetaBlock extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                preview.dateLabel,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: AppColors.textPrimaryFor(context),
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
+              if (preview.dateLabel.isNotEmpty)
+                Text(
+                  preview.dateLabel,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: AppColors.textPrimaryFor(context),
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-              ),
               if (visibleShiftTimes.isNotEmpty) ...[
-                const SizedBox(height: 3),
+                if (preview.dateLabel.isNotEmpty) const SizedBox(height: 3),
                 AnimatedSize(
                   duration: const Duration(milliseconds: 180),
                   curve: Curves.easeOutCubic,
@@ -1501,9 +1754,7 @@ class _SchedulePreviewData {
   static _SchedulePreviewData fromJob(JobPost job) {
     final date = _schedulePreviewDate(job);
     final shiftTimes = _schedulePreviewShiftTimes(job, date);
-    final dateLabel = date == null
-        ? 'Không công khai'
-        : formatRecruitmentDate(date);
+    final dateLabel = date == null ? '' : formatRecruitmentDate(date);
 
     return _SchedulePreviewData(dateLabel: dateLabel, shiftTimes: shiftTimes);
   }
@@ -1545,7 +1796,7 @@ String companyNameOf(JobPost job) {
   if (companyName != null && companyName.isNotEmpty) return companyName;
   final employerName = job.employerName.trim();
   if (employerName.isNotEmpty) return employerName;
-  return 'Không công khai';
+  return 'Nhà tuyển dụng';
 }
 
 String scheduleOf(JobPost job) {
@@ -1560,12 +1811,11 @@ String scheduleOf(JobPost job) {
 }
 
 String publicOrHidden(String value) {
-  final trimmed = value.trim();
-  return trimmed.isEmpty ? 'Không công khai' : trimmed;
+  return value.trim();
 }
 
 String postedTimeLabel(DateTime postedAt) {
-  if (postedAt.millisecondsSinceEpoch == 0) return 'Không công khai';
+  if (postedAt.millisecondsSinceEpoch == 0) return '';
   final diff = DateTime.now().difference(postedAt);
   if (diff.isNegative || diff.inMinutes < 1) return 'Vừa đăng';
   if (diff.inMinutes < 60) return '${diff.inMinutes} phút trước';

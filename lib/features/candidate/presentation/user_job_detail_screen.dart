@@ -391,14 +391,16 @@ class _QuickInfoSection extends StatelessWidget {
               value: job.location,
             ),
           ],
-          const SizedBox(height: 10),
-          _InfoTile(
-            icon: Icons.calendar_month_outlined,
-            iconBg: AppColors.primarySoft,
-            iconColor: AppColors.primary,
-            label: 'Thời gian tuyển dụng',
-            value: recruitmentWindow,
-          ),
+          if (recruitmentWindow.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            _InfoTile(
+              icon: Icons.calendar_month_outlined,
+              iconBg: AppColors.primarySoft,
+              iconColor: AppColors.primary,
+              label: 'Thời gian tuyển dụng',
+              value: recruitmentWindow,
+            ),
+          ],
         ],
       ),
     );

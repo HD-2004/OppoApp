@@ -175,11 +175,12 @@ class JobPostCard extends StatelessWidget {
                       value: location,
                       icon: Icons.location_on_outlined,
                     ),
-                  _JobInfoRowData(
-                    label: 'Tuyển dụng',
-                    value: recruitmentWindow,
-                    icon: Icons.calendar_month_outlined,
-                  ),
+                  if (recruitmentWindow.isNotEmpty)
+                    _JobInfoRowData(
+                      label: 'Tuyển dụng',
+                      value: recruitmentWindow,
+                      icon: Icons.calendar_month_outlined,
+                    ),
                   if (salary.isNotEmpty)
                     _JobInfoRowData(
                       label: 'Lương',

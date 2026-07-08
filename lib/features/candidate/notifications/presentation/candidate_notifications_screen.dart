@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'package:oppo_temp_jobs/core/theme/app_colors.dart';
@@ -290,18 +292,21 @@ class _NotificationListView extends ConsumerWidget {
           return CandidateNotificationCard(
             notification: item,
             onTap: () async {
-              // Mark as read ngay khi tap
-              if (item.isUnread) {
-                await ref
-                    .read(candidateNotificationControllerProvider.notifier)
-                    .markAsRead(item.id);
-              }
               if (context.mounted) {
                 Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (_) =>
                         CandidateNotificationDetailScreen(notification: item),
                   ),
+                );
+              }
+
+              if (item.isUnread) {
+                unawaited(
+                  ref
+                      .read(candidateNotificationControllerProvider.notifier)
+                      .markAsRead(item.id)
+                      .catchError((_) {}),
                 );
               }
             },

@@ -73,12 +73,8 @@ class DigitalWalletScreen extends ConsumerWidget {
                 WalletQuickActions(
                   onWithdraw: () => _push(
                     context,
-                    WithdrawFundsScreen(
-                      wallet: walletState.wallet,
-                    ),
+                    WithdrawFundsScreen(wallet: walletState.wallet),
                   ),
-                  onHistory: () =>
-                      _push(context, const TransactionHistoryScreen()),
                 ),
                 const SizedBox(height: 16),
                 RecentTransactionsList(

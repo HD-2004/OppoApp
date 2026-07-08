@@ -19,9 +19,9 @@ void main() {
       expect(recruitmentWindowValue(job), '01/07/2026 - 15/07/2026');
     });
 
-    test('shows conservative copy when backend does not provide dates', () {
-      expect(recruitmentWindowLabel(_job()), 'Tuyển dụng: Không công khai');
-      expect(recruitmentWindowValue(_job()), 'Không công khai');
+    test('omits recruitment copy when backend does not provide dates', () {
+      expect(recruitmentWindowLabel(_job()), 'Tuyển dụng');
+      expect(recruitmentWindowValue(_job()), '');
     });
 
     test('keeps job recruitable through the full end date', () {

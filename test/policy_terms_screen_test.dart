@@ -69,6 +69,54 @@ Nội dung bảo mật thật.
     );
   });
 
+  testWidgets('spaces policy detail lines with one blank line between items', (
+    tester,
+  ) async {
+    const spacedSource = '''
+ỐP PỜ
+
+CHÍNH SÁCH 01:
+ĐIỀU KHOẢN SỬ DỤNG CHUNG
+
+Dòng thứ nhất.
+Dòng thứ hai.
+
+Dòng thứ ba.
+''';
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          policyRepositoryProvider.overrideWithValue(
+            const BundledPolicyRepository(source: spacedSource),
+          ),
+        ],
+        child: const MaterialApp(
+          locale: Locale('vi'),
+          localizationsDelegates: [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: PolicyTermsScreen(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('ĐIỀU KHOẢN SỬ DỤNG CHUNG'));
+    await tester.pumpAndSettle();
+
+    final detail = tester.widget<SelectableText>(find.byType(SelectableText));
+    expect(
+      detail.data,
+      contains('Dòng thứ nhất.\n\nDòng thứ hai.\n\nDòng thứ ba.'),
+    );
+    expect(detail.data, isNot(contains('Dòng thứ nhất.\nDòng thứ hai.')));
+  });
+
   testWidgets('shows empty state when no policy data is configured', (
     tester,
   ) async {

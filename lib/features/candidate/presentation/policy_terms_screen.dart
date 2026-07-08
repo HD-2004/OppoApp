@@ -188,6 +188,7 @@ class _PolicyDetailScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final content = policy.content.trim();
+    final displayContent = _formatPolicyDetailContent(content);
     return Scaffold(
       backgroundColor: AppColors.background(context),
       appBar: AppBar(title: const Text('Chính sách')),
@@ -214,7 +215,7 @@ class _PolicyDetailScaffold extends StatelessWidget {
                   ),
                   const SizedBox(height: 20),
                   SelectableText(
-                    content,
+                    displayContent,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       height: 1.55,
                       color: AppColors.textSecondaryFor(context),
@@ -225,6 +226,17 @@ class _PolicyDetailScaffold extends StatelessWidget {
       ),
     );
   }
+}
+
+String _formatPolicyDetailContent(String content) {
+  final normalized = content.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
+  final lines = normalized
+      .split('\n')
+      .map((line) => line.trim())
+      .where((line) => line.isNotEmpty)
+      .toList(growable: false);
+
+  return lines.join('\n\n');
 }
 
 class _PolicyMetaWrap extends StatelessWidget {

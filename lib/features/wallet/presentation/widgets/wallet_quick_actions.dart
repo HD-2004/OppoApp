@@ -3,37 +3,17 @@ import 'package:flutter/material.dart';
 import '../../../../core/localization/app_localizations.dart';
 
 class WalletQuickActions extends StatelessWidget {
-  const WalletQuickActions({
-    super.key,
-    required this.onWithdraw,
-    required this.onHistory,
-  });
+  const WalletQuickActions({super.key, required this.onWithdraw});
 
   final VoidCallback onWithdraw;
-  final VoidCallback onHistory;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    return GridView.count(
-      crossAxisCount: 2,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 10,
-      crossAxisSpacing: 10,
-      childAspectRatio: 1.1,
-      children: [
-        _ActionTile(
-          icon: Icons.payments_outlined,
-          label: l10n.text('withdraw'),
-          onTap: onWithdraw,
-        ),
-        _ActionTile(
-          icon: Icons.receipt_long_outlined,
-          label: l10n.text('transactionHistory'),
-          onTap: onHistory,
-        ),
-      ],
+    return _ActionTile(
+      icon: Icons.payments_outlined,
+      label: l10n.text('withdraw'),
+      onTap: onWithdraw,
     );
   }
 }
@@ -65,9 +45,8 @@ class _ActionTile extends StatelessWidget {
           color: theme.colorScheme.surface,
         ),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
             children: [
               Container(
                 padding: const EdgeInsets.all(8),
@@ -75,22 +54,24 @@ class _ActionTile extends StatelessWidget {
                   color: theme.colorScheme.primary.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(
-                  icon,
-                  color: theme.colorScheme.primary,
-                  size: 24,
+                child: Icon(icon, color: theme.colorScheme.primary, size: 24),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: theme.colorScheme.onSurface,
+                  ),
                 ),
               ),
-              const SizedBox(height: 8),
-              Text(
-                label,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: theme.textTheme.labelMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  color: theme.colorScheme.onSurface,
-                ),
+              const SizedBox(width: 8),
+              Icon(
+                Icons.chevron_right,
+                color: theme.colorScheme.onSurfaceVariant,
               ),
             ],
           ),

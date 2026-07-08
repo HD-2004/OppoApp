@@ -3,7 +3,6 @@ import 'package:go_router/go_router.dart';
 
 import '../features/auth/application/auth_controller.dart';
 import '../features/auth/domain/auth_state.dart';
-import '../features/auth/presentation/candidate_age_verification_screen.dart';
 import '../features/auth/presentation/confirm_signup_screen.dart';
 import '../features/auth/presentation/forgot_password_screen.dart';
 import '../features/auth/presentation/login_screen.dart';
@@ -24,17 +23,7 @@ String? candidateAgeGateRedirect(AuthState authState, String location) {
     return null;
   }
 
-  final user = authState.user;
-  if (user == null) {
-    return null;
-  }
-
   const ageVerificationRoute = '/candidate/age-verification';
-  final hasDateOfBirth = user.dateOfBirth?.trim().isNotEmpty == true;
-  if (!hasDateOfBirth) {
-    return location == ageVerificationRoute ? null : ageVerificationRoute;
-  }
-
   if (location == ageVerificationRoute) {
     return '/candidate';
   }
@@ -170,10 +159,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/candidate',
         builder: (context, state) => const UserDashboardScreen(),
-      ),
-      GoRoute(
-        path: '/candidate/age-verification',
-        builder: (context, state) => const CandidateAgeVerificationScreen(),
       ),
       GoRoute(
         path: '/user-dashboard',
