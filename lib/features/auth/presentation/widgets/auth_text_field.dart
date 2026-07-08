@@ -13,6 +13,7 @@ class AuthTextField extends StatelessWidget {
     this.obscureText = false,
     this.readOnly = false,
     this.suffix,
+    this.hintText,
     this.validator,
     this.onChanged,
   });
@@ -25,6 +26,7 @@ class AuthTextField extends StatelessWidget {
   final bool obscureText;
   final bool readOnly;
   final Widget? suffix;
+  final String? hintText;
   final String? Function(String?)? validator;
   final ValueChanged<String>? onChanged;
 
@@ -40,6 +42,7 @@ class AuthTextField extends StatelessWidget {
       style: TextStyle(color: AuthColors.textPrimary(context)),
       decoration: InputDecoration(
         labelText: label,
+        hintText: hintText,
         labelStyle: TextStyle(
           color: AuthColors.textSecondary(context),
           fontWeight: FontWeight.w600,

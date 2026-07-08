@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/formatters/app_date_formatter.dart';
 import '../../../core/localization/app_localizations.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../shared/platform/cv_file_picker.dart';
@@ -757,16 +758,12 @@ class _PersonalInformationSection extends StatelessWidget {
         ? user!.cccd!.trim()
         : 'Chưa cập nhật';
 
-    String dobStr = 'Chưa cập nhật';
-    if (user?.dateOfBirth?.trim().isNotEmpty == true) {
-      try {
-        final date = DateTime.parse(user!.dateOfBirth!.trim());
-        dobStr =
-            '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
-      } catch (_) {
-        dobStr = user!.dateOfBirth!.trim();
-      }
-    }
+    final dobStr = user?.dateOfBirth?.trim().isNotEmpty == true
+        ? AppDateFormatter.formatVietnameseDateString(
+            user!.dateOfBirth,
+            fallback: user!.dateOfBirth!.trim(),
+          )
+        : 'Chưa cập nhật';
 
     final location = user?.location?.trim().isNotEmpty == true
         ? user!.location!.trim()
@@ -1633,9 +1630,7 @@ class _EmptyWorkHistory extends StatelessWidget {
 void _noop() {}
 
 String _formatDate(String value) {
-  final parsed = DateTime.tryParse(value);
-  if (parsed == null) return value;
-  return '${parsed.day.toString().padLeft(2, '0')}/${parsed.month.toString().padLeft(2, '0')}/${parsed.year}';
+  return AppDateFormatter.formatVietnameseDateString(value, fallback: value);
 }
 
 // ── Skills section ────────────────────────────────────────────────────────────

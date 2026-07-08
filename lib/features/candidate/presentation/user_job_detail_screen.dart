@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:oppo_temp_jobs/core/formatters/app_date_formatter.dart';
 import 'package:oppo_temp_jobs/core/theme/app_colors.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -733,7 +734,7 @@ class _CalendarDayCell extends StatelessWidget {
 }
 
 bool _hasDisplayWorkScheduleOnDate(JobPost job, DateTime date) {
-  final exactDate = DateTime.tryParse(job.workDate?.trim() ?? '');
+  final exactDate = AppDateFormatter.parseDateOnly(job.workDate);
   if (exactDate != null) {
     return DateUtils.isSameDay(exactDate, date) &&
         _displayShiftTimesFromRules(job).isNotEmpty;

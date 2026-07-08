@@ -15,7 +15,7 @@ void main() {
 
     await tester.enterText(
       find.widgetWithText(TextFormField, 'Ngày sinh'),
-      '2000-01-05',
+      '05/01/2000',
     );
     await tester.tap(find.widgetWithText(FilledButton, 'Tiếp tục'));
     await tester.pumpAndSettle();
@@ -51,7 +51,7 @@ String _underageDateOfBirth() {
     today.month,
     today.day + 1,
   );
-  return CandidateAgePolicy.formatDate(eighteenthBirthdayTomorrow);
+  return CandidateAgePolicy.formatDisplayDate(eighteenthBirthdayTomorrow);
 }
 
 Widget _appWithController(_SpyAuthController controller) {

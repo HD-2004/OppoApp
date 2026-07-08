@@ -4,11 +4,11 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:oppo_temp_jobs/core/formatters/app_date_formatter.dart';
 import 'package:oppo_temp_jobs/core/theme/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
-import 'package:intl/intl.dart';
 
 import '../../auth/application/auth_controller.dart';
 
@@ -46,7 +46,9 @@ class _UpdateProfileScreenState extends ConsumerState<UpdateProfileScreen> {
       _fullNameController.text = user.fullName;
       _phoneController.text = user.phone ?? '';
       _cccdController.text = user.cccd ?? '';
-      _dobController.text = user.dateOfBirth ?? '';
+      _dobController.text = AppDateFormatter.formatVietnameseDateString(
+        user.dateOfBirth,
+      );
       _locationController.text = user.location ?? '';
       _titleController.text = user.title ?? '';
       _bioController.text = user.bio ?? '';
@@ -104,9 +106,7 @@ class _UpdateProfileScreenState extends ConsumerState<UpdateProfileScreen> {
   Future<void> _selectDate() async {
     DateTime initial = DateTime.now().subtract(const Duration(days: 365 * 18));
     if (_dobController.text.isNotEmpty) {
-      try {
-        initial = DateTime.parse(_dobController.text);
-      } catch (_) {}
+      initial = AppDateFormatter.parseDateOnly(_dobController.text) ?? initial;
     }
     final picked = await showDatePicker(
       context: context,
@@ -122,7 +122,8 @@ class _UpdateProfileScreenState extends ConsumerState<UpdateProfileScreen> {
     );
     if (picked != null && mounted) {
       setState(
-        () => _dobController.text = DateFormat('yyyy-MM-dd').format(picked),
+        () =>
+            _dobController.text = AppDateFormatter.formatVietnameseDate(picked),
       );
     }
   }
@@ -144,7 +145,9 @@ class _UpdateProfileScreenState extends ConsumerState<UpdateProfileScreen> {
             fullName: _fullNameController.text.trim(),
             phone: _phoneController.text.trim(),
             cccd: _cccdController.text.trim(),
-            dateOfBirth: _dobController.text.trim(),
+            dateOfBirth:
+                AppDateFormatter.normalizeDateOnly(_dobController.text) ??
+                _dobController.text.trim(),
             location: _locationController.text.trim(),
             title: _titleController.text.trim(),
             bio: _bioController.text.trim(),
@@ -379,6 +382,7 @@ class _Field extends StatelessWidget {
       style: const TextStyle(fontSize: 14, color: Color(0xFF111827)),
       decoration: InputDecoration(
         labelText: label,
+        hintText: 'dd/MM/yyyy',
         labelStyle: const TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
         prefixIcon: Icon(icon, size: 20, color: const Color(0xFF9CA3AF)),
         helperText: helperText,

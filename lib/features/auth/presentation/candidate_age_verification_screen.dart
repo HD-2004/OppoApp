@@ -43,7 +43,9 @@ class _CandidateAgeVerificationScreenState
     if (picked == null || !mounted) return;
 
     setState(() {
-      _dateOfBirthController.text = CandidateAgePolicy.formatDate(picked);
+      _dateOfBirthController.text = CandidateAgePolicy.formatDisplayDate(
+        picked,
+      );
       _blockingMessage = null;
     });
   }
@@ -65,9 +67,14 @@ class _CandidateAgeVerificationScreenState
       _blockingMessage = null;
     });
     try {
+      final dateOfBirth =
+          CandidateAgePolicy.normalizeDateOfBirth(
+            _dateOfBirthController.text,
+          ) ??
+          _dateOfBirthController.text.trim();
       await ref
           .read(authControllerProvider.notifier)
-          .saveDateOfBirth(_dateOfBirthController.text.trim());
+          .saveDateOfBirth(dateOfBirth);
     } finally {
       if (mounted) {
         setState(() => _isSubmitting = false);
@@ -122,7 +129,7 @@ class _CandidateAgeVerificationScreenState
                       validator: CandidateAgePolicy.validateDateOfBirth,
                       decoration: InputDecoration(
                         labelText: 'Ngày sinh',
-                        hintText: 'yyyy-MM-dd',
+                        hintText: 'dd/MM/yyyy',
                         prefixIcon: const Icon(Icons.calendar_month_outlined),
                         suffixIcon: IconButton(
                           tooltip: 'Chọn ngày sinh',

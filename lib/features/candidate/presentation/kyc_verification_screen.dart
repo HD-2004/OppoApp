@@ -6,6 +6,7 @@ import 'package:oppo_temp_jobs/core/theme/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../core/formatters/app_date_formatter.dart';
 import '../../../core/localization/app_localizations.dart';
 import '../../auth/application/auth_controller.dart';
 import '../data/ekyc_repository.dart';
@@ -247,14 +248,16 @@ class _KycVerificationScreenState extends ConsumerState<KycVerificationScreen> {
         final authUser = ref.read(authControllerProvider).asData?.value.user;
         if (authUser != null && _ocrResult != null) {
           try {
+            final normalizedOcrDob = AppDateFormatter.normalizeDateOnly(
+              _ocrResult!['dob']?.toString(),
+            );
             await ref
                 .read(authControllerProvider.notifier)
                 .completeProfile(
                   fullName:
                       _ocrResult!['name']?.toString() ?? authUser.fullName,
                   cccd: _ocrResult!['id']?.toString() ?? authUser.cccd,
-                  dateOfBirth:
-                      _ocrResult!['dob']?.toString() ?? authUser.dateOfBirth,
+                  dateOfBirth: normalizedOcrDob ?? authUser.dateOfBirth,
                   phone: authUser.phone,
                   location: authUser.location,
                   title: authUser.title,
@@ -849,7 +852,11 @@ class _KycVerificationScreenState extends ConsumerState<KycVerificationScreen> {
 
     final id = _ocrResult!['id']?.toString() ?? '–';
     final name = _ocrResult!['name']?.toString() ?? '–';
-    final dob = _ocrResult!['dob']?.toString() ?? '–';
+    final rawDob = _ocrResult!['dob']?.toString();
+    final dob = AppDateFormatter.formatVietnameseDateString(
+      rawDob,
+      fallback: rawDob ?? '–',
+    );
     final sex = _ocrResult!['sex']?.toString() ?? '–';
     final address = _ocrResult!['address']?.toString() ?? '–';
 

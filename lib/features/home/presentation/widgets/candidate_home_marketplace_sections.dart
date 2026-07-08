@@ -5,6 +5,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 
 import '../../../../core/config/s3_asset_config.dart';
+import '../../../../core/formatters/app_date_formatter.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../candidate/domain/job_post.dart';
 import '../../../candidate/domain/job_recruitment_window.dart';
@@ -1509,9 +1510,9 @@ class _SchedulePreviewData {
 }
 
 DateTime? _schedulePreviewDate(JobPost job) {
-  final exactDate = DateTime.tryParse(job.workDate?.trim() ?? '');
+  final exactDate = AppDateFormatter.parseDateOnly(job.workDate);
   if (exactDate != null) {
-    return DateTime(exactDate.year, exactDate.month, exactDate.day);
+    return exactDate;
   }
 
   final recruitmentStart = job.recruitmentStartDate;

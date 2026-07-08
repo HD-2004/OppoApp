@@ -195,7 +195,7 @@ String _underageDateOfBirth() {
     today.month,
     today.day + 1,
   );
-  return CandidateAgePolicy.formatDate(eighteenthBirthdayTomorrow);
+  return CandidateAgePolicy.formatDisplayDate(eighteenthBirthdayTomorrow);
 }
 
 class _SpyAuthController extends AuthController {

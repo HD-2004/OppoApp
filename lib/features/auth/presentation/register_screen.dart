@@ -90,6 +90,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     final l10n = AppLocalizations.of(context);
+    final dateOfBirth =
+        CandidateAgePolicy.normalizeDateOfBirth(_dateOfBirthController.text) ??
+        _dateOfBirthController.text.trim();
     setState(() {
       _isSubmitting = true;
       _emailError = null;
@@ -124,7 +127,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               email: _emailController.text.trim(),
               password: _passwordController.text,
               role: AppRole.candidate,
-              dateOfBirth: _dateOfBirthController.text.trim(),
+              dateOfBirth: dateOfBirth,
             ),
           );
     } on CheckEmailException catch (e) {
@@ -139,7 +142,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 email: _emailController.text.trim(),
                 password: _passwordController.text,
                 role: AppRole.candidate,
-                dateOfBirth: _dateOfBirthController.text.trim(),
+                dateOfBirth: dateOfBirth,
               ),
             );
       } on AuthFailure catch (f) {
@@ -177,7 +180,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     );
     if (picked == null || !mounted) return;
 
-    _dateOfBirthController.text = CandidateAgePolicy.formatDate(picked);
+    _dateOfBirthController.text = CandidateAgePolicy.formatDisplayDate(picked);
     _updateSubmitState();
   }
 
@@ -274,8 +277,10 @@ class _RegisterFormStep extends StatelessWidget {
   final VoidCallback onSubmit;
   final ValueChanged<AuthProvider> onSubmitSocial;
   final AppLocalizations l10n;
+
   /// Lỗi inline hiển thị dưới ô Email (null = không có lỗi).
   final String? emailError;
+
   /// Điều hướng sang màn đăng nhập (dùng khi email đã có tài khoản native).
   final VoidCallback? onNavigateToLogin;
 
@@ -320,7 +325,8 @@ class _RegisterFormStep extends StatelessWidget {
                   ),
                 ),
                 // Lỗi inline từ check-email API
-                if (emailError != null && emailError != _RegisterScreenState._kNativeExistsMessage)
+                if (emailError != null &&
+                    emailError != _RegisterScreenState._kNativeExistsMessage)
                   Padding(
                     padding: const EdgeInsets.only(top: 6, left: 14),
                     child: Text(
@@ -366,6 +372,7 @@ class _RegisterFormStep extends StatelessWidget {
                   controller: dateOfBirthController,
                   label: 'Ngày sinh',
                   icon: Icons.calendar_month_outlined,
+                  hintText: 'dd/MM/yyyy',
                   keyboardType: TextInputType.datetime,
                   textInputAction: TextInputAction.next,
                   validator: CandidateAgePolicy.validateDateOfBirth,

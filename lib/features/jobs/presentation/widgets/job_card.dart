@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:oppo_temp_jobs/core/formatters/app_date_formatter.dart';
 import 'package:oppo_temp_jobs/core/theme/app_colors.dart';
 
 import '../../../candidate/domain/job_post.dart';
@@ -48,13 +49,8 @@ class JobCard extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (isUrgent) ...[
-                  _UrgentBadge(),
-                  const SizedBox(width: 8),
-                ],
-                if (job.isAiScreeningEnabled) ...[
-                  _AiInterviewBadge(),
-                ],
+                if (isUrgent) ...[_UrgentBadge(), const SizedBox(width: 8)],
+                if (job.isAiScreeningEnabled) ...[_AiInterviewBadge()],
                 const Spacer(),
                 Text(
                   salary,
@@ -160,7 +156,10 @@ class JobCard extends StatelessWidget {
         return '${job.startTime} - ${job.endTime}';
       }
       if (job.workDate != null && job.workDate!.isNotEmpty) {
-        return job.workDate!;
+        return AppDateFormatter.formatVietnameseDateString(
+          job.workDate,
+          fallback: job.workDate!.trim(),
+        );
       }
     }
     // Standard job: shiftTime / workHours từ backend

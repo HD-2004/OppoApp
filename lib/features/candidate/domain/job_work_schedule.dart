@@ -1,3 +1,4 @@
+import '../../../core/formatters/app_date_formatter.dart';
 import 'job_post.dart';
 
 class JobWorkShiftRule {
@@ -199,12 +200,7 @@ String? _simpleTimeRange(String? raw) {
 }
 
 DateTime? _parseDateOnly(String? raw) {
-  final value = raw?.trim();
-  if (value == null || value.isEmpty) return null;
-
-  final parsed = DateTime.tryParse(value);
-  if (parsed == null) return null;
-  return _dateOnly(parsed);
+  return AppDateFormatter.parseDateOnly(raw);
 }
 
 bool _isInsideRecruitmentWindow(JobPost job, DateTime date) {

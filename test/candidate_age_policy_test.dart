@@ -37,15 +37,29 @@ void main() {
       );
     });
 
-    test('rejects underage birth date strings', () {
+    test('rejects underage Vietnamese birth date strings', () {
       expect(
-        CandidateAgePolicy.validateDateOfBirth('2008-06-30', today: today),
+        CandidateAgePolicy.validateDateOfBirth('30/06/2008', today: today),
         'Ứng dụng chỉ dành cho ứng viên từ 18 tuổi trở lên.',
       );
     });
 
-    test('formats dates as yyyy-MM-dd', () {
+    test('formats dates for storage as yyyy-MM-dd', () {
       expect(CandidateAgePolicy.formatDate(DateTime(2008, 1, 5)), '2008-01-05');
+    });
+
+    test('formats dates for Vietnamese UI as dd/MM/yyyy', () {
+      expect(
+        CandidateAgePolicy.formatDisplayDate(DateTime(2008, 1, 5)),
+        '05/01/2008',
+      );
+    });
+
+    test('normalizes Vietnamese UI input for storage', () {
+      expect(
+        CandidateAgePolicy.normalizeDateOfBirth('05/01/2008'),
+        '2008-01-05',
+      );
     });
   });
 }

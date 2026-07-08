@@ -116,7 +116,6 @@ class AuthRepository {
   }
 
   Future<AuthUserProfile?> fetchCurrentProfile() {
-<<<<<<< HEAD
     return _fetchAndUpsertProfile();
   }
 
@@ -170,9 +169,6 @@ class AuthRepository {
         dateOfBirth: dateOfBirth,
       );
     }
-=======
-    return _service.fetchCurrentProfile();
->>>>>>> 12f79a4f61bf1d9ae7a93e26f15f36d504fb5357
   }
 
   Future<AuthUserProfile> updateKycCompleted({

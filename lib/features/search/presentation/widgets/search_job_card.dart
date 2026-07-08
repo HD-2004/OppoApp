@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:oppo_temp_jobs/core/formatters/app_date_formatter.dart';
 import 'package:oppo_temp_jobs/core/theme/app_colors.dart';
 
 import '../../../../features/candidate/domain/job_post.dart';
@@ -225,7 +226,12 @@ class SearchJobCard extends StatelessWidget {
     if (job.workHours != null && job.workHours!.isNotEmpty) {
       return job.workHours!;
     }
-    if (job.workDate != null && job.workDate!.isNotEmpty) return job.workDate!;
+    if (job.workDate != null && job.workDate!.isNotEmpty) {
+      return AppDateFormatter.formatVietnameseDateString(
+        job.workDate,
+        fallback: job.workDate!.trim(),
+      );
+    }
     return '';
   }
 
