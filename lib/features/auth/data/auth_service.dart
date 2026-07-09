@@ -127,7 +127,9 @@ class AuthService {
     await _ensureConfigured();
 
     if (!hasHostedUiConfig) {
-      safePrint('[AuthService] signInWithSocialProvider: no Hosted UI domain configured.');
+      safePrint(
+        '[AuthService] signInWithSocialProvider: no Hosted UI domain configured.',
+      );
       throw AuthFailure.socialSignInConfiguration;
     }
 
@@ -153,14 +155,20 @@ class AuthService {
       rethrow;
     } on Exception catch (error) {
       // ── Log chi tiết lỗi gốc để debug ──────────────────────────────────
-      safePrint('[AuthService] signInWithSocialProvider error '
-          'type=${error.runtimeType}: $error');
+      safePrint(
+        '[AuthService] signInWithSocialProvider error '
+        'type=${error.runtimeType}: $error',
+      );
       if (error is AuthException) {
         safePrint('[AuthService]   .message        = ${error.message}');
-        safePrint('[AuthService]   .recoverySuggestion = '
-            '${error.recoverySuggestion}');
-        safePrint('[AuthService]   .underlyingException = '
-            '${error.underlyingException}');
+        safePrint(
+          '[AuthService]   .recoverySuggestion = '
+          '${error.recoverySuggestion}',
+        );
+        safePrint(
+          '[AuthService]   .underlyingException = '
+          '${error.underlyingException}',
+        );
       }
       throw _mapAuthError(error);
     }
@@ -244,8 +252,7 @@ class AuthService {
       final tokens = session.userPoolTokensResult.valueOrNull;
       final accessClaims = _decodeJwtClaims(tokens?.accessToken.raw ?? '');
       final groups =
-          (accessClaims['cognito:groups'] as List<dynamic>?)
-              ?.cast<String>() ??
+          (accessClaims['cognito:groups'] as List<dynamic>?)?.cast<String>() ??
           const <String>[];
 
       for (final group in groups) {
@@ -339,8 +346,7 @@ class AuthService {
       // ── Determine role from access token groups (no extra network call) ──
       final accessClaims = _decodeJwtClaims(tokens.accessToken.raw);
       final groups =
-          (accessClaims['cognito:groups'] as List<dynamic>?)
-              ?.cast<String>() ??
+          (accessClaims['cognito:groups'] as List<dynamic>?)?.cast<String>() ??
           const <String>[];
 
       AppRole role = AppRole.candidate;
@@ -350,8 +356,10 @@ class AuthService {
       }
 
       if (kDebugMode) {
-        safePrint('fetchCurrentProfile: userId=$userId email=$email '
-            'role=${role.cognitoValue} groups=$groups');
+        safePrint(
+          'fetchCurrentProfile: userId=$userId email=$email '
+          'role=${role.cognitoValue} groups=$groups',
+        );
       }
 
       return AuthUserProfile(
@@ -418,14 +426,18 @@ class AuthService {
 
   Future<void> _ensureConfigured() async {
     if (!hasCognitoAppClientId) {
-      safePrint('[AuthService] _ensureConfigured: no app client ID → throwing configuration failure.');
+      safePrint(
+        '[AuthService] _ensureConfigured: no app client ID → throwing configuration failure.',
+      );
       throw AuthFailure.configuration;
     }
 
     await configureAmplify();
 
     if (!Amplify.isConfigured) {
-      safePrint('[AuthService] _ensureConfigured: Amplify still not configured after configureAmplify() → throwing configuration failure.');
+      safePrint(
+        '[AuthService] _ensureConfigured: Amplify still not configured after configureAmplify() → throwing configuration failure.',
+      );
       throw AuthFailure.configuration;
     }
   }

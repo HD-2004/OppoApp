@@ -6,7 +6,7 @@ Kế hoạch triển khai sửa lỗi con trỏ ô tìm kiếm tràn ra ngoài k
 
 ## Tasks
 
-- [ ] 1. Viết test khám phá điều kiện lỗi (trước khi sửa)
+- [x] 1. Viết test khám phá điều kiện lỗi (trước khi sửa)
   - **Property 1: Bug Condition** - Con trỏ tràn ra ngoài khung ô tìm kiếm
   - **QUAN TRỌNG**: Viết test (dạng property-based) này TRƯỚC khi sửa code
   - **BẮT BUỘC**: Test này PHẢI FAIL trên code chưa sửa — thất bại xác nhận lỗi tồn tại
@@ -23,7 +23,7 @@ Kế hoạch triển khai sửa lỗi con trỏ ô tìm kiếm tràn ra ngoài k
   - Đánh dấu hoàn thành khi test đã viết, đã chạy và thất bại được ghi nhận
   - _Requirements: 1.1, 1.2, 1.3, 2.1, 2.2, 2.3_
 
-- [ ] 2. Viết các property test bảo toàn hành vi (trước khi sửa)
+- [x] 2. Viết các property test bảo toàn hành vi (trước khi sửa)
   - **Property 2: Preservation** - Giữ nguyên chức năng và hiển thị
   - **QUAN TRỌNG**: Tuân theo phương pháp observation-first — quan sát hành vi trên code CHƯA sửa trước, rồi viết test khẳng định
   - Quan sát trên code chưa sửa cho các input KHÔNG thỏa bug condition (`isBugCondition` = false): gõ/lọc, nút xóa, placeholder, styling khung, và `TextField` màn hình khác
@@ -37,9 +37,9 @@ Kế hoạch triển khai sửa lỗi con trỏ ô tìm kiếm tràn ra ngoài k
   - Đánh dấu hoàn thành khi test đã viết, đã chạy và pass trên code chưa sửa
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
 
-- [ ] 3. Sửa lỗi con trỏ tràn ra ngoài khung ô tìm kiếm
+- [x] 3. Sửa lỗi con trỏ tràn ra ngoài khung ô tìm kiếm
 
-  - [ ] 3.1 Áp dụng bản sửa trong `_SearchBar`
+  - [x] 3.1 Áp dụng bản sửa trong `_SearchBar`
     - File: `lib/features/messaging/presentation/pages/messages_screen.dart`, hàm `_SearchBar.build`
     - Phóng to chiều cao `Container` từ `height: 44` lên giá trị lớn hơn (khuyến nghị `48`–`52`)
     - Thêm `textAlignVertical: TextAlignVertical.center` cho `TextField`
@@ -51,20 +51,20 @@ Kế hoạch triển khai sửa lỗi con trỏ ô tìm kiếm tràn ra ngoài k
     - _Preservation: Preservation Requirements từ design (gõ/lọc/xóa, placeholder, styling, TextField màn hình khác)_
     - _Requirements: 2.1, 2.2, 2.3_
 
-  - [ ] 3.2 Xác minh test khám phá điều kiện lỗi nay đã PASS
+  - [x] 3.2 Xác minh test khám phá điều kiện lỗi nay đã PASS
     - **Property 1: Expected Behavior** - Con trỏ nằm gọn và căn giữa trong khung
     - **QUAN TRỌNG**: Chạy lại CHÍNH test từ task 1 — KHÔNG viết test mới
     - Test từ task 1 mã hóa hành vi mong muốn; khi nó pass tức là hành vi đúng được thỏa mãn
     - **KẾT QUẢ MONG ĐỢI**: Test PASS (xác nhận lỗi đã được sửa)
     - _Requirements: 2.1, 2.2, 2.3_
 
-  - [ ] 3.3 Xác minh các test bảo toàn vẫn PASS
+  - [x] 3.3 Xác minh các test bảo toàn vẫn PASS
     - **Property 2: Preservation** - Giữ nguyên chức năng và hiển thị
     - **QUAN TRỌNG**: Chạy lại CHÍNH các test từ task 2 — KHÔNG viết test mới
     - **KẾT QUẢ MONG ĐỢI**: Tất cả PASS (xác nhận không có hồi quy)
     - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
 
-- [ ] 4. Checkpoint - Đảm bảo toàn bộ test pass
+- [x] 4. Checkpoint - Đảm bảo toàn bộ test pass
   - Chạy `flutter test` và đảm bảo tất cả test pass; hỏi người dùng nếu có vấn đề phát sinh
 
 ## Task Dependency Graph

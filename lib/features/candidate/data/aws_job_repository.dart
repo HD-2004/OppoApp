@@ -122,8 +122,29 @@ class AwsJobRepository implements JobRepository {
         job['expiryDate'],
       ]),
       status: _statusFrom(job),
-      applicants: _int(job['applicants']),
+      applicants: _firstInt([
+        job['applicants'],
+        job['applicationCount'],
+        job['applicationsCount'],
+        job['cvCount'],
+        job['submittedCvCount'],
+      ]),
       views: _int(job['views']),
+      employerReputationScore: _firstDouble([
+        job['employerReputationScore'],
+        job['employer_reputation_score'],
+        job['reputationScore'],
+        job['employerRating'],
+        job['employer_rating'],
+      ]),
+      candidateRatingScore: _firstDouble([
+        job['candidateRatingScore'],
+        job['candidate_rating_score'],
+        job['candidateReviewScore'],
+        job['candidate_review_score'],
+        job['averageCandidateRating'],
+        job['average_candidate_rating'],
+      ]),
       workHours: _nullableString(job['workHours']),
       workDays: _nullableString(job['workDays']),
       responsibilities: _nullableString(job['responsibilities']),
@@ -189,8 +210,29 @@ class AwsJobRepository implements JobRepository {
         job['expiryDate'],
       ]),
       status: _statusFrom(job),
-      applicants: _int(job['applicants']),
+      applicants: _firstInt([
+        job['applicants'],
+        job['applicationCount'],
+        job['applicationsCount'],
+        job['cvCount'],
+        job['submittedCvCount'],
+      ]),
       views: _int(job['views']),
+      employerReputationScore: _firstDouble([
+        job['employerReputationScore'],
+        job['employer_reputation_score'],
+        job['reputationScore'],
+        job['employerRating'],
+        job['employer_rating'],
+      ]),
+      candidateRatingScore: _firstDouble([
+        job['candidateRatingScore'],
+        job['candidate_rating_score'],
+        job['candidateReviewScore'],
+        job['candidate_review_score'],
+        job['averageCandidateRating'],
+        job['average_candidate_rating'],
+      ]),
       workDate: _nullableString(job['workDate']),
       companyName: _nullableString(job['companyName']),
       hourlyRate: hourlyRate,
@@ -487,7 +529,23 @@ class AwsJobRepository implements JobRepository {
     return int.tryParse(_string(raw).replaceAll(RegExp(r'[^\d-]'), '')) ?? 0;
   }
 
+  static int _firstInt(Iterable<dynamic> values) {
+    for (final value in values) {
+      final parsed = _int(value);
+      if (parsed != 0) return parsed;
+    }
+    return 0;
+  }
+
   static double _double(dynamic raw) => _doubleOrNull(raw) ?? 0;
+
+  static double _firstDouble(Iterable<dynamic> values) {
+    for (final value in values) {
+      final parsed = _doubleOrNull(value);
+      if (parsed != null) return parsed;
+    }
+    return 0;
+  }
 
   static double? _doubleOrNull(dynamic raw) {
     if (raw is num) return raw.toDouble();

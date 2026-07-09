@@ -528,7 +528,7 @@ Tính năng này nằm ở **luồng ứng viên (candidate)** chứ không ph�
 | `JobPost` | `lib/features/candidate/domain/job_post.dart` | Model công việc thật (có `employerId`, `title`, `jobType`, `location`, `tags`, `endTime`, `workDate`, …) |
 | `JobRepository` | `lib/features/candidate/domain/job_repository.dart` | Hợp đồng `getActiveJobs()`, `getActiveQuickJobs()` |
 | `AwsJobRepository` | `lib/features/candidate/data/aws_job_repository.dart` | Gọi REST API AWS thật (`/jobs/active`, `/quick-jobs/active`) |
-| `JobRecommendationService` | `lib/features/recommendations/application/job_recommendation_service.dart` | Đã có sẵn logic `_normalize`/`_tokenize`/`_textsOverlap` để so khớp văn bản — tái sử dụng để xếp hạng tin tương tự |
+| `SimilarJobsQuery` | `lib/features/candidate/application/similar_jobs_query.dart` | Logic thuần dự kiến để chuẩn hóa văn bản và xếp hạng tin tương tự nếu tính năng này được triển khai |
 
 **Nguyên tắc dữ liệu**: Danh sách tin tương tự được **dẫn xuất** từ kết quả `getActiveJobs()` + `getActiveQuickJobs()` (các tin đang hoạt động thật), lọc theo các trường thật của `JobPost`. Không hardcode, không sinh dữ liệu mẫu. Nếu không tìm được tin liên quan nào, hiển thị trạng thái rỗng rõ ràng.
 
@@ -549,14 +549,14 @@ graph TD
     subgraph Data[Nguồn dữ liệu thật]
         JR[JobRepository]
         AWS[AwsJobRepository -> REST AWS]
-        REC[JobRecommendationService - so khớp văn bản]
+        REL[SimilarJobsQuery - so khớp văn bản]
         DDL[Bộ lọc hết hạn dùng chung - Phần A/B]
     end
 
     UJD --> SIM
     SIM -->|Navigator.push JobPost gốc| RLS
     RLS --> RLP --> JR --> AWS
-    RLP --> REC
+    RLP --> REL
     RLP --> DDL
     RLP --> RLS
 ```
@@ -614,7 +614,7 @@ sequenceDiagram
 
 ### 10. `relatedJobsProvider` (mới — lib/features/candidate/application/related_jobs_provider.dart)
 - **Loại**: `FutureProvider.family<List<JobPost>, JobPost>`.
-- **Phụ thuộc**: `jobRepositoryProvider` (đã có), `JobRecommendationService` (đã có), bộ lọc hết hạn dùng chung.
+- **Phụ thuộc**: `jobRepositoryProvider` (đã có), `SimilarJobsQuery` (logic thuần mới nếu triển khai), bộ lọc hết hạn dùng chung.
 - **Trách nhiệm**: hợp nhất `getActiveJobs()` + `getActiveQuickJobs()`, loại tin gốc, loại tin hết hạn, xếp hạng theo độ liên quan, cắt `limit`.
 
 ### 11. `SimilarJobsQuery` (mới — hàm thuần, lib/features/candidate/application/similar_jobs_query.dart)
@@ -633,7 +633,7 @@ sequenceDiagram
 | Trùng tiêu đề | `title` (overlap token) | +8 |
 
 - Vì hàng UI hiện hiển thị "Xem thêm việc làm tại {location}", **tín hiệu địa điểm + nhà tuyển dụng là chủ đạo**; phần còn lại để xếp hạng phụ.
-- Có thể tái dùng trực tiếp `JobRecommendationService._normalize/_tokenize/_textsOverlap` (tách thành hàm dùng chung nếu cần) để tránh viết lại logic so khớp tiếng Việt có dấu.
+- Nếu triển khai, đặt hàm chuẩn hóa/tokenize trong `SimilarJobsQuery` hoặc tiện ích dùng chung thay vì phụ thuộc vào recommendation service đã bị loại bỏ.
 - **Loại trừ chính tin gốc** theo `idJob`.
 - **Loại trừ tin đã hết hạn**: nhất quán với Phần A/B — một tin liên quan chỉ hiển thị khi chưa hết hạn.
 

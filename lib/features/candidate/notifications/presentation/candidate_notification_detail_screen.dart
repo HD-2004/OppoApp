@@ -799,8 +799,14 @@ String _friendlyKey(String key) {
 
 String _displayValue(Object? value) {
   if (value == null) return '';
-  if (value is String) return value.trim();
-  if (value is num || value is bool) return value.toString();
+  if (value is bool) return value ? 'Có' : 'Không';
+  if (value is String) {
+    final trimmed = value.trim();
+    if (trimmed.toLowerCase() == 'true') return 'Có';
+    if (trimmed.toLowerCase() == 'false') return 'Không';
+    return trimmed;
+  }
+  if (value is num) return value.toString();
   if (value is Map || value is List) return jsonEncode(value);
   return value.toString().trim();
 }

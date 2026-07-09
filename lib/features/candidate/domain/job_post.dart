@@ -47,6 +47,8 @@ class JobPost {
     this.applicants = 0,
     this.views = 0,
     this.visibilityScore = 0,
+    this.employerReputationScore = 0,
+    this.candidateRatingScore = 0,
     this.isAiScreeningEnabled = false,
     this.customQuestions = const [],
   });
@@ -86,6 +88,8 @@ class JobPost {
   final int applicants;
   final int views;
   final double visibilityScore;
+  final double employerReputationScore;
+  final double candidateRatingScore;
   final bool isAiScreeningEnabled;
   final List<String> customQuestions;
 
@@ -127,6 +131,8 @@ class JobPost {
       applicants: applicants,
       views: views,
       visibilityScore: visibilityScore,
+      employerReputationScore: employerReputationScore,
+      candidateRatingScore: candidateRatingScore,
       companyName: companyName,
       hourlyRate: hourlyRate,
       totalHours: totalHours,

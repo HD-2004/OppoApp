@@ -61,7 +61,7 @@
   "deleteAccountConfirmText": "I understand that this request may affect my account and data.",
   "submitRequest": "Submit request",
   "deleteAccountRequestSubmitted": "Your account deletion request has been submitted.",
-  "jobRecommendations": "Job recommendations",
+  "popularJobAlerts": "Popular jobs",
   "employerMessages": "Employer messages",
   "applicationUpdates": "Application updates",
   "paymentUpdates": "Payment updates",

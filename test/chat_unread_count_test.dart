@@ -94,10 +94,7 @@ void main() {
       'availability_off',
     );
     expect(
-      candidateChatAccessMessage(
-        isSignedIn: true,
-        isActive: true,
-      ),
+      candidateChatAccessMessage(isSignedIn: true, isActive: true),
       isNull,
     );
   });

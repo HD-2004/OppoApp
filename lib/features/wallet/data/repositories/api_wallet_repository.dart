@@ -457,10 +457,7 @@ class ApiWalletRepository implements WalletRepository {
       status: WalletStatus.active,
     );
 
-    return {
-      'wallet': wallet,
-      'transactions': mergedTx,
-    };
+    return {'wallet': wallet, 'transactions': mergedTx};
   }
 
   @override
@@ -647,5 +644,4 @@ class ApiWalletRepository implements WalletRepository {
       requestedAt: DateTime.parse(nowIso),
     );
   }
-
 }

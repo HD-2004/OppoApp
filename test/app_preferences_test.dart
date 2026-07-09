@@ -7,7 +7,7 @@ void main() {
       AppPreferenceKeys.appThemeMode,
       AppPreferenceKeys.appLocale,
       AppPreferenceKeys.hasSeenIntro,
-      AppPreferenceKeys.notificationJobRecommendations,
+      AppPreferenceKeys.notificationPopularJobs,
       AppPreferenceKeys.notificationEmployerMessages,
       AppPreferenceKeys.notificationApplicationUpdates,
       AppPreferenceKeys.notificationPaymentUpdates,

@@ -176,7 +176,11 @@ class CandidateChatsNotifier extends AsyncNotifier<List<CandidateApplication>> {
     final List<Map<String, dynamic>> enrichedApps = [];
 
     for (final app in validRawApps) {
-      final jobId = app['jobId']?.toString() ?? app['idJob']?.toString() ?? app['jobID']?.toString() ?? '';
+      final jobId =
+          app['jobId']?.toString() ??
+          app['idJob']?.toString() ??
+          app['jobID']?.toString() ??
+          '';
       if (jobId.isEmpty) {
         enrichedApps.add(app);
         continue;
@@ -191,7 +195,9 @@ class CandidateChatsNotifier extends AsyncNotifier<List<CandidateApplication>> {
             ? '$_quickJobsUrl/quick-jobs/$jobId'
             : '$_standardJobsUrl/jobs/$jobId';
         try {
-          final response = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 5));
+          final response = await http
+              .get(Uri.parse(url))
+              .timeout(const Duration(seconds: 5));
           if (response.statusCode == 200) {
             final decoded = jsonDecode(response.body);
             if (decoded is Map<String, dynamic> && decoded['success'] == true) {
@@ -215,20 +221,32 @@ class CandidateChatsNotifier extends AsyncNotifier<List<CandidateApplication>> {
       }
 
       // If the job is confirmed deleted (cached as null), filter out
-      if (_jobDetailsCache.containsKey(jobId) && _jobDetailsCache[jobId] == null) {
+      if (_jobDetailsCache.containsKey(jobId) &&
+          _jobDetailsCache[jobId] == null) {
         continue;
       }
 
       final enrichedApp = Map<String, dynamic>.from(app);
       if (jobData != null) {
-        final companyName = jobData['employerName'] ?? jobData['companyName'] ?? jobData['employerEmail'] ?? '';
+        final companyName =
+            jobData['employerName'] ??
+            jobData['companyName'] ??
+            jobData['employerEmail'] ??
+            '';
         final title = jobData['title'] ?? '';
-        String? logo = jobData['companyLogo'] ?? jobData['employerAvatarUrl'] ?? jobData['logoUrl'] ?? jobData['avatarUrl'] ?? jobData['profileImage'];
+        String? logo =
+            jobData['companyLogo'] ??
+            jobData['employerAvatarUrl'] ??
+            jobData['logoUrl'] ??
+            jobData['avatarUrl'] ??
+            jobData['profileImage'];
         if (logo == null || logo.trim().isEmpty) {
-          logo = 'https://opporeview-cv-storage.s3.ap-southeast-1.amazonaws.com/system/katinatlogo.jpg';
+          logo =
+              'https://opporeview-cv-storage.s3.ap-southeast-1.amazonaws.com/system/katinatlogo.jpg';
         }
 
-        if (companyName.toString().trim().isNotEmpty && companyName.toString().trim().toLowerCase() != 'none') {
+        if (companyName.toString().trim().isNotEmpty &&
+            companyName.toString().trim().toLowerCase() != 'none') {
           enrichedApp['employerName'] = companyName.toString().trim();
         }
         if (title.toString().trim().isNotEmpty) {
@@ -255,15 +273,20 @@ class CandidateChatsNotifier extends AsyncNotifier<List<CandidateApplication>> {
       }
 
       if (enrichedApp['employerAvatarUrl'] == null) {
-        final empName = enrichedApp['employerName']?.toString().toLowerCase() ?? '';
+        final empName =
+            enrichedApp['employerName']?.toString().toLowerCase() ?? '';
         if (empName.contains('katinat')) {
-          enrichedApp['employerAvatarUrl'] = 'https://opporeview-cv-storage.s3.ap-southeast-1.amazonaws.com/system/katinatlogo.jpg';
+          enrichedApp['employerAvatarUrl'] =
+              'https://opporeview-cv-storage.s3.ap-southeast-1.amazonaws.com/system/katinatlogo.jpg';
         } else if (empName.contains('august')) {
-          enrichedApp['employerAvatarUrl'] = 'https://opporeview-cv-storage.s3.ap-southeast-1.amazonaws.com/system/bamos.png';
+          enrichedApp['employerAvatarUrl'] =
+              'https://opporeview-cv-storage.s3.ap-southeast-1.amazonaws.com/system/bamos.png';
         } else if (empName.contains('highlands')) {
-          enrichedApp['employerAvatarUrl'] = 'https://opporeview-cv-storage.s3.ap-southeast-1.amazonaws.com/system/highlands.jpg';
+          enrichedApp['employerAvatarUrl'] =
+              'https://opporeview-cv-storage.s3.ap-southeast-1.amazonaws.com/system/highlands.jpg';
         } else {
-          enrichedApp['employerAvatarUrl'] = 'https://opporeview-cv-storage.s3.ap-southeast-1.amazonaws.com/system/katinatlogo.jpg';
+          enrichedApp['employerAvatarUrl'] =
+              'https://opporeview-cv-storage.s3.ap-southeast-1.amazonaws.com/system/katinatlogo.jpg';
         }
       }
       enrichedApps.add(enrichedApp);

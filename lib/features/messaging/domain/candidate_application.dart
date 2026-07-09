@@ -84,7 +84,13 @@ class CandidateApplication {
       employerEmail: (json['employerEmail'] ?? '').toString(),
       employerName: (json['employerName'] ?? json['companyName'] ?? '')
           .toString(),
-      employerAvatarUrl: (json['employerAvatarUrl'] ?? json['companyLogo'] ?? json['logoUrl'] ?? json['avatarUrl'] ?? json['profileImage'])?.toString(),
+      employerAvatarUrl:
+          (json['employerAvatarUrl'] ??
+                  json['companyLogo'] ??
+                  json['logoUrl'] ??
+                  json['avatarUrl'] ??
+                  json['profileImage'])
+              ?.toString(),
       status: (json['status'] ?? '').toString().toLowerCase(),
       appliedAt: _dateFrom(json['appliedAt'] ?? json['createdAt']),
       updatedAt: _dateFrom(

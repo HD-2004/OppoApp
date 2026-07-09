@@ -7,7 +7,10 @@ void main() {
   test('authenticated mobile users always route to candidate home', () {
     final controller = AuthController();
 
-    expect(controller.routeAfterLogin(_profile(AppRole.candidate)), '/candidate');
+    expect(
+      controller.routeAfterLogin(_profile(AppRole.candidate)),
+      '/candidate',
+    );
     expect(controller.routeAfterLogin(_profile(null)), '/candidate');
   });
 }

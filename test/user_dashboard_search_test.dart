@@ -16,8 +16,6 @@ import 'package:oppo_temp_jobs/features/employer_packages/application/featured_e
 import 'package:oppo_temp_jobs/features/employer_packages/domain/employer_package.dart';
 import 'package:oppo_temp_jobs/features/messaging/application/messaging_providers.dart';
 import 'package:oppo_temp_jobs/features/messaging/domain/candidate_application.dart';
-import 'package:oppo_temp_jobs/features/recommendations/application/job_recommendation_providers.dart';
-import 'package:oppo_temp_jobs/features/recommendations/domain/job_recommendation.dart';
 import 'package:oppo_temp_jobs/features/wallet/domain/entities/wallet.dart';
 import 'package:oppo_temp_jobs/features/wallet/presentation/controllers/wallet_controller.dart';
 import 'package:oppo_temp_jobs/shared/domain/app_role.dart';
@@ -108,9 +106,6 @@ Future<void> _pumpDashboard(WidgetTester tester) async {
         ),
         activeJobsProvider.overrideWith((_) async => <JobPost>[]),
         activeQuickJobsProvider.overrideWith((_) async => <JobPost>[]),
-        personalizedJobRecommendationsProvider.overrideWith(
-          (_) async => <JobRecommendation>[],
-        ),
         featuredEmployersProvider.overrideWith(
           (_) async => <FeaturedEmployer>[],
         ),

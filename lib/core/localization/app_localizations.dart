@@ -102,7 +102,7 @@ class AppLocalizations {
   String get deleteAccountReason => text('deleteAccountReason');
   String get deleteAccountConfirmText => text('deleteAccountConfirmText');
   String get submitRequest => text('submitRequest');
-  String get jobRecommendations => text('jobRecommendations');
+  String get popularJobAlerts => text('popularJobAlerts');
   String get employerMessages => text('employerMessages');
   String get applicationUpdates => text('applicationUpdates');
   String get paymentUpdates => text('paymentUpdates');
@@ -212,7 +212,7 @@ const _vi = {
   'deleteAccountRequestSubmitted':
       'Yêu cầu xóa tài khoản của bạn đã được ghi nhận.',
   'submitRequest': 'Gửi yêu cầu',
-  'jobRecommendations': 'Gợi ý việc làm',
+  'popularJobAlerts': 'Công việc phổ biến',
   'employerMessages': 'Tin nhắn từ nhà tuyển dụng',
   'applicationUpdates': 'Cập nhật ứng tuyển',
   'paymentUpdates': 'Cập nhật thanh toán',
@@ -431,7 +431,7 @@ const _en = {
   'deleteAccountRequestSubmitted':
       'Your account deletion request has been submitted.',
   'submitRequest': 'Submit request',
-  'jobRecommendations': 'Job recommendations',
+  'popularJobAlerts': 'Popular jobs',
   'employerMessages': 'Employer messages',
   'applicationUpdates': 'Application updates',
   'paymentUpdates': 'Payment updates',

@@ -13,10 +13,9 @@ import '../../../candidate/presentation/application_flow_navigation.dart';
 import '../../../candidate/presentation/user_job_detail_screen.dart';
 import '../../../employer_packages/application/featured_employer_package_providers.dart';
 import '../../../employer_packages/domain/employer_package.dart';
+import '../../../jobs/application/popular_jobs.dart';
 import '../../../messaging/application/messaging_providers.dart';
 import '../../../messaging/presentation/pages/messages_screen.dart';
-import '../../../recommendations/application/job_recommendation_providers.dart';
-import '../../../recommendations/domain/job_recommendation.dart';
 import '../widgets/candidate_home_marketplace_sections.dart';
 import '../widgets/candidate_menu_drawer.dart';
 
@@ -47,19 +46,9 @@ class CandidateHomePage extends ConsumerStatefulWidget {
 }
 
 class _CandidateHomePageState extends ConsumerState<CandidateHomePage> {
-  final _searchController = TextEditingController();
-  String _keyword = '';
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
   Future<void> _onRefresh() async {
     ref.invalidate(activeQuickJobsProvider);
     ref.invalidate(activeJobsProvider);
-    ref.invalidate(personalizedJobRecommendationsProvider);
     ref.invalidate(bannersProvider);
 
     final userId = ref.read(authControllerProvider).asData?.value.user?.userId;
@@ -75,9 +64,6 @@ class _CandidateHomePageState extends ConsumerState<CandidateHomePage> {
       ref
           .read(activeQuickJobsProvider.future)
           .catchError((_) => const <JobPost>[]),
-      ref
-          .read(personalizedJobRecommendationsProvider.future)
-          .catchError((_) => const <JobRecommendation>[]),
       ref.read(bannersProvider.future).catchError((_) => const <BannerAd>[]),
     ]);
   }
@@ -354,9 +340,6 @@ class _CandidateHomePageState extends ConsumerState<CandidateHomePage> {
         : 'Chưa có email';
     final standardJobsAsync = ref.watch(activeJobsProvider);
     final quickJobsAsync = ref.watch(activeQuickJobsProvider);
-    final recommendationsAsync = ref.watch(
-      personalizedJobRecommendationsProvider,
-    );
     final bannersAsync = ref.watch(bannersProvider);
     final notificationCount =
         ref
@@ -375,15 +358,14 @@ class _CandidateHomePageState extends ConsumerState<CandidateHomePage> {
       ...(quickJobsAsync.value ?? const <JobPost>[]),
       ...(standardJobsAsync.value ?? const <JobPost>[]),
     ]);
-    final filteredJobs = _filterJobs(allJobs, _keyword);
-    final filteredRecommendations = _filterRecommendations(
-      recommendationsAsync.value ?? const <JobRecommendation>[],
-      _keyword,
-    );
-    final topCompanies = _buildCompanyRanking(filteredJobs);
+    final popularJobs = sortJobsByPopularity(
+      allJobs,
+    ).take(6).toList(growable: false);
+    final topCompanies = _buildCompanyRanking(allJobs);
     final dataLoading =
         (standardJobsAsync.isLoading || quickJobsAsync.isLoading) &&
         allJobs.isEmpty;
+    final jobsError = standardJobsAsync.hasError && quickJobsAsync.hasError;
     return Scaffold(
       backgroundColor: AppColors.background(context),
       drawer: CandidateMenuDrawer(
@@ -409,10 +391,6 @@ class _CandidateHomePageState extends ConsumerState<CandidateHomePage> {
               child: _PageWidth(
                 child: HomeHeader(
                   displayName: displayName,
-                  searchController: _searchController,
-                  onSearchChanged: (value) {
-                    setState(() => _keyword = value);
-                  },
                   onNotificationTap: widget.onNotificationTap,
                   onChatTap: () {
                     if (user?.isActive != true) {
@@ -439,14 +417,14 @@ class _CandidateHomePageState extends ConsumerState<CandidateHomePage> {
             ),
             SliverToBoxAdapter(
               child: _PageWidth(
-                child: RecommendedJobsSection(
-                  recommendations: filteredRecommendations
-                      .take(6)
-                      .toList(growable: false),
-                  isLoading: recommendationsAsync.isLoading,
-                  hasError: recommendationsAsync.hasError,
-                  onRetry: () =>
-                      ref.invalidate(personalizedJobRecommendationsProvider),
+                child: PopularJobsSection(
+                  jobs: popularJobs,
+                  isLoading: dataLoading,
+                  hasError: jobsError,
+                  onRetry: () {
+                    ref.invalidate(activeQuickJobsProvider);
+                    ref.invalidate(activeJobsProvider);
+                  },
                   onSeeAll: widget.onSeeAllJobsTap,
                   onJobTap: _openJobDetail,
                   onApply: (job) => _handleApply(job, user),
@@ -474,50 +452,6 @@ class _CandidateHomePageState extends ConsumerState<CandidateHomePage> {
     final byId = <String, JobPost>{for (final job in jobs) job.id: job};
     final unique = byId.values.toList(growable: false);
     return sortJobsByVisibilityThenCreatedAt(unique);
-  }
-
-  List<JobPost> _filterJobs(List<JobPost> jobs, String keyword) {
-    final normalized = keyword.trim().toLowerCase();
-    if (normalized.isEmpty) return jobs;
-    return jobs
-        .where((job) {
-          final haystack = [
-            job.title,
-            job.description,
-            job.employerName,
-            job.companyName ?? '',
-            job.location,
-            job.salary,
-            job.shiftTime,
-            job.tags.join(' '),
-          ].join(' ').toLowerCase();
-          return haystack.contains(normalized);
-        })
-        .toList(growable: false);
-  }
-
-  List<JobRecommendation> _filterRecommendations(
-    List<JobRecommendation> recommendations,
-    String keyword,
-  ) {
-    final normalized = keyword.trim().toLowerCase();
-    if (normalized.isEmpty) return recommendations;
-    return recommendations
-        .where((item) {
-          final job = item.job;
-          final haystack = [
-            job.title,
-            job.description,
-            job.employerName,
-            job.companyName ?? '',
-            job.location,
-            job.salary,
-            job.shiftTime,
-            job.tags.join(' '),
-          ].join(' ').toLowerCase();
-          return haystack.contains(normalized);
-        })
-        .toList(growable: false);
   }
 
   List<CompanyRankItem> _buildCompanyRanking(List<JobPost> jobs) {

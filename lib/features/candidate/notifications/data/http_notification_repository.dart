@@ -23,15 +23,20 @@ class HttpCandidateNotificationRepository
     final rawItems = json['items'];
     final List<CandidateNotification> items = rawItems is List
         ? rawItems
-            .whereType<Map>()
-            .map((item) => NotificationDto.fromJson(Map<String, dynamic>.from(item)).toDomain())
-            .toList()
+              .whereType<Map>()
+              .map(
+                (item) => NotificationDto.fromJson(
+                  Map<String, dynamic>.from(item),
+                ).toDomain(),
+              )
+              .toList()
         : const <CandidateNotification>[];
     final rawSummary = json['summary'];
     final summary = rawSummary is Map
         ? CandidateNotificationSummary(
             total: (rawSummary['total'] as num?)?.toInt() ?? items.length,
-            unread: (rawSummary['unread'] as num?)?.toInt() ??
+            unread:
+                (rawSummary['unread'] as num?)?.toInt() ??
                 items.where((item) => item.isUnread).length,
           )
         : CandidateNotificationSummary(

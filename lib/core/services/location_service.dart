@@ -39,7 +39,9 @@ class LocationService {
         timeLimit: const Duration(seconds: 10),
       );
 
-      safePrint('📍 Device coordinates fetched: ${position.latitude}, ${position.longitude}');
+      safePrint(
+        '📍 Device coordinates fetched: ${position.latitude}, ${position.longitude}',
+      );
       return (position.latitude, position.longitude);
     } catch (e) {
       safePrint('❌ Error fetching geolocator location: $e');

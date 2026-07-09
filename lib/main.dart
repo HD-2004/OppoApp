@@ -57,14 +57,15 @@ Future<void> main() async {
           sub?.cancel();
         }
       });
-      await completer.future
-          .timeout(
-            const Duration(seconds: 10),
-            onTimeout: () {
-              sub?.cancel();
-              safePrint('[main] OAuth token exchange timeout — starting app anyway.');
-            },
+      await completer.future.timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          sub?.cancel();
+          safePrint(
+            '[main] OAuth token exchange timeout — starting app anyway.',
           );
+        },
+      );
       safePrint('[main] OAuth token exchange complete — starting app.');
     }
   }

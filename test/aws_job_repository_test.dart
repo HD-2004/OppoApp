@@ -49,6 +49,31 @@ void main() {
       expect(job.totalSalary, 400000);
     });
 
+    test('maps popular job metrics and defaults missing values to zero', () {
+      final standard = AwsJobRepository.mapStandardJob({
+        'idJob': 'job-popular',
+        'applicants': 12,
+        'employerReputationScore': 88.5,
+        'candidateRatingScore': 4.7,
+      });
+      final quick = AwsJobRepository.mapQuickJob({
+        'jobID': 'quick-popular',
+        'applicationCount': 9,
+        'employer_reputation_score': 76,
+        'candidate_rating_score': 4.3,
+      });
+      final missing = AwsJobRepository.mapStandardJob({'idJob': 'job-missing'});
+
+      expect(standard.applicants, 12);
+      expect(standard.employerReputationScore, 88.5);
+      expect(standard.candidateRatingScore, 4.7);
+      expect(quick.applicants, 9);
+      expect(quick.employerReputationScore, 76);
+      expect(quick.candidateRatingScore, 4.3);
+      expect(missing.employerReputationScore, 0);
+      expect(missing.candidateRatingScore, 0);
+    });
+
     test('maps standard job recruitment window and status', () {
       final job = AwsJobRepository.mapStandardJob({
         'idJob': 'job-window',

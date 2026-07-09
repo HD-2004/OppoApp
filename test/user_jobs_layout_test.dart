@@ -10,8 +10,7 @@ import 'package:oppo_temp_jobs/features/auth/domain/auth_user_profile.dart';
 import 'package:oppo_temp_jobs/features/candidate/application/jobs_providers.dart';
 import 'package:oppo_temp_jobs/features/candidate/domain/job_post.dart';
 import 'package:oppo_temp_jobs/features/candidate/presentation/user_jobs_screen.dart';
-import 'package:oppo_temp_jobs/features/recommendations/application/job_recommendation_providers.dart';
-import 'package:oppo_temp_jobs/features/recommendations/domain/job_recommendation.dart';
+import 'package:oppo_temp_jobs/features/candidate/presentation/widgets/job_post_card.dart';
 import 'package:oppo_temp_jobs/shared/domain/app_role.dart';
 
 void main() {
@@ -33,11 +32,6 @@ void main() {
           ),
           activeJobsProvider.overrideWith((_) async => [_job]),
           activeQuickJobsProvider.overrideWith((_) async => <JobPost>[]),
-          personalizedJobRecommendationsProvider.overrideWith(
-            (_) async => [
-              JobRecommendation(job: _job, matchScore: 80, reasons: const []),
-            ],
-          ),
         ],
         child: const MaterialApp(
           localizationsDelegates: [
@@ -54,7 +48,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
-    expect(find.text('Tìm thấy 1 công việc phù hợp'), findsOneWidget);
+    expect(find.byType(JobPostCard), findsNWidgets(1));
   });
 
   testWidgets('job type dropdown selects urgent jobs', (tester) async {
@@ -66,16 +60,6 @@ void main() {
           ),
           activeJobsProvider.overrideWith((_) async => [_job, _secondJob]),
           activeQuickJobsProvider.overrideWith((_) async => [_quickJob]),
-          personalizedJobRecommendationsProvider.overrideWith(
-            (_) async => [
-              JobRecommendation(job: _job, matchScore: 80, reasons: const []),
-              JobRecommendation(
-                job: _secondJob,
-                matchScore: 70,
-                reasons: const [],
-              ),
-            ],
-          ),
         ],
         child: const MaterialApp(
           localizationsDelegates: [
@@ -93,7 +77,7 @@ void main() {
 
     expect(find.text('Loại công việc'), findsOneWidget);
     expect(find.text('Công việc tiêu chuẩn'), findsNothing);
-    expect(find.text('Tìm thấy 3 công việc phù hợp'), findsOneWidget);
+    expect(find.byType(JobPostCard), findsNWidgets(3));
 
     await tester.tap(find.text('Loại công việc'));
     await tester.pumpAndSettle();
@@ -105,7 +89,7 @@ void main() {
     await tester.tap(find.text('Công việc Tuyển gấp'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Tìm thấy 1 công việc phù hợp'), findsOneWidget);
+    expect(find.byType(JobPostCard), findsNWidgets(1));
   });
 
   testWidgets('all jobs tab combines standard jobs with enabled urgent jobs', (
@@ -126,20 +110,6 @@ void main() {
           ),
           activeJobsProvider.overrideWith((_) async => [_job, _secondJob]),
           activeQuickJobsProvider.overrideWith((_) async => [olderQuickJob]),
-          personalizedJobRecommendationsProvider.overrideWith(
-            (_) async => [
-              JobRecommendation(
-                job: olderQuickJob,
-                matchScore: 95,
-                reasons: const ['Gần vị trí của bạn'],
-              ),
-              JobRecommendation(
-                job: _secondJob,
-                matchScore: 80,
-                reasons: const ['Khớp kỹ năng'],
-              ),
-            ],
-          ),
         ],
         child: const MaterialApp(
           localizationsDelegates: [
@@ -155,7 +125,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Tìm thấy 3 công việc phù hợp'), findsOneWidget);
+    expect(find.byType(JobPostCard), findsNWidgets(3));
     expect(find.text('Nhân viên phục vụ'), findsOneWidget);
     expect(find.text('Thu ngân'), findsOneWidget);
     expect(find.text('Phụ ca gấp'), findsOneWidget);
@@ -176,15 +146,6 @@ void main() {
             ),
             activeJobsProvider.overrideWith((_) async => [_job, _secondJob]),
             activeQuickJobsProvider.overrideWith((_) async => [_quickJob]),
-            personalizedJobRecommendationsProvider.overrideWith(
-              (_) async => [
-                JobRecommendation(
-                  job: _quickJob,
-                  matchScore: 95,
-                  reasons: const [],
-                ),
-              ],
-            ),
           ],
           child: const MaterialApp(
             localizationsDelegates: [
@@ -200,7 +161,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Tìm thấy 2 công việc phù hợp'), findsOneWidget);
+      expect(find.byType(JobPostCard), findsNWidgets(2));
       expect(find.text('Nhân viên phục vụ'), findsOneWidget);
       expect(find.text('Thu ngân'), findsOneWidget);
       expect(find.text('Phụ ca gấp'), findsNothing);
@@ -250,9 +211,6 @@ void main() {
           activeQuickJobsProvider.overrideWith(
             (_) async => [farJob, outsideJob, midJob, nearJob],
           ),
-          personalizedJobRecommendationsProvider.overrideWith(
-            (_) async => const <JobRecommendation>[],
-          ),
         ],
         child: const MaterialApp(
           localizationsDelegates: [
@@ -273,7 +231,7 @@ void main() {
     await tester.tap(find.text('Công việc Tuyển gấp'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Tìm thấy 3 công việc phù hợp'), findsOneWidget);
+    expect(find.byType(JobPostCard), findsNWidgets(3));
     expect(find.text('Ca ngoài 10km'), findsNothing);
 
     final nearTop = tester.getTopLeft(find.text('Ca gần 1km')).dy;
@@ -302,16 +260,6 @@ void main() {
           ),
           activeJobsProvider.overrideWith((_) async => [_job, _secondJob]),
           activeQuickJobsProvider.overrideWith((_) async => [_quickJob]),
-          personalizedJobRecommendationsProvider.overrideWith(
-            (_) async => [
-              JobRecommendation(job: _job, matchScore: 80, reasons: const []),
-              JobRecommendation(
-                job: _quickJob,
-                matchScore: 70,
-                reasons: const [],
-              ),
-            ],
-          ),
         ],
         child: const MaterialApp(
           localizationsDelegates: [
@@ -341,7 +289,7 @@ void main() {
     await tester.tap(find.byKey(const Key('saved-jobs-button')));
     await tester.pumpAndSettle();
 
-    expect(find.text('Tìm thấy 2 công việc phù hợp'), findsOneWidget);
+    expect(find.byType(JobPostCard), findsNWidgets(2));
   });
 
   testWidgets('saved jobs badge ignores expired saved job ids', (tester) async {
@@ -363,11 +311,6 @@ void main() {
           ),
           activeJobsProvider.overrideWith((_) async => [_job]),
           activeQuickJobsProvider.overrideWith((_) async => <JobPost>[]),
-          personalizedJobRecommendationsProvider.overrideWith(
-            (_) async => [
-              JobRecommendation(job: _job, matchScore: 80, reasons: const []),
-            ],
-          ),
         ],
         child: const MaterialApp(
           localizationsDelegates: [

@@ -148,13 +148,14 @@ class AuthExceptionMapper {
     // so reaching here with a config-related exception is unexpected.
     if (combined.contains('appclientid') ||
         combined.contains('userpool') ||
-        (combined.contains('configuration') &&
-            combined.contains('amplify'))) {
+        (combined.contains('configuration') && combined.contains('amplify'))) {
       return AuthFailure.configuration;
     }
 
     // Fall back: surface the raw Amplify message so we can debug unknown errors.
-    safePrint('[AuthExceptionMapper] unmapped error — type=${error.runtimeTypeName} message="${error.message}"');
+    safePrint(
+      '[AuthExceptionMapper] unmapped error — type=${error.runtimeTypeName} message="${error.message}"',
+    );
     return AuthFailure(error.message, code: error.runtimeTypeName);
   }
 }

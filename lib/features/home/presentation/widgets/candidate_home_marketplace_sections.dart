@@ -11,14 +11,11 @@ import '../../../candidate/domain/job_post.dart';
 import '../../../candidate/domain/job_recruitment_window.dart';
 import '../../../candidate/domain/job_work_schedule.dart';
 import '../../../employer_packages/domain/employer_package.dart';
-import '../../../recommendations/domain/job_recommendation.dart';
 
 class HomeHeader extends StatelessWidget {
   const HomeHeader({
     super.key,
     required this.displayName,
-    required this.searchController,
-    required this.onSearchChanged,
     required this.onNotificationTap,
     required this.onChatTap,
     required this.notificationCount,
@@ -26,8 +23,6 @@ class HomeHeader extends StatelessWidget {
   });
 
   final String displayName;
-  final TextEditingController searchController;
-  final ValueChanged<String> onSearchChanged;
   final VoidCallback onNotificationTap;
   final VoidCallback onChatTap;
   final int notificationCount;
@@ -107,11 +102,6 @@ class HomeHeader extends StatelessWidget {
                   height: 1.18,
                 ),
               ),
-              const SizedBox(height: 18),
-              HomeSearchBar(
-                controller: searchController,
-                onChanged: onSearchChanged,
-              ),
             ],
           ),
         ),
@@ -128,63 +118,10 @@ class HomeHeader extends StatelessWidget {
   }
 }
 
-class HomeSearchBar extends StatelessWidget {
-  const HomeSearchBar({
+class PopularJobsSection extends StatelessWidget {
+  const PopularJobsSection({
     super.key,
-    required this.controller,
-    required this.onChanged,
-  });
-
-  final TextEditingController controller;
-  final ValueChanged<String> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = AppColors.isDark(context);
-    return SizedBox(
-      height: 54,
-      child: TextField(
-        controller: controller,
-        onChanged: onChanged,
-        textInputAction: TextInputAction.search,
-        decoration: InputDecoration(
-          hintText: 'Tìm việc, công ty, bài đăng...',
-          hintStyle: TextStyle(
-            color: AppColors.textMutedFor(context),
-            fontWeight: FontWeight.w600,
-          ),
-          prefixIcon: const Icon(
-            Icons.search_rounded,
-            color: AppColors.primary,
-          ),
-          filled: true,
-          fillColor: isDark ? AppColors.darkSurface : Colors.white,
-          contentPadding: const EdgeInsets.symmetric(vertical: 15),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(20),
-            borderSide: BorderSide.none,
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(20),
-            borderSide: BorderSide.none,
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(20),
-            borderSide: const BorderSide(
-              color: AppColors.primaryLight,
-              width: 2,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class RecommendedJobsSection extends StatelessWidget {
-  const RecommendedJobsSection({
-    super.key,
-    required this.recommendations,
+    required this.jobs,
     required this.isLoading,
     required this.hasError,
     required this.onRetry,
@@ -193,7 +130,7 @@ class RecommendedJobsSection extends StatelessWidget {
     required this.onApply,
   });
 
-  final List<JobRecommendation> recommendations;
+  final List<JobPost> jobs;
   final bool isLoading;
   final bool hasError;
   final VoidCallback onRetry;
@@ -206,33 +143,31 @@ class RecommendedJobsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _SectionShell(
-      title: 'Việc hợp bạn nhất',
-      trailing: recommendations.isEmpty
-          ? null
-          : _SeeAllButton(onPressed: onSeeAll),
+      title: 'Công việc phổ biến nhất',
+      trailing: jobs.isEmpty ? null : _SeeAllButton(onPressed: onSeeAll),
       child: Builder(
         builder: (context) {
-          if (isLoading && recommendations.isEmpty) {
+          if (isLoading && jobs.isEmpty) {
             return const _HorizontalSkeleton(height: _jobCardHeight);
           }
           if (hasError) {
             return Padding(
               padding: const EdgeInsets.symmetric(horizontal: 18),
               child: EmptyState(
-                icon: Icons.tips_and_updates_outlined,
-                title: 'Chưa lấy được gợi ý',
-                message: 'Bạn thử tải lại để hệ thống gợi ý việc phù hợp hơn.',
+                icon: Icons.trending_up_rounded,
+                title: 'Chưa tải được công việc phổ biến',
+                message: 'Bạn thử tải lại danh sách công việc phổ biến.',
                 actionLabel: 'Thử lại',
                 onAction: onRetry,
               ),
             );
           }
-          if (recommendations.isEmpty) {
+          if (jobs.isEmpty) {
             return const Padding(
               padding: EdgeInsets.symmetric(horizontal: 18),
               child: EmptyState(
-                title: 'Tạm thời chưa có việc phù hợp.',
-                message: 'Bạn cập nhật lại hồ sơ cá nhân để có gợi ý mới nha.',
+                title: 'Tạm thời chưa có công việc phổ biến.',
+                message: 'Hãy quay lại sau khi có thêm tin tuyển dụng mới.',
                 illustrationAsset: 'img/intro.png',
               ),
             );
@@ -243,15 +178,14 @@ class RecommendedJobsSection extends StatelessWidget {
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 18),
-              itemCount: recommendations.length,
+              itemCount: jobs.length,
               separatorBuilder: (_, _) => const SizedBox(width: 14),
               itemBuilder: (_, index) {
-                final item = recommendations[index];
+                final job = jobs[index];
                 return JobCard(
-                  job: item.job,
-                  matchScore: item.matchScore,
-                  onTap: () => onJobTap(item.job),
-                  onApply: () => onApply(item.job),
+                  job: job,
+                  onTap: () => onJobTap(job),
+                  onApply: () => onApply(job),
                 );
               },
             ),
@@ -683,11 +617,7 @@ class EmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 7),
           Text(
-            '$title $message'.contains(
-                  'Tạm thời chưa có việc phù hợp. Bạn cập nhật lại hồ sơ cá nhân để có gợi ý mới nha.',
-                )
-                ? 'Tạm thời chưa có việc phù hợp. Bạn cập nhật lại hồ sơ cá nhân để có gợi ý mới nha.'
-                : message,
+            message,
             textAlign: TextAlign.center,
             style: TextStyle(
               color: AppColors.textSecondaryFor(context),

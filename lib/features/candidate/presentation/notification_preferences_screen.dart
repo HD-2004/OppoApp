@@ -14,7 +14,7 @@ class NotificationPreferencesScreen extends StatefulWidget {
 
 class _NotificationPreferencesScreenState
     extends State<NotificationPreferencesScreen> {
-  bool _jobRecommendations = true;
+  bool _popularJobs = true;
   bool _employerMessages = true;
   bool _applicationUpdates = true;
   bool _paymentUpdates = true;
@@ -32,10 +32,8 @@ class _NotificationPreferencesScreenState
       return;
     }
     setState(() {
-      _jobRecommendations =
-          preferences.getBool(
-            AppPreferenceKeys.notificationJobRecommendations,
-          ) ??
+      _popularJobs =
+          preferences.getBool(AppPreferenceKeys.notificationPopularJobs) ??
           true;
       _employerMessages =
           preferences.getBool(AppPreferenceKeys.notificationEmployerMessages) ??
@@ -81,12 +79,12 @@ class _NotificationPreferencesScreenState
           padding: const EdgeInsets.all(16),
           children: [
             SwitchListTile(
-              value: _jobRecommendations,
-              title: Text(strings.jobRecommendations),
+              value: _popularJobs,
+              title: Text(strings.popularJobAlerts),
               onChanged: (value) {
-                setState(() => _jobRecommendations = value);
+                setState(() => _popularJobs = value);
                 _savePreference(
-                  AppPreferenceKeys.notificationJobRecommendations,
+                  AppPreferenceKeys.notificationPopularJobs,
                   value,
                 );
               },

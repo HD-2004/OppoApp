@@ -14,8 +14,6 @@ import 'package:oppo_temp_jobs/features/home/presentation/pages/candidate_home_p
 import 'package:oppo_temp_jobs/features/home/presentation/widgets/candidate_home_marketplace_sections.dart';
 import 'package:oppo_temp_jobs/features/messaging/application/messaging_providers.dart';
 import 'package:oppo_temp_jobs/features/messaging/domain/candidate_application.dart';
-import 'package:oppo_temp_jobs/features/recommendations/application/job_recommendation_providers.dart';
-import 'package:oppo_temp_jobs/features/recommendations/domain/job_recommendation.dart';
 import 'package:oppo_temp_jobs/shared/domain/app_role.dart';
 
 void main() {
@@ -25,17 +23,15 @@ void main() {
     await _pumpHome(
       tester,
       standardJobs: [_job, _sameEmployerJob],
-      recommendations: [
-        JobRecommendation(job: _job, matchScore: 72, reasons: const []),
-      ],
       banners: const [_firstBanner],
     );
 
     expect(find.text('Ốp Pờ'), findsOneWidget);
     expect(find.textContaining('Đỗ Nhật'), findsOneWidget);
-    expect(find.text('Tìm việc, công ty, bài đăng...'), findsOneWidget);
+    expect(find.text('Tìm việc, công ty, bài đăng...'), findsNothing);
     expect(find.text('Nơi Tìm Việc Linh Hoạt'), findsNothing);
-    expect(find.text('Việc hợp bạn nhất'), findsOneWidget);
+    expect(find.text('Công việc phổ biến nhất'), findsOneWidget);
+    expect(find.text('Việc hợp bạn nhất'), findsNothing);
     expect(
       find.text('Top công ty đang tuyển nhiều fresher nhất'),
       findsOneWidget,
@@ -55,55 +51,62 @@ void main() {
     await _pumpHome(
       tester,
       standardJobs: [_job, _sameEmployerJob],
-      recommendations: const [],
       banners: const [],
     );
 
-    await tester.tap(find.text('Oppo Coffee'));
+    await tester.tap(find.text('Oppo Coffee').last);
     await tester.pumpAndSettle();
 
     expect(find.text('Thông tin nhà tuyển dụng'), findsOneWidget);
     expect(find.text('Oppo Coffee'), findsWidgets);
     expect(find.text('2 việc đang tuyển'), findsWidgets);
-    expect(find.text('Nhân viên phục vụ'), findsOneWidget);
-    expect(find.text('Barista cuối tuần'), findsOneWidget);
-    expect(find.text('Quận 1, TP.HCM'), findsOneWidget);
-    expect(find.text('Thủ Đức'), findsOneWidget);
+    expect(find.text('Nhân viên phục vụ'), findsWidgets);
+    expect(find.text('Barista cuối tuần'), findsWidgets);
+    expect(find.text('Quận 1, TP.HCM'), findsWidgets);
+    expect(find.text('Thủ Đức'), findsWidgets);
     expect(find.text('Katinat Quận Cam'), findsNothing);
   });
 
-  testWidgets(
-    'candidate home shows recommendation empty state for empty API data',
-    (tester) async {
-      await _pumpHome(
-        tester,
-        standardJobs: [_job],
-        recommendations: const [],
-        banners: const [],
-      );
+  testWidgets('candidate home shows popular jobs from active job data', (
+    tester,
+  ) async {
+    await _pumpHome(tester, standardJobs: [_job], banners: const []);
 
-      expect(
-        find.text(
-          'Tạm thời chưa có việc phù hợp. Bạn cập nhật lại hồ sơ cá nhân để có gợi ý mới nha.',
-        ),
-        findsOneWidget,
-      );
-    },
-  );
+    expect(find.text('Công việc phổ biến nhất'), findsOneWidget);
+    expect(find.text('Nhân viên phục vụ'), findsOneWidget);
+  });
+
+  testWidgets('candidate home ranks popular jobs by submitted CV count', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(900, 2200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await _pumpHome(
+      tester,
+      standardJobs: [_job, _sameEmployerJob],
+      banners: const [],
+      preserveSurfaceSize: true,
+    );
+
+    final popularTitle = find.text('Barista cuối tuần').first;
+    final lowerTitle = find.text('Nhân viên phục vụ').first;
+
+    expect(
+      tester.getTopLeft(popularTitle).dx,
+      lessThan(tester.getTopLeft(lowerTitle).dx),
+    );
+  });
 
   testWidgets(
     'candidate home keeps empty sections stable when APIs return empty lists',
     (tester) async {
-      await _pumpHome(
-        tester,
-        standardJobs: const [],
-        recommendations: const [],
-        banners: const [],
-      );
+      await _pumpHome(tester, standardJobs: const [], banners: const []);
 
       expect(find.text('Chưa có bài đăng tuyển dụng mới.'), findsNothing);
       expect(find.text('Việc hợp hướng đi'), findsNothing);
       expect(find.text('Chưa có việc để hiển thị.'), findsNothing);
+      expect(find.text('Tạm thời chưa có công việc phổ biến.'), findsOneWidget);
       expect(
         find.text('Top công ty đang tuyển nhiều fresher nhất'),
         findsNothing,
@@ -148,9 +151,7 @@ void main() {
     expect(secondPageView.controller?.page, closeTo(1, 0.01));
   });
 
-  testWidgets('recommended job card expands work shifts inline', (
-    tester,
-  ) async {
+  testWidgets('popular job card expands work shifts inline', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
@@ -158,12 +159,7 @@ void main() {
             child: SizedBox(
               height: 352,
               width: 286,
-              child: JobCard(
-                job: _multiShiftJob,
-                matchScore: 90,
-                onTap: () {},
-                onApply: () {},
-              ),
+              child: JobCard(job: _multiShiftJob, onTap: () {}, onApply: () {}),
             ),
           ),
         ),
@@ -184,7 +180,7 @@ void main() {
     expect(find.text('Thu gọn'), findsOneWidget);
   });
 
-  testWidgets('recommended job card hides undisclosed schedule placeholder', (
+  testWidgets('popular job card hides undisclosed schedule placeholder', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -194,12 +190,7 @@ void main() {
             child: SizedBox(
               height: 352,
               width: 286,
-              child: JobCard(
-                job: _shiftOnlyJob,
-                matchScore: 88,
-                onTap: () {},
-                onApply: () {},
-              ),
+              child: JobCard(job: _shiftOnlyJob, onTap: () {}, onApply: () {}),
             ),
           ),
         ),
@@ -210,7 +201,7 @@ void main() {
     expect(find.text('Ca 1: 07:00 - 12:00'), findsOneWidget);
   });
 
-  testWidgets('recommended job card keeps salary close to company name', (
+  testWidgets('popular job card keeps salary close to company name', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -222,7 +213,6 @@ void main() {
               width: 286,
               child: JobCard(
                 job: _compactRecommendedJob,
-                matchScore: 95,
                 onTap: () {},
                 onApply: () {},
               ),
@@ -240,16 +230,14 @@ void main() {
     expect(salaryTop - companyBottom, lessThan(48));
   });
 
-  testWidgets('recommended jobs section keeps cards visible while refreshing', (
+  testWidgets('popular jobs section keeps cards visible while refreshing', (
     tester,
   ) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
-          body: RecommendedJobsSection(
-            recommendations: [
-              JobRecommendation(job: _job, matchScore: 72, reasons: const []),
-            ],
+          body: PopularJobsSection(
+            jobs: [_job],
             isLoading: true,
             hasError: false,
             onRetry: () {},
@@ -262,18 +250,20 @@ void main() {
     );
 
     expect(find.text('Nhân viên phục vụ'), findsOneWidget);
-    expect(find.text('Phù hợp: 72%'), findsOneWidget);
+    expect(find.textContaining('Phù hợp:'), findsNothing);
   });
 }
 
 Future<void> _pumpHome(
   WidgetTester tester, {
   required List<JobPost> standardJobs,
-  required List<JobRecommendation> recommendations,
   required List<BannerAd> banners,
+  bool preserveSurfaceSize = false,
 }) async {
-  await tester.binding.setSurfaceSize(const Size(430, 2200));
-  addTearDown(() => tester.binding.setSurfaceSize(null));
+  if (!preserveSurfaceSize) {
+    await tester.binding.setSurfaceSize(const Size(430, 2200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+  }
 
   await tester.pumpWidget(
     ProviderScope(
@@ -283,9 +273,6 @@ Future<void> _pumpHome(
         ),
         activeJobsProvider.overrideWith((_) async => standardJobs),
         activeQuickJobsProvider.overrideWith((_) async => <JobPost>[]),
-        personalizedJobRecommendationsProvider.overrideWith(
-          (_) async => recommendations,
-        ),
         bannersProvider.overrideWith((_) async => banners),
         candidateChatsProvider.overrideWithBuild(
           (_, _) => <CandidateApplication>[],
@@ -349,6 +336,7 @@ final _job = JobPost(
   description: 'Tuyển nhân viên phục vụ ca tối.',
   tags: const ['Ca tối', 'F&B'],
   postedAt: DateTime(2026, 6, 10),
+  applicants: 2,
 );
 
 final _sameEmployerJob = JobPost(
@@ -364,6 +352,7 @@ final _sameEmployerJob = JobPost(
   description: 'Cần bạn phụ pha chế cuối tuần.',
   tags: const ['F&B'],
   postedAt: DateTime(2026, 6, 2),
+  applicants: 12,
 );
 
 final _multiShiftJob = JobPost(

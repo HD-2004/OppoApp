@@ -61,7 +61,7 @@
   "deleteAccountConfirmText": "Tôi hiểu rằng yêu cầu này có thể ảnh hưởng đến tài khoản và dữ liệu của tôi.",
   "submitRequest": "Gửi yêu cầu",
   "deleteAccountRequestSubmitted": "Yêu cầu xóa tài khoản của bạn đã được ghi nhận.",
-  "jobRecommendations": "Gợi ý việc làm",
+  "popularJobAlerts": "Công việc phổ biến",
   "employerMessages": "Tin nhắn từ nhà tuyển dụng",
   "applicationUpdates": "Cập nhật ứng tuyển",
   "paymentUpdates": "Cập nhật thanh toán",
