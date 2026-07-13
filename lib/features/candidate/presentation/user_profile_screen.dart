@@ -23,6 +23,7 @@ import 'user_settings_screen.dart';
 class UserProfileScreen extends ConsumerStatefulWidget {
   const UserProfileScreen({
     super.key,
+    this.onHomeTap,
     this.onJobsTap,
     this.onWalletTap,
     this.onNotificationsTap,
@@ -31,6 +32,7 @@ class UserProfileScreen extends ConsumerStatefulWidget {
     this.onSignOutTap,
   });
 
+  final VoidCallback? onHomeTap;
   final VoidCallback? onJobsTap;
   final VoidCallback? onWalletTap;
   final VoidCallback? onNotificationsTap;
@@ -139,6 +141,10 @@ class _UserProfileScreenState extends ConsumerState<UserProfileScreen> {
         displayName: displayName,
         email: email,
         profileImage: user?.profileImage,
+        currentDestination: CandidateMenuDestination.profile,
+        onHomeTap: () => _closeDrawerAndRun(
+          widget.onHomeTap ?? () => context.go('/candidate'),
+        ),
         onProfileTap: () => Navigator.of(context).pop(),
         onJobsTap: () => _closeDrawerAndRun(
           widget.onJobsTap ?? () => _push(const UserJobsScreen()),

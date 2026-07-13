@@ -12,7 +12,6 @@ import '../data/check_email_service.dart';
 import 'auth_form_fields.dart';
 import 'widgets/auth_colors.dart';
 import 'widgets/auth_footer_link.dart';
-import 'widgets/auth_header.dart';
 import 'widgets/auth_primary_button.dart';
 import 'widgets/auth_scaffold.dart';
 import 'widgets/auth_text_field.dart';
@@ -191,14 +190,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // ── Logo + Hero ──────────────────────────────────────
-            const AuthHeader(),
-            const SizedBox(height: 20),
-
-            // ── Feature highlights ────────────────────────────────
-            _FeatureHighlights(),
-            const SizedBox(height: 28),
-
             // ── Form card ─────────────────────────────────────────
             AuthFormCard(
               child: Column(
@@ -302,7 +293,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
             AuthFooterLink(
               text: 'Chưa có tài khoản?',
               actionText: 'Đăng ký ngay',
@@ -314,73 +305,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ],
         ),
       ),
-    );
-  }
-}
-
-// ── Feature highlights ────────────────────────────────────────────────────────
-
-class _FeatureHighlights extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final isDark = AuthColors.isDark(context);
-    final items = const [
-      (Icons.work_outline_rounded, 'Tìm việc nhanh'),
-      (Icons.schedule_outlined, 'Chủ động ca làm'),
-      (Icons.payments_outlined, 'Nhận lương liền'),
-    ];
-
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-      decoration: BoxDecoration(
-        color: isDark
-            ? AuthColors.primary.withValues(alpha: 0.08)
-            : AuthColors.primary.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AuthColors.primary.withValues(alpha: 0.12)),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: items.map((item) {
-          return Expanded(
-            child: _FeatureItem(icon: item.$1, label: item.$2),
-          );
-        }).toList(),
-      ),
-    );
-  }
-}
-
-class _FeatureItem extends StatelessWidget {
-  const _FeatureItem({required this.icon, required this.label});
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: AuthColors.primary.withValues(alpha: 0.10),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(icon, color: AuthColors.primary, size: 20),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-            color: AuthColors.textPrimary(context),
-          ),
-          textAlign: TextAlign.center,
-        ),
-      ],
     );
   }
 }

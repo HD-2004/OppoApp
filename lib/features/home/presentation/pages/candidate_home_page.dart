@@ -15,9 +15,34 @@ import '../../../employer_packages/application/featured_employer_package_provide
 import '../../../employer_packages/domain/employer_package.dart';
 import '../../../jobs/application/popular_jobs.dart';
 import '../../../messaging/application/messaging_providers.dart';
+import '../../../messaging/domain/candidate_application.dart';
 import '../../../messaging/presentation/pages/messages_screen.dart';
 import '../widgets/candidate_home_marketplace_sections.dart';
 import '../widgets/candidate_menu_drawer.dart';
+
+final candidateRecentApplicationsProvider =
+    FutureProvider.autoDispose<List<CandidateApplication>>((ref) async {
+      final user = ref.watch(authControllerProvider).asData?.value.user;
+      if (user == null) return const <CandidateApplication>[];
+
+      final repository = ref.watch(applicationRepositoryProvider);
+      final rawApplications = await repository.getCandidateApplications(
+        user.userId,
+      );
+      final applications = rawApplications
+          .whereType<Map>()
+          .map(
+            (item) =>
+                CandidateApplication.fromJson(Map<String, dynamic>.from(item)),
+          )
+          .toList();
+      applications.sort((a, b) {
+        final updatedComparison = b.updatedAt.compareTo(a.updatedAt);
+        if (updatedComparison != 0) return updatedComparison;
+        return b.appliedAt.compareTo(a.appliedAt);
+      });
+      return applications;
+    });
 
 class CandidateHomePage extends ConsumerStatefulWidget {
   const CandidateHomePage({
@@ -50,6 +75,7 @@ class _CandidateHomePageState extends ConsumerState<CandidateHomePage> {
     ref.invalidate(activeQuickJobsProvider);
     ref.invalidate(activeJobsProvider);
     ref.invalidate(bannersProvider);
+    ref.invalidate(candidateRecentApplicationsProvider);
 
     final userId = ref.read(authControllerProvider).asData?.value.user?.userId;
     if (userId != null) {
@@ -123,21 +149,18 @@ class _CandidateHomePageState extends ConsumerState<CandidateHomePage> {
     _showMessage('Tin tuyển dụng cho banner này hiện không khả dụng.');
   }
 
-  void _openEmployerInfo(CompanyRankItem company) {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (sheetContext) {
-        return EmployerInfoSheet(
-          item: company,
-          onJobTap: (job) {
-            Navigator.of(sheetContext).pop();
-            _openJobDetail(job);
-          },
-        );
-      },
-    );
+  void _openRecentApplication(
+    CandidateApplication application,
+    List<JobPost> allJobs,
+  ) {
+    for (final job in allJobs) {
+      if (job.id == application.jobId || job.idJob == application.jobId) {
+        _openJobDetail(job);
+        return;
+      }
+    }
+
+    _showMessage('Tin tuyển dụng cho đơn này hiện không khả dụng.');
   }
 
   Future<void> _handleApply(JobPost job, AuthUserProfile? user) async {
@@ -341,6 +364,9 @@ class _CandidateHomePageState extends ConsumerState<CandidateHomePage> {
     final standardJobsAsync = ref.watch(activeJobsProvider);
     final quickJobsAsync = ref.watch(activeQuickJobsProvider);
     final bannersAsync = ref.watch(bannersProvider);
+    final recentApplicationsAsync = ref.watch(
+      candidateRecentApplicationsProvider,
+    );
     final notificationCount =
         ref
             .watch(candidateNotificationControllerProvider)
@@ -361,7 +387,6 @@ class _CandidateHomePageState extends ConsumerState<CandidateHomePage> {
     final popularJobs = sortJobsByPopularity(
       allJobs,
     ).take(6).toList(growable: false);
-    final topCompanies = _buildCompanyRanking(allJobs);
     final dataLoading =
         (standardJobsAsync.isLoading || quickJobsAsync.isLoading) &&
         allJobs.isEmpty;
@@ -372,6 +397,8 @@ class _CandidateHomePageState extends ConsumerState<CandidateHomePage> {
         displayName: displayName,
         email: email,
         profileImage: user?.profileImage,
+        currentDestination: CandidateMenuDestination.home,
+        onHomeTap: () => Navigator.of(context).pop(),
         onProfileTap: () => _closeDrawerAndRun(widget.onProfileTap),
         onJobsTap: () => _closeDrawerAndRun(widget.onJobsTap),
         onWalletTap: () => _closeDrawerAndRun(widget.onWalletTap),
@@ -433,11 +460,17 @@ class _CandidateHomePageState extends ConsumerState<CandidateHomePage> {
             ),
             SliverToBoxAdapter(
               child: _PageWidth(
-                child: TopCompaniesSection(
-                  companies: topCompanies.take(5).toList(growable: false),
-                  isLoading: dataLoading,
-                  onSeeAll: widget.onSeeAllJobsTap,
-                  onCompanyTap: _openEmployerInfo,
+                child: RecentApplicationsSection(
+                  applications:
+                      (recentApplicationsAsync.value ??
+                              const <CandidateApplication>[])
+                          .take(5)
+                          .toList(growable: false),
+                  isLoading:
+                      recentApplicationsAsync.isLoading &&
+                      !recentApplicationsAsync.hasValue,
+                  onApplicationTap: (application) =>
+                      _openRecentApplication(application, allJobs),
                 ),
               ),
             ),
@@ -453,46 +486,6 @@ class _CandidateHomePageState extends ConsumerState<CandidateHomePage> {
     final unique = byId.values.toList(growable: false);
     return sortJobsByVisibilityThenCreatedAt(unique);
   }
-
-  List<CompanyRankItem> _buildCompanyRanking(List<JobPost> jobs) {
-    final grouped = <String, _CompanyBucket>{};
-    for (final job in jobs) {
-      final name = companyNameOf(job);
-      final employerId = job.employerId.trim();
-      final key = job.employerId.trim().isNotEmpty
-          ? employerId
-          : name.toLowerCase();
-      grouped.update(
-        key,
-        (bucket) => bucket.addJob(job),
-        ifAbsent: () => _CompanyBucket(
-          employerId: employerId,
-          name: name,
-          logoUrl: job.employerAvatarUrl,
-          jobs: [job],
-        ),
-      );
-    }
-
-    final sorted = grouped.values.toList()
-      ..sort((a, b) {
-        final countComparison = b.count.compareTo(a.count);
-        if (countComparison != 0) return countComparison;
-        return a.name.compareTo(b.name);
-      });
-
-    return [
-      for (var index = 0; index < sorted.length; index++)
-        CompanyRankItem(
-          rank: index + 1,
-          name: sorted[index].name,
-          employerId: sorted[index].employerId,
-          logoUrl: sorted[index].logoUrl,
-          activeJobCount: sorted[index].count,
-          jobs: sorted[index].jobs,
-        ),
-    ];
-  }
 }
 
 class _PageWidth extends StatelessWidget {
@@ -507,31 +500,6 @@ class _PageWidth extends StatelessWidget {
         constraints: const BoxConstraints(maxWidth: 960),
         child: child,
       ),
-    );
-  }
-}
-
-class _CompanyBucket {
-  const _CompanyBucket({
-    required this.employerId,
-    required this.name,
-    required this.jobs,
-    this.logoUrl,
-  });
-
-  final String employerId;
-  final String name;
-  final List<JobPost> jobs;
-  final String? logoUrl;
-
-  int get count => jobs.length;
-
-  _CompanyBucket addJob(JobPost job) {
-    return _CompanyBucket(
-      employerId: employerId,
-      name: name,
-      jobs: [...jobs, job],
-      logoUrl: logoUrl ?? job.employerAvatarUrl,
     );
   }
 }

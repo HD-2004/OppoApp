@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-import 'auth_colors.dart';
-
 class AuthFooterLink extends StatelessWidget {
   const AuthFooterLink({
     super.key,
@@ -18,15 +16,18 @@ class AuthFooterLink extends StatelessWidget {
   Widget build(BuildContext context) {
     return TextButton(
       onPressed: onPressed,
+      style: TextButton.styleFrom(
+        foregroundColor: Colors.white.withValues(alpha: 0.96),
+      ),
       child: Text.rich(
         TextSpan(
           text: '$text ',
-          style: TextStyle(color: AuthColors.textSecondary(context)),
+          style: TextStyle(color: Colors.white.withValues(alpha: 0.78)),
           children: [
             TextSpan(
               text: actionText,
-              style: const TextStyle(
-                color: AuthColors.primary,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.96),
                 fontWeight: FontWeight.w900,
               ),
             ),

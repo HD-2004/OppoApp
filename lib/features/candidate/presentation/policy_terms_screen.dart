@@ -142,6 +142,7 @@ class PolicyInlineLinks extends ConsumerWidget {
               ),
             ),
             style: TextButton.styleFrom(
+              foregroundColor: Colors.white.withValues(alpha: 0.88),
               padding: const EdgeInsets.symmetric(horizontal: 6),
               minimumSize: const Size(0, 36),
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -149,7 +150,7 @@ class PolicyInlineLinks extends ConsumerWidget {
             child: Text(
               links[i].label,
               style: theme.textTheme.bodySmall?.copyWith(
-                color: AppColors.primary,
+                color: Colors.white.withValues(alpha: 0.88),
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -158,7 +159,7 @@ class PolicyInlineLinks extends ConsumerWidget {
             Text(
               '•',
               style: theme.textTheme.bodySmall?.copyWith(
-                color: AppColors.textMutedFor(context),
+                color: Colors.white.withValues(alpha: 0.55),
               ),
             ),
         ],

@@ -10,6 +10,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../candidate/domain/job_post.dart';
 import '../../../candidate/domain/job_work_schedule.dart';
 import '../../../employer_packages/domain/employer_package.dart';
+import '../../../messaging/domain/candidate_application.dart';
 
 class HomeHeader extends StatelessWidget {
   const HomeHeader({
@@ -561,6 +562,310 @@ class TopCompaniesSection extends StatelessWidget {
       ),
     );
   }
+}
+
+class RecentApplicationsSection extends StatelessWidget {
+  const RecentApplicationsSection({
+    super.key,
+    required this.applications,
+    required this.isLoading,
+    required this.onApplicationTap,
+  });
+
+  final List<CandidateApplication> applications;
+  final bool isLoading;
+  final ValueChanged<CandidateApplication> onApplicationTap;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!isLoading && applications.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 26, 18, 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _RecentApplicationsHeader(),
+          const SizedBox(height: 16),
+          if (isLoading)
+            const _SkeletonBox(height: 304, radius: 16)
+          else
+            Column(
+              children: [
+                for (var index = 0; index < applications.length; index++) ...[
+                  _RecentApplicationCard(
+                    application: applications[index],
+                    isHighlighted: index == 0,
+                    onTap: () => onApplicationTap(applications[index]),
+                  ),
+                  if (index < applications.length - 1)
+                    const SizedBox(height: 12),
+                ],
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RecentApplicationsHeader extends StatelessWidget {
+  const _RecentApplicationsHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Row(
+          children: [
+            const Icon(
+              Icons.article_outlined,
+              color: AppColors.primary,
+              size: 24,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Đơn Ứng Tuyển Của Bạn Gần Đây',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: AppColors.textPrimaryFor(context),
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                  height: 1.16,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Divider(height: 1, thickness: 1.4, color: AppColors.borderFor(context)),
+      ],
+    );
+  }
+}
+
+class _RecentApplicationCard extends StatelessWidget {
+  const _RecentApplicationCard({
+    required this.application,
+    required this.isHighlighted,
+    required this.onTap,
+  });
+
+  final CandidateApplication application;
+  final bool isHighlighted;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final borderColor = isHighlighted
+        ? AppColors.primary
+        : AppColors.borderFor(context);
+    final borderWidth = isHighlighted ? 1.8 : 1.1;
+    final timeLabel = postedTimeLabel(application.updatedAt);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onTap,
+        child: Ink(
+          width: double.infinity,
+          padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+          decoration: BoxDecoration(
+            color: AppColors.cardBackground(context),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: borderColor, width: borderWidth),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withValues(
+                  alpha: isHighlighted ? 0.08 : 0.03,
+                ),
+                blurRadius: isHighlighted ? 10 : 6,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      application.jobTitle.trim().isEmpty
+                          ? 'Vị trí ứng tuyển'
+                          : application.jobTitle.trim(),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: AppColors.textPrimaryFor(context),
+                        fontSize: 15.5,
+                        fontWeight: FontWeight.w900,
+                        height: 1.22,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      application.employerName.trim().isEmpty
+                          ? 'Nhà tuyển dụng'
+                          : application.employerName.trim(),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: AppColors.textSecondaryFor(context),
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w700,
+                        height: 1.28,
+                      ),
+                    ),
+                    const SizedBox(height: 26),
+                    Wrap(
+                      spacing: 14,
+                      runSpacing: 8,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        if (timeLabel.isNotEmpty)
+                          _RecentApplicationMeta(
+                            icon: Icons.schedule_rounded,
+                            label: timeLabel,
+                          ),
+                        const _RecentApplicationMeta(
+                          icon: Icons.visibility_outlined,
+                          label: 'Xem chi tiết',
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  const _ApplicationBadge(
+                    label: 'Chưa Xem',
+                    color: Color(0xFFFF9800),
+                    backgroundColor: Color(0xFFFFF7E6),
+                    borderColor: Color(0xFFFFD77A),
+                  ),
+                  const SizedBox(height: 10),
+                  _ApplicationBadge(
+                    label: _applicationTypeLabel(application),
+                    color: AppColors.primary,
+                    backgroundColor: const Color(0xFFEFF6FF),
+                    borderColor: const Color(0xFFB8CEFF),
+                    isCompact: true,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _RecentApplicationMeta extends StatelessWidget {
+  const _RecentApplicationMeta({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 15, color: AppColors.textSecondaryFor(context)),
+        const SizedBox(width: 4),
+        Flexible(
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: AppColors.textSecondaryFor(context),
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              height: 1.1,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ApplicationBadge extends StatelessWidget {
+  const _ApplicationBadge({
+    required this.label,
+    required this.color,
+    required this.backgroundColor,
+    required this.borderColor,
+    this.isCompact = false,
+  });
+
+  final String label;
+  final Color color;
+  final Color backgroundColor;
+  final Color borderColor;
+  final bool isCompact;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: isCompact ? 11 : 16,
+        vertical: isCompact ? 7 : 10,
+      ),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: borderColor, width: 1.4),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.12),
+            blurRadius: 9,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: isCompact ? 7 : 9,
+            height: isCompact ? 7 : 9,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 7),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: color,
+              fontSize: isCompact ? 12.5 : 14,
+              fontWeight: FontWeight.w900,
+              height: 1,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+String _applicationTypeLabel(CandidateApplication application) {
+  final normalized = application.jobType.trim().toLowerCase();
+  if (normalized.contains('urgent') || normalized.contains('quick')) {
+    return 'Tuyển Gấp';
+  }
+  return 'Tiêu Chuẩn';
 }
 
 class EmptyState extends StatelessWidget {

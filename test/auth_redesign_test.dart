@@ -12,6 +12,7 @@ import 'package:oppo_temp_jobs/features/auth/presentation/forgot_password_screen
 import 'package:oppo_temp_jobs/features/auth/presentation/login_screen.dart';
 import 'package:oppo_temp_jobs/features/auth/presentation/register_screen.dart';
 import 'package:oppo_temp_jobs/features/auth/presentation/reset_password_screen.dart';
+import 'package:oppo_temp_jobs/features/auth/presentation/widgets/auth_background.dart';
 
 void main() {
   Future<void> pumpAuthScreen(WidgetTester tester, Widget child) async {
@@ -40,14 +41,54 @@ void main() {
   ) async {
     await pumpAuthScreen(tester, const LoginScreen());
 
-    expect(find.textContaining('Tìm việc nhanh'), findsOneWidget);
-    expect(find.textContaining('Chủ động ca làm'), findsOneWidget);
-    expect(find.textContaining('Nhận lương liền'), findsOneWidget);
+    expect(find.text('Tìm việc & Tuyển Dụng Nhanh Hơn'), findsOneWidget);
+    expect(
+      find.text('Kết nối ứng viên với cơ hội. Nền tảng tuyển dụng hiện đại.'),
+      findsOneWidget,
+    );
+    expect(
+      tester.getTopLeft(find.text('Tìm việc & Tuyển Dụng Nhanh Hơn')).dy,
+      greaterThan(tester.getTopLeft(find.text('Email')).dy),
+    );
+    expect(find.textContaining('Tìm việc nhanh'), findsNothing);
+    expect(find.textContaining('Chủ động ca làm'), findsNothing);
+    expect(find.textContaining('Nhận lương liền'), findsNothing);
     expect(find.text('Đăng nhập'), findsWidgets);
     expect(
       find.textContaining('Đăng ký ngay', findRichText: true),
       findsOneWidget,
     );
+    final footerText = tester.widget<RichText>(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is RichText &&
+            widget.text.toPlainText() == 'Chưa có tài khoản? Đăng ký ngay',
+      ),
+    );
+    final footerSpan = footerText.text as TextSpan;
+    expect(footerSpan.style?.color, Colors.white.withValues(alpha: 0.96));
+    expect(footerSpan.toPlainText(), 'Chưa có tài khoản? Đăng ký ngay');
+
+    final termsText = tester.widget<Text>(find.text('Điều khoản sử dụng'));
+    final privacyText = tester.widget<Text>(find.text('Chính sách bảo mật'));
+    expect(termsText.style?.color, Colors.white.withValues(alpha: 0.88));
+    expect(privacyText.style?.color, Colors.white.withValues(alpha: 0.88));
+  });
+
+  testWidgets('auth background uses a flat blue tone', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(home: AuthBackground(child: SizedBox.expand())),
+    );
+
+    final background = tester.widget<ColoredBox>(
+      find.byWidgetPredicate(
+        (widget) =>
+            widget is ColoredBox && widget.color == const Color(0xFF4D79E6),
+      ),
+    );
+
+    expect(background.color, const Color(0xFF4D79E6));
+    expect(background.child, isA<SizedBox>());
   });
 
   testWidgets('login only shows Google hosted UI sign in', (tester) async {
@@ -69,6 +110,15 @@ void main() {
   ) async {
     await pumpAuthScreen(tester, const RegisterScreen());
 
+    expect(find.text('Tìm việc & Tuyển Dụng Nhanh Hơn'), findsOneWidget);
+    expect(
+      find.text('Kết nối ứng viên với cơ hội. Nền tảng tuyển dụng hiện đại.'),
+      findsOneWidget,
+    );
+    expect(
+      tester.getTopLeft(find.text('Tìm việc & Tuyển Dụng Nhanh Hơn')).dy,
+      greaterThan(tester.getTopLeft(find.text('Họ và tên')).dy),
+    );
     expect(find.text('Tạo tài khoản ứng viên'), findsOneWidget);
     expect(find.text('Nhà tuyển dụng'), findsNothing);
     expect(find.text('Tạo tài khoản'), findsWidgets);

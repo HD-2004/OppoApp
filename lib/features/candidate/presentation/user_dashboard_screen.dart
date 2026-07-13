@@ -134,6 +134,7 @@ class _UserDashboardScreenState extends ConsumerState<UserDashboardScreen> {
       const DigitalWalletScreen(),
       // 3 – Cá nhân
       UserProfileScreen(
+        onHomeTap: () => _selectTab(0),
         onJobsTap: () => _selectTab(_tabJobs),
         onWalletTap: () => _selectTab(_tabWallet),
         onNotificationsTap: _openNotifications,

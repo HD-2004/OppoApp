@@ -14,7 +14,6 @@ import '../domain/candidate_age_policy.dart';
 import 'auth_form_fields.dart';
 import 'widgets/auth_colors.dart';
 import 'widgets/auth_footer_link.dart';
-import 'widgets/auth_header.dart';
 import 'widgets/auth_primary_button.dart';
 import 'widgets/auth_scaffold.dart';
 import 'widgets/auth_text_field.dart';
@@ -291,16 +290,15 @@ class _RegisterFormStep extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          AuthHeader(
-            compact: true,
-            title: 'Tạo tài khoản ứng viên',
-            subtitle: 'Điền thông tin để bắt đầu hành trình.',
-          ),
-          const SizedBox(height: 28),
           AuthFormCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                const AuthCardTitle(
+                  title: 'Tạo tài khoản ứng viên',
+                  subtitle: 'Điền thông tin để bắt đầu hành trình.',
+                ),
+                const SizedBox(height: 22),
                 AuthTextField(
                   controller: fullNameController,
                   label: l10n.fullName,
@@ -459,7 +457,7 @@ class _RegisterFormStep extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 24),
           AuthFooterLink(
             text: 'Đã có tài khoản?',
             actionText: 'Đăng nhập',

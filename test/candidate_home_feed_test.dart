@@ -4,6 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:oppo_temp_jobs/features/auth/application/auth_controller.dart';
 import 'package:oppo_temp_jobs/features/auth/domain/auth_state.dart';
 import 'package:oppo_temp_jobs/features/auth/domain/auth_user_profile.dart';
+import 'package:oppo_temp_jobs/features/candidate/data/aws_application_repository.dart';
+import 'package:oppo_temp_jobs/features/candidate/domain/application_repository.dart';
 import 'package:oppo_temp_jobs/features/candidate/application/jobs_providers.dart';
 import 'package:oppo_temp_jobs/features/candidate/domain/job_post.dart';
 import 'package:oppo_temp_jobs/features/candidate/notifications/application/notification_controller.dart';
@@ -24,6 +26,7 @@ void main() {
       tester,
       standardJobs: [_job, _sameEmployerJob],
       banners: const [_firstBanner],
+      applications: _recentApplications,
     );
 
     expect(find.text('Ốp Pờ'), findsOneWidget);
@@ -32,39 +35,41 @@ void main() {
     expect(find.text('Nơi Tìm Việc Linh Hoạt'), findsNothing);
     expect(find.text('Công việc phổ biến nhất'), findsOneWidget);
     expect(find.text('Việc hợp bạn nhất'), findsNothing);
+    expect(find.text('Đơn Ứng Tuyển Của Bạn Gần Đây'), findsOneWidget);
     expect(
       find.text('Top công ty đang tuyển nhiều fresher nhất'),
-      findsOneWidget,
+      findsNothing,
     );
+    expect(find.text('Thu ngân quán'), findsOneWidget);
+    expect(find.text('Katinat Quận Cam'), findsOneWidget);
+    expect(find.text('Chưa Xem'), findsNWidgets(2));
+    expect(find.text('Tiêu Chuẩn'), findsNWidgets(2));
+    expect(find.text('Xem chi tiết'), findsNWidgets(2));
     expect(find.text('Việc hợp hướng đi'), findsNothing);
     expect(find.text('Nhân viên phục vụ'), findsWidgets);
     expect(find.text('Featured Cafe'), findsNothing);
-    expect(find.text('2 việc đang tuyển'), findsOneWidget);
     expect(find.byIcon(Icons.favorite_rounded), findsNothing);
     expect(find.byIcon(Icons.share_rounded), findsNothing);
     expect(find.byIcon(Icons.comment_rounded), findsNothing);
   });
 
-  testWidgets('candidate can open employer info from top companies', (
+  testWidgets('candidate can open job detail from recent applications', (
     tester,
   ) async {
     await _pumpHome(
       tester,
       standardJobs: [_job, _sameEmployerJob],
       banners: const [],
+      applications: _recentApplications,
     );
 
-    await tester.tap(find.text('Oppo Coffee').last);
+    await tester.tap(find.text('Thu ngân quán'));
     await tester.pumpAndSettle();
 
     expect(find.text('Thông tin nhà tuyển dụng'), findsOneWidget);
-    expect(find.text('Oppo Coffee'), findsWidgets);
-    expect(find.text('2 việc đang tuyển'), findsWidgets);
     expect(find.text('Nhân viên phục vụ'), findsWidgets);
-    expect(find.text('Barista cuối tuần'), findsWidgets);
-    expect(find.text('Quận 1, TP.HCM'), findsWidgets);
-    expect(find.text('Thủ Đức'), findsWidgets);
-    expect(find.text('Katinat Quận Cam'), findsNothing);
+    expect(find.text('Oppo Coffee'), findsWidgets);
+    expect(find.text('Quận 1, TP.HCM'), findsOneWidget);
   });
 
   testWidgets('candidate home shows popular jobs from active job data', (
@@ -107,10 +112,7 @@ void main() {
       expect(find.text('Việc hợp hướng đi'), findsNothing);
       expect(find.text('Chưa có việc để hiển thị.'), findsNothing);
       expect(find.text('Tạm thời chưa có công việc phổ biến.'), findsOneWidget);
-      expect(
-        find.text('Top công ty đang tuyển nhiều fresher nhất'),
-        findsNothing,
-      );
+      expect(find.text('Đơn Ứng Tuyển Của Bạn Gần Đây'), findsNothing);
       expect(find.text('Featured Cafe'), findsNothing);
     },
   );
@@ -313,6 +315,7 @@ Future<void> _pumpHome(
   WidgetTester tester, {
   required List<JobPost> standardJobs,
   required List<BannerAd> banners,
+  List<Map<String, dynamic>> applications = const [],
   bool preserveSurfaceSize = false,
 }) async {
   if (!preserveSurfaceSize) {
@@ -329,6 +332,9 @@ Future<void> _pumpHome(
         activeJobsProvider.overrideWith((_) async => standardJobs),
         activeQuickJobsProvider.overrideWith((_) async => <JobPost>[]),
         bannersProvider.overrideWith((_) async => banners),
+        applicationRepositoryProvider.overrideWith(
+          (_) => _FakeApplicationRepository(applications),
+        ),
         candidateChatsProvider.overrideWithBuild(
           (_, _) => <CandidateApplication>[],
         ),
@@ -474,3 +480,110 @@ final _referenceCardJob = JobPost(
   recruitmentEndDate: DateTime(2026, 7, 11),
   views: 43,
 );
+
+const _recentApplications = [
+  {
+    'applicationId': 'app-1',
+    'jobId': 'job-1',
+    'jobTitle': 'Thu ngân quán',
+    'jobType': 'standard',
+    'candidateId': 'candidate-1',
+    'candidateEmail': 'candidate@example.com',
+    'employerId': 'employer-1',
+    'employerEmail': 'hr@katinat.vn',
+    'employerName': 'Katinat Quận Cam',
+    'status': 'submitted',
+    'appliedAt': '2026-07-12T10:00:00Z',
+    'updatedAt': '2026-07-12T10:00:00Z',
+  },
+  {
+    'applicationId': 'app-2',
+    'jobId': 'job-2',
+    'jobTitle': 'Nhân viên Cửa hàng',
+    'jobType': 'standard',
+    'candidateId': 'candidate-1',
+    'candidateEmail': 'candidate@example.com',
+    'employerId': 'employer-2',
+    'employerEmail': 'hr@bamos.vn',
+    'employerName': 'CÔNG TY TNHH SẢN XUẤT THƯƠNG MẠI DỊCH VỤ BAMOS',
+    'status': 'submitted',
+    'appliedAt': '2026-07-10T10:00:00Z',
+    'updatedAt': '2026-07-10T10:00:00Z',
+  },
+];
+
+class _FakeApplicationRepository implements ApplicationRepository {
+  const _FakeApplicationRepository(this.applications);
+
+  final List<Map<String, dynamic>> applications;
+
+  @override
+  Future<List<Map<String, dynamic>>> getCandidateApplications(String userId) {
+    return Future.value(applications);
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getCandidateCVs(String userId) {
+    return Future.value(const []);
+  }
+
+  @override
+  Future<Map<String, dynamic>> submitApplication({
+    required String jobId,
+    required String cvUrl,
+    required String cvFilename,
+    required ApplicationNotificationDetails notification,
+    String? cvS3Key,
+    Map<String, dynamic>? extraFields,
+  }) {
+    return Future.value(<String, dynamic>{});
+  }
+
+  @override
+  Future<void> updateApplicationStatus({
+    required String applicationId,
+    required String status,
+    Map<String, dynamic> extraFields = const {},
+  }) async {}
+
+  @override
+  Future<Map<String, dynamic>> uploadCandidateCV({
+    required String userId,
+    required List<int> fileBytes,
+    required String fileName,
+    required String fileType,
+  }) {
+    return Future.value(<String, dynamic>{});
+  }
+
+  @override
+  Future<void> deleteCandidateCV({
+    required String userId,
+    String? cvId,
+  }) async {}
+
+  @override
+  Future<void> confirmApplicationCompletion({
+    required String applicationId,
+    required DateTime confirmedAt,
+  }) async {}
+
+  @override
+  Future<void> submitCandidateRating({
+    required String applicationId,
+    required Map<String, dynamic> candidateRating,
+  }) async {}
+
+  @override
+  Future<void> updateApplicationChat({
+    required String applicationId,
+    required String status,
+    required List<Map<String, dynamic>> chatMessages,
+  }) async {}
+
+  @override
+  Future<void> archiveApplicationChat({
+    required String applicationId,
+    required DateTime archivedAt,
+  }) async {}
+}

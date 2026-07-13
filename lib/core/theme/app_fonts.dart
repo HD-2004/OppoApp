@@ -30,7 +30,7 @@ class AppFontFamilies extends ThemeExtension<AppFontFamilies> {
 
   static AppFontFamilies get defaults => AppFontFamilies(
     body: inter,
-    heading: bricolageGrotesque,
+    heading: inter,
     decorative: pacifico,
     roundedDisplay: chironGoRoundTcFamily,
     playfulDisplay: grandstander,

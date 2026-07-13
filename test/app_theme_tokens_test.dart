@@ -56,29 +56,20 @@ void main() {
     expect(scheme.outline, AppColors.darkOutline);
   });
 
-  test(
-    'themes use Inter for body text and Bricolage Grotesque for headings',
-    () async {
-      final lightText = AppTheme.lightTheme.textTheme;
-      final darkText = AppTheme.darkTheme.textTheme;
-      await GoogleFonts.pendingFonts();
+  test('themes use Inter for both body text and headings', () async {
+    final lightText = AppTheme.lightTheme.textTheme;
+    final darkText = AppTheme.darkTheme.textTheme;
+    await GoogleFonts.pendingFonts();
 
-      expect(lightText.bodyMedium?.fontFamily, startsWith('Inter'));
-      expect(darkText.bodyMedium?.fontFamily, startsWith('Inter'));
-      expect(
-        lightText.headlineMedium?.fontFamily,
-        startsWith('BricolageGrotesque'),
-      );
-      expect(
-        darkText.headlineMedium?.fontFamily,
-        startsWith('BricolageGrotesque'),
-      );
-      expect(
-        lightText.bodyMedium?.fontFamilyFallback,
-        AppFontFamilies.bodyFallback,
-      );
-    },
-  );
+    expect(lightText.bodyMedium?.fontFamily, startsWith('Inter'));
+    expect(darkText.bodyMedium?.fontFamily, startsWith('Inter'));
+    expect(lightText.headlineMedium?.fontFamily, startsWith('Inter'));
+    expect(darkText.headlineMedium?.fontFamily, startsWith('Inter'));
+    expect(
+      lightText.bodyMedium?.fontFamilyFallback,
+      AppFontFamilies.bodyFallback,
+    );
+  });
 
   test('theme extension exposes decorative display font families', () async {
     final fonts = AppTheme.lightTheme.extension<AppFontFamilies>();
@@ -86,7 +77,7 @@ void main() {
 
     expect(fonts, isNotNull);
     expect(fonts?.body, AppFontFamilies.interFamily);
-    expect(fonts?.heading, AppFontFamilies.bricolageGrotesqueFamily);
+    expect(fonts?.heading, AppFontFamilies.interFamily);
     expect(fonts?.decorative, AppFontFamilies.pacificoFamily);
     expect(fonts?.roundedDisplay, AppFontFamilies.chironGoRoundTcFamily);
     expect(fonts?.playfulDisplay, AppFontFamilies.grandstanderFamily);

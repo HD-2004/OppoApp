@@ -216,12 +216,12 @@ class AppTheme {
       displayLarge: _headingStyle(
         interTheme.displayLarge,
         color: textColor,
-        fontWeight: FontWeight.w800,
+        fontWeight: FontWeight.w700,
       ),
       displayMedium: _headingStyle(
         interTheme.displayMedium,
         color: textColor,
-        fontWeight: FontWeight.w800,
+        fontWeight: FontWeight.w700,
       ),
       displaySmall: _headingStyle(
         interTheme.displaySmall,
@@ -231,7 +231,7 @@ class AppTheme {
       headlineLarge: _headingStyle(
         interTheme.headlineLarge,
         color: textColor,
-        fontWeight: FontWeight.w800,
+        fontWeight: FontWeight.w700,
       ),
       headlineMedium: _headingStyle(
         interTheme.headlineMedium,
@@ -284,8 +284,7 @@ class AppTheme {
     required Color color,
     FontWeight? fontWeight,
   }) {
-    return GoogleFonts.getFont(
-      'Bricolage Grotesque',
+    return GoogleFonts.inter(
       textStyle: base,
       color: color,
       fontWeight: fontWeight ?? base?.fontWeight,
