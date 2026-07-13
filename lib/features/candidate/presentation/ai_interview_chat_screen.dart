@@ -130,7 +130,7 @@ class _AIInterviewChatScreenState extends ConsumerState<AIInterviewChatScreen> {
 
     await _flutterTts.awaitSpeakCompletion(true);
     await _flutterTts.setLanguage('vi-VN');
-    await _flutterTts.setSpeechRate(0.45);
+    await _flutterTts.setSpeechRate(1.0);
     await _flutterTts.setPitch(1.0);
     await _flutterTts.setVolume(1.0);
 
@@ -221,7 +221,8 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
       });
 
       await _speakQuestion(question);
-    } catch (_) {
+    } catch (e, stack) {
+      debugPrint('Error starting real AI interview: $e\n$stack');
       if (!mounted) return;
       await _startMockInterviewSession();
     }

@@ -76,20 +76,29 @@ class AwsAiInterviewRepository implements AiInterviewRepository {
     Map<String, dynamic> payload, {
     required Duration timeout,
   }) async {
+    final resolved = resolveUrl('$_baseUrl$path');
+    final isLocal = resolved.contains('localhost') ||
+        resolved.contains('127.0.0.1') ||
+        resolved.contains('10.0.2.2');
+
     final token = await _tokenProvider();
-    if (token == null || token.trim().isEmpty) {
+    if ((token == null || token.trim().isEmpty) && !isLocal) {
       throw const AiInterviewException(
         'Vui lòng đăng nhập lại để sử dụng phỏng vấn AI.',
         code: 'AUTH_REQUIRED',
       );
     }
 
+    final activeToken = (token == null || token.trim().isEmpty)
+        ? 'local-dummy-token'
+        : token;
+
     final response = await _client
         .post(
-          Uri.parse(resolveUrl('$_baseUrl$path')),
+          Uri.parse(resolved),
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': 'Bearer $token',
+            'Authorization': 'Bearer $activeToken',
           },
           body: jsonEncode(payload),
         )
