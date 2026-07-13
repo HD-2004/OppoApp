@@ -50,6 +50,7 @@ abstract class ApplicationRepository {
     required String cvUrl,
     required String cvFilename,
     required ApplicationNotificationDetails notification,
+    String? cvS3Key,
     Map<String, dynamic>? extraFields,
   });
   Future<void> updateApplicationStatus({

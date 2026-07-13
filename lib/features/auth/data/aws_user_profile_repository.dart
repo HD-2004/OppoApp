@@ -533,6 +533,8 @@ class AwsUserProfileRepository implements UserProfileRepository {
       title: data['title'] as String?,
       bio: data['bio'] as String?,
       skills: skillsList,
+      education: data['education'] as String?,
+      experience: data['experience'] as String?,
       profileImage: data['profileImage'] as String?,
       savedJobs: savedJobsList,
       createdAt: data['createdAt'] != null

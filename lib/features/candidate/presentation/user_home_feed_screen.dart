@@ -96,7 +96,7 @@ class _UserHomeFeedScreenState extends ConsumerState<UserHomeFeedScreen> {
       context: context,
       builder: (ctx) {
         return StatefulBuilder(
-          builder: (context, setModalState) {
+          builder: (builderCtx, setModalState) {
             return AlertDialog(
               title: const Text(
                 'Chọn CV ứng tuyển',
@@ -114,7 +114,7 @@ class _UserHomeFeedScreenState extends ConsumerState<UserHomeFeedScreen> {
                   child: ListView.builder(
                     shrinkWrap: true,
                     itemCount: cvList.length,
-                    itemBuilder: (context, index) {
+                    itemBuilder: (itemCtx, index) {
                       final cv = cvList[index];
                       final id = cv['id']?.toString();
                       final name = cv['cvFileName']?.toString() ?? 'CV.pdf';
@@ -146,41 +146,46 @@ class _UserHomeFeedScreenState extends ConsumerState<UserHomeFeedScreen> {
                   ),
                   onPressed: () async {
                     Navigator.of(ctx).pop();
-                    final chosen = cvList.firstWhere(
-                      (c) => c['id']?.toString() == selectedCvId,
-                    );
-                    final cvUrl = (chosen['cvUrl'] ?? chosen['cvS3Key'] ?? '')
-                        .toString();
-                    final cvFilename = (chosen['cvFileName'] ?? 'CV.pdf')
-                        .toString();
-                    final cvS3Key = chosen['cvS3Key']?.toString();
+                    try {
+                      final chosen = cvList.firstWhere(
+                        (c) => c['id']?.toString() == selectedCvId,
+                      );
+                      final cvUrl = (chosen['cvUrl'] ?? chosen['cvS3Key'] ?? '')
+                          .toString();
+                      final cvFilename = (chosen['cvFileName'] ?? 'CV.pdf')
+                          .toString();
+                      final cvS3Key = chosen['cvS3Key']?.toString();
 
-                    if (job.isAiScreeningEnabled) {
-                      final user = ref
-                          .read(authControllerProvider)
-                          .asData
-                          ?.value
-                          .user;
-                      if (user == null) {
-                        _showErrorDialog('Vui lòng đăng nhập để ứng tuyển.');
-                        return;
+                      if (job.isAiScreeningEnabled) {
+                        final user = ref
+                            .read(authControllerProvider)
+                            .asData
+                            ?.value
+                            .user;
+                        if (user == null) {
+                          _showErrorDialog('Vui lòng đăng nhập để ứng tuyển.');
+                          return;
+                        }
+                        await openAiApplicationFlow(
+                          context: context,
+                          ref: ref,
+                          job: job,
+                          user: user,
+                          selectedCvUrl: cvUrl,
+                          selectedCvFilename: cvFilename,
+                          selectedCvS3Key: cvS3Key,
+                        );
+                      } else {
+                        _submitApplication(
+                          job,
+                          cvUrl,
+                          cvFilename,
+                          cvS3Key: cvS3Key,
+                        );
                       }
-                      await openAiApplicationFlow(
-                        context: context,
-                        ref: ref,
-                        job: job,
-                        user: user,
-                        selectedCvUrl: cvUrl,
-                        selectedCvFilename: cvFilename,
-                        selectedCvS3Key: cvS3Key,
-                      );
-                    } else {
-                      _submitApplication(
-                        job,
-                        cvUrl,
-                        cvFilename,
-                        cvS3Key: cvS3Key,
-                      );
+                    } catch (e, stack) {
+                      print('Lỗi khi nộp đơn: $e\n$stack');
+                      _showErrorDialog('Lỗi khi nộp đơn: $e');
                     }
                   },
                   child: const Text('Nộp đơn'),

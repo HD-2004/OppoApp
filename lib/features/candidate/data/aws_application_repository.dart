@@ -194,6 +194,7 @@ class AwsApplicationRepository implements ApplicationRepository {
     required String cvUrl,
     required String cvFilename,
     required ApplicationNotificationDetails notification,
+    String? cvS3Key,
     Map<String, dynamic>? extraFields,
   }) async {
     final token = await _getAuthToken();
@@ -205,6 +206,7 @@ class AwsApplicationRepository implements ApplicationRepository {
       'jobId': jobId,
       'cvUrl': cvUrl,
       'cvFilename': cvFilename,
+      if (cvS3Key != null) 'cvS3Key': cvS3Key,
     };
     if (extraFields != null) {
       requestBody.addAll(extraFields);

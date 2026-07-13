@@ -71,6 +71,7 @@ class _AIInterviewChatScreenState extends ConsumerState<AIInterviewChatScreen> {
   String? _errorMessage;
   String? _noticeMessage;
   String? _speechLocaleId;
+  bool _hasReplayedCurrent = false;
 
   Map<String, dynamic>? _report;
 
@@ -162,6 +163,13 @@ class _AIInterviewChatScreenState extends ConsumerState<AIInterviewChatScreen> {
       final fullName = user?.fullName.isNotEmpty == true
           ? user!.fullName
           : 'Ứng viên';
+      final experience = (user?.experience != null && user!.experience!.isNotEmpty)
+          ? user.experience!
+          : 'Đã có kinh nghiệm làm việc ở vị trí tương đương.';
+      final education = (user?.education != null && user!.education!.isNotEmpty)
+          ? user.education!
+          : 'Chưa cập nhật';
+
       final title = widget.job.title;
       final skills = (user?.skills != null && user!.skills!.isNotEmpty)
           ? user.skills!.join(', ')
@@ -174,8 +182,8 @@ class _AIInterviewChatScreenState extends ConsumerState<AIInterviewChatScreen> {
           '''
 Họ tên: $fullName
 Vị trí mong muốn: $title
-Kinh nghiệm làm việc: Đã có kinh nghiệm làm việc ở vị trí tương đương.
-Học vấn: Chưa cập nhật
+Kinh nghiệm làm việc: $experience
+Học vấn: $education
 Kỹ năng: $skills
 Giới thiệu bản thân: $bio
 '''
@@ -211,6 +219,7 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
         _sessionId = result.sessionId;
         _currentQuestion = question;
         _questionNumber = 1;
+        _hasReplayedCurrent = false;
       });
 
       await _speakQuestion(question);
@@ -235,6 +244,7 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
       _questionNumber = 1;
       _errorMessage = null;
       _noticeMessage = null;
+      _hasReplayedCurrent = false;
     });
 
     await _speakQuestion(question);
@@ -369,9 +379,25 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
     return null;
   }
 
+  Future<void> _stopListening() async {
+    if (_phase != _VoiceInterviewPhase.listening) return;
+
+    try {
+      if (_speechToText.isListening) {
+        await _speechToText.stop();
+      }
+    } catch (_) {}
+
+    if (!mounted) return;
+    setState(() {
+      _phase = _VoiceInterviewPhase.ready;
+      _soundLevel = 0;
+    });
+  }
+
   Future<void> _handleMicPressed() async {
     if (_phase == _VoiceInterviewPhase.listening) {
-      await _finishListeningAndSubmit();
+      await _stopListening();
       return;
     }
 
@@ -436,11 +462,13 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
 
     final recognized = result.recognizedWords.trim();
     if (recognized.isNotEmpty) {
-      _pendingAnswer = recognized;
+      setState(() {
+        _pendingAnswer = recognized;
+      });
     }
 
-    if (result.finalResult && _pendingAnswer.trim().isNotEmpty) {
-      unawaited(_finishListeningAndSubmit());
+    if (result.finalResult) {
+      unawaited(_stopListening());
     }
   }
 
@@ -451,7 +479,10 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
     if (normalized == 'done' ||
         normalized == 'notlistening' ||
         normalized == 'not_listening') {
-      unawaited(_finishListeningAndSubmit());
+      setState(() {
+        _phase = _VoiceInterviewPhase.ready;
+        _soundLevel = 0;
+      });
     }
   }
 
@@ -466,33 +497,18 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
     });
   }
 
-  Future<void> _finishListeningAndSubmit() async {
-    if (_hasSubmittedCurrentUtterance ||
-        _phase != _VoiceInterviewPhase.listening) {
-      return;
-    }
-
-    _hasSubmittedCurrentUtterance = true;
-
-    try {
-      if (_speechToText.isListening) {
-        await _speechToText.stop();
-      }
-    } catch (_) {
-      // The recognizer may already be closed by the platform timeout.
-    }
-
+  Future<void> _handleSubmitAnswerPressed() async {
     final answer = _pendingAnswer.trim();
-    if (answer.isEmpty) {
-      if (!mounted) return;
-      setState(() {
-        _phase = _VoiceInterviewPhase.ready;
-        _noticeMessage =
-            'Mình chưa nghe rõ câu trả lời. Hãy bấm mic và nói lại.';
-      });
-      _hasSubmittedCurrentUtterance = false;
+    if (answer.isEmpty ||
+        _phase == _VoiceInterviewPhase.processing ||
+        _finished ||
+        _sessionId == null) {
       return;
     }
+
+    _playbackToken++;
+    await _flutterTts.stop();
+    await _voiceRssPlayer.stop();
 
     await _submitSpokenAnswer(answer);
   }
@@ -555,6 +571,7 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
       _currentQuestion = nextQuestion;
       _questionNumber += 1;
       _pendingAnswer = '';
+      _hasReplayedCurrent = false;
     });
 
     await _speakQuestion(nextQuestion);
@@ -799,7 +816,7 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             const Text(
-              'Phỏng vấn AI bằng giọng nói',
+              'Phỏng vấn AI cùng Oppo',
               style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
             ),
             Text(
@@ -822,8 +839,8 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
       body: _errorMessage != null
           ? _buildErrorState()
           : _phase == _VoiceInterviewPhase.connecting
-          ? _buildLoadingState()
-          : _buildVoiceInterview(),
+              ? _buildLoadingState()
+              : _buildChatLayout(),
     );
   }
 
@@ -885,126 +902,284 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
     );
   }
 
-  Widget _buildVoiceInterview() {
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
-        child: Column(
-          children: [
-            _buildQuestionPill(),
-            const Spacer(),
-            _buildVoiceCenterpiece(),
-            const Spacer(),
-            _buildControls(),
-          ],
-        ),
-      ),
-    );
-  }
+  Widget _buildChatLayout() {
+    final isListening = _phase == _VoiceInterviewPhase.listening;
+    final isProcessing = _phase == _VoiceInterviewPhase.processing;
+    final isSpeaking = _phase == _VoiceInterviewPhase.speaking;
+    final canReplay = _currentQuestion != null && !_finished && !isListening && !isProcessing;
+    final canSubmit = _pendingAnswer.trim().isNotEmpty && !isProcessing;
 
-  Widget _buildQuestionPill() {
-    final label = _finished
-        ? 'Đã hoàn tất'
-        : _questionNumber > 0
-        ? 'Câu hỏi $_questionNumber'
-        : 'Chuẩn bị phỏng vấn';
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: AppColors.secondary.withValues(alpha: 0.18)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            _finished ? Icons.check_circle_outline : Icons.graphic_eq,
-            size: 18,
-            color: _finished ? Colors.green : AppColors.secondary,
+    return Column(
+      children: [
+        // VoiceQuestionCounter
+        Container(
+          margin: const EdgeInsets.only(top: 24, bottom: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.03),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
-          const SizedBox(width: 8),
-          Text(
-            label,
-            style: TextStyle(
-              color: Colors.grey[800],
-              fontWeight: FontWeight.w700,
+          child: Text(
+            'Câu hỏi $_questionNumber',
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: AppColors.secondary,
             ),
           ),
-        ],
-      ),
-    );
-  }
+        ),
 
-  Widget _buildVoiceCenterpiece() {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        _buildVoiceOrb(),
-        const SizedBox(height: 28),
-        Text(
-          _headlineText,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: Color(0xFF111827),
-            fontSize: 24,
-            fontWeight: FontWeight.w800,
-            height: 1.15,
+        // Center Stage (Avatar placeholder + Waveform + Status text)
+        Expanded(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 140,
+                    height: 140,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.secondary.withOpacity(0.08),
+                      border: Border.all(
+                        color: AppColors.secondary.withOpacity(0.2),
+                        width: 3,
+                      ),
+                    ),
+                    child: Center(
+                      child: Icon(
+                        _orbIcon,
+                        size: 64,
+                        color: AppColors.secondary,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  _buildVoiceMeter(),
+                  const SizedBox(height: 24),
+                  Text(
+                    _headlineText,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1E293B),
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    _supportingText,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey[600],
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
-        const SizedBox(height: 12),
-        Text(
-          _supportingText,
-          textAlign: TextAlign.center,
-          style: TextStyle(color: Colors.grey[700], fontSize: 15, height: 1.45),
+
+        if (_noticeMessage != null)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+            child: _buildNotice(),
+          ),
+
+        // Captured Answer Preview Box
+        Container(
+          width: double.infinity,
+          margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8FAFC),
+            border: Border.all(
+              color: const Color(0xFFCBD5E1),
+              width: 1.5,
+            ),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'CÂU TRẢ LỜI GHI NHẬN',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF64748B),
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  if (_pendingAnswer.trim().isNotEmpty)
+                    Icon(
+                      Icons.check_circle_outline_rounded,
+                      color: Colors.green[600],
+                      size: 16,
+                    ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _pendingAnswer.trim().isNotEmpty
+                    ? _pendingAnswer.trim()
+                    : 'Bật micro và bắt đầu phát biểu để ghi nhận câu trả lời...',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: _pendingAnswer.trim().isNotEmpty
+                      ? const Color(0xFF1E293B)
+                      : const Color(0xFF94A3B8),
+                  fontStyle: _pendingAnswer.trim().isNotEmpty
+                      ? FontStyle.normal
+                      : FontStyle.italic,
+                  height: 1.4,
+                ),
+              ),
+            ],
+          ),
         ),
-        const SizedBox(height: 24),
-        _buildVoiceMeter(),
-        if (_noticeMessage != null) ...[
-          const SizedBox(height: 24),
-          _buildNotice(),
-        ],
+
+        // Controls Row
+        Container(
+          padding: const EdgeInsets.only(bottom: 24, top: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _buildReplayButton(canReplay),
+              const SizedBox(width: 24),
+              _buildMicMainButton(isListening, isSpeaking, isProcessing),
+              const SizedBox(width: 24),
+              _buildSubmitButton(canSubmit),
+            ],
+          ),
+        ),
       ],
     );
   }
 
-  Widget _buildVoiceOrb() {
-    final activeColor = switch (_phase) {
-      _VoiceInterviewPhase.listening => Colors.red,
-      _VoiceInterviewPhase.processing => const Color(0xFF6366F1),
-      _VoiceInterviewPhase.finished => Colors.green,
-      _ => AppColors.secondary,
-    };
-
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 220),
-      width: _phase == _VoiceInterviewPhase.listening ? 156 : 140,
-      height: _phase == _VoiceInterviewPhase.listening ? 156 : 140,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: activeColor.withValues(alpha: 0.12),
-        border: Border.all(
-          color: activeColor.withValues(alpha: 0.34),
-          width: 2,
+  Widget _buildReplayButton(bool enabled) {
+    final active = enabled && !_hasReplayedCurrent;
+    return Tooltip(
+      message: _hasReplayedCurrent
+          ? 'Bạn đã dùng lượt nghe lại cho câu hỏi này'
+          : 'Nghe lại câu hỏi (chỉ dùng 1 lần)',
+      child: Container(
+        width: 56,
+        height: 56,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: active
+              ? const Color(0xFFF8FAFC)
+              : const Color(0xFFCBD5E1).withOpacity(0.3),
+          border: Border.all(
+            color: active
+                ? const Color(0xFFE2E8F0)
+                : const Color(0xFFE2E8F0).withOpacity(0.5),
+            width: 1.5,
+          ),
+        ),
+        child: IconButton(
+          icon: Icon(
+            Icons.volume_up_rounded,
+            color: active ? AppColors.secondary : const Color(0xFF94A3B8),
+          ),
+          onPressed: active ? _replayCurrentQuestion : null,
         ),
       ),
-      child: Center(
-        child: Container(
-          width: 96,
-          height: 96,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: activeColor,
-            boxShadow: [
-              BoxShadow(
-                color: activeColor.withValues(alpha: 0.28),
-                blurRadius: 24,
-                offset: const Offset(0, 12),
-              ),
-            ],
+    );
+  }
+
+  Widget _buildMicMainButton(
+    bool isListening,
+    bool isSpeaking,
+    bool isProcessing,
+  ) {
+    final disabled = isProcessing || isSpeaking;
+    return Container(
+      width: 72,
+      height: 72,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: (isListening ? Colors.red : AppColors.secondary).withOpacity(
+              disabled ? 0.05 : 0.25,
+            ),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
           ),
-          child: Icon(_orbIcon, color: Colors.white, size: 42),
+        ],
+      ),
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          shape: const CircleBorder(),
+          backgroundColor: isListening ? Colors.red : AppColors.secondary,
+          disabledBackgroundColor: const Color(0xFFCBD5E1),
+          foregroundColor: Colors.white,
+          elevation: 0,
+          padding: EdgeInsets.zero,
+        ),
+        onPressed: disabled ? null : _handleMicPressed,
+        child: Icon(
+          isListening ? Icons.mic_off_rounded : Icons.mic_rounded,
+          size: 32,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSubmitButton(bool enabled) {
+    return Container(
+      height: 56,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: enabled
+            ? [
+                BoxShadow(
+                  color: const Color(0xFF10B981).withOpacity(0.25),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ]
+            : null,
+      ),
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor:
+              enabled ? const Color(0xFF10B981) : const Color(0xFFCBD5E1),
+          foregroundColor: Colors.white,
+          disabledBackgroundColor: const Color(0xFFCBD5E1),
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(28),
+          ),
+          elevation: 0,
+        ),
+        onPressed: enabled ? _handleSubmitAnswerPressed : null,
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Gửi & Tiếp tục',
+              style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.bold),
+            ),
+            SizedBox(width: 8),
+            Icon(Icons.chevron_right_rounded, size: 18),
+          ],
         ),
       ),
     );
@@ -1018,28 +1193,28 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
         _phase == _VoiceInterviewPhase.processing;
 
     return SizedBox(
-      height: 42,
+      height: 32,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: List.generate(9, (index) {
           final distance = (index - 4).abs();
-          final base = 10 + (4 - distance).clamp(0, 4) * 4;
+          final base = 8 + (4 - distance).clamp(0, 4) * 3;
           final activeBoost = _phase == _VoiceInterviewPhase.listening
-              ? listeningStrength * 26
+              ? listeningStrength * 20
               : isActive
-              ? (index.isEven ? 10 : 18)
+              ? (index.isEven ? 6 : 12)
               : 0;
 
           return AnimatedContainer(
             duration: const Duration(milliseconds: 180),
             curve: Curves.easeOut,
-            width: 6,
+            width: 4,
             height: (base + activeBoost).toDouble(),
-            margin: const EdgeInsets.symmetric(horizontal: 4),
+            margin: const EdgeInsets.symmetric(horizontal: 3),
             decoration: BoxDecoration(
               color: isActive
                   ? AppColors.secondary
-                  : AppColors.secondary.withValues(alpha: 0.26),
+                  : AppColors.secondary.withOpacity(0.26),
               borderRadius: BorderRadius.circular(999),
             ),
           );
@@ -1056,7 +1231,7 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
         color: const Color(0xFFFFF7ED),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: const Color(0xFFF59E0B).withValues(alpha: 0.3),
+          color: const Color(0xFFF59E0B).withOpacity(0.3),
         ),
       ),
       child: Row(
@@ -1079,99 +1254,6 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
     );
   }
 
-  Widget _buildControls() {
-    final canReplay =
-        _currentQuestion != null &&
-        !_finished &&
-        _phase != _VoiceInterviewPhase.listening &&
-        _phase != _VoiceInterviewPhase.processing;
-    final isListening = _phase == _VoiceInterviewPhase.listening;
-    final canUseMic =
-        isListening || (_phase == _VoiceInterviewPhase.ready && !_finished);
-
-    return Column(
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Tooltip(
-              message: 'Nghe lại câu hỏi',
-              child: IconButton.filledTonal(
-                onPressed: canReplay ? _replayCurrentQuestion : null,
-                icon: const Icon(Icons.replay_rounded),
-                color: AppColors.secondary,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 18),
-        Semantics(
-          button: true,
-          label: isListening ? 'Dừng và gửi câu trả lời' : 'Bắt đầu trả lời',
-          child: SizedBox(
-            width: 96,
-            height: 96,
-            child: ElevatedButton(
-              onPressed: canUseMic ? _handleMicPressed : null,
-              style: ElevatedButton.styleFrom(
-                shape: const CircleBorder(),
-                backgroundColor: isListening ? Colors.red : AppColors.secondary,
-                disabledBackgroundColor: Colors.grey[300],
-                foregroundColor: Colors.white,
-                padding: EdgeInsets.zero,
-                elevation: canUseMic ? 8 : 0,
-              ),
-              child: Icon(
-                isListening ? Icons.stop_rounded : Icons.mic_rounded,
-                size: 42,
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
-        Text(
-          isListening
-              ? 'Dừng và gửi'
-              : _phase == _VoiceInterviewPhase.ready
-              ? 'Bấm để trả lời'
-              : 'Đợi AI hoàn tất',
-          style: TextStyle(
-            color: canUseMic ? const Color(0xFF111827) : Colors.grey[600],
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ],
-    );
-  }
-
-  String get _headlineText {
-    return switch (_phase) {
-      _VoiceInterviewPhase.connecting => 'Đang kết nối AI',
-      _VoiceInterviewPhase.speaking => 'AI đang đặt câu hỏi',
-      _VoiceInterviewPhase.ready => 'Đến lượt bạn trả lời',
-      _VoiceInterviewPhase.listening => 'Đang nghe bạn nói',
-      _VoiceInterviewPhase.processing => 'AI đang xử lý câu trả lời',
-      _VoiceInterviewPhase.finished => 'Phỏng vấn hoàn tất',
-    };
-  }
-
-  String get _supportingText {
-    return switch (_phase) {
-      _VoiceInterviewPhase.connecting =>
-        'Hệ thống đang chuẩn bị phiên phỏng vấn cho vị trí này.',
-      _VoiceInterviewPhase.speaking =>
-        'Hãy nghe hết câu hỏi, sau đó bấm microphone để trả lời bằng giọng nói.',
-      _VoiceInterviewPhase.ready =>
-        'Bấm microphone và trả lời tự nhiên trong một lượt. Nội dung được xử lý ẩn để gửi tới AI.',
-      _VoiceInterviewPhase.listening =>
-        'Nói rõ ràng và bấm lại nút khi bạn đã trả lời xong.',
-      _VoiceInterviewPhase.processing =>
-        'Câu trả lời đang được gửi đến phiên phỏng vấn. Vui lòng chờ trong giây lát.',
-      _VoiceInterviewPhase.finished =>
-        'Hệ thống đã tổng hợp kết quả phỏng vấn của bạn.',
-    };
-  }
-
   IconData get _orbIcon {
     return switch (_phase) {
       _VoiceInterviewPhase.speaking => Icons.volume_up_rounded,
@@ -1180,6 +1262,28 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
       _VoiceInterviewPhase.processing => Icons.auto_awesome_rounded,
       _VoiceInterviewPhase.finished => Icons.check_rounded,
       _VoiceInterviewPhase.connecting => Icons.graphic_eq_rounded,
+    };
+  }
+
+  String get _headlineText {
+    return switch (_phase) {
+      _VoiceInterviewPhase.connecting => 'Đang kết nối phòng phỏng vấn...',
+      _VoiceInterviewPhase.speaking => 'AI đang nói...',
+      _VoiceInterviewPhase.ready => 'Nhấn nút micro để trả lời',
+      _VoiceInterviewPhase.listening => '🎙️ Đang lắng nghe bạn...',
+      _VoiceInterviewPhase.processing => 'AI đang xử lý...',
+      _VoiceInterviewPhase.finished => 'Phỏng vấn hoàn tất',
+    };
+  }
+
+  String get _supportingText {
+    return switch (_phase) {
+      _VoiceInterviewPhase.connecting => 'Vui lòng chờ trong giây lát',
+      _VoiceInterviewPhase.speaking => 'Hãy lắng nghe câu hỏi của AI',
+      _VoiceInterviewPhase.ready => 'Bấm nút micro bên dưới để bắt đầu nói',
+      _VoiceInterviewPhase.listening => 'Nói rõ ràng câu trả lời của bạn',
+      _VoiceInterviewPhase.processing => 'Vui lòng đợi trong giây lát',
+      _VoiceInterviewPhase.finished => 'Hệ thống đã tổng hợp kết quả của bạn',
     };
   }
 }

@@ -16,6 +16,8 @@ class AuthUserProfile {
     this.title,
     this.bio,
     this.skills,
+    this.education,
+    this.experience,
     this.profileImage,
     this.savedJobs,
     this.createdAt,
@@ -41,6 +43,8 @@ class AuthUserProfile {
   final String? title;
   final String? bio;
   final List<String>? skills;
+  final String? education;
+  final String? experience;
   final String? profileImage;
   final List<String>? savedJobs;
   final DateTime? createdAt;
@@ -66,6 +70,8 @@ class AuthUserProfile {
     String? title,
     String? bio,
     List<String>? skills,
+    String? education,
+    String? experience,
     String? profileImage,
     List<String>? savedJobs,
     DateTime? createdAt,
@@ -91,6 +97,8 @@ class AuthUserProfile {
       title: title ?? this.title,
       bio: bio ?? this.bio,
       skills: skills ?? this.skills,
+      education: education ?? this.education,
+      experience: experience ?? this.experience,
       profileImage: profileImage ?? this.profileImage,
       savedJobs: savedJobs ?? this.savedJobs,
       createdAt: createdAt ?? this.createdAt,

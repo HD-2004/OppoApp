@@ -22,7 +22,14 @@ bool get isLocalWeb {
 
 String resolveUrl(String originalUrl) {
   if (isLocalWeb) {
-    // 1. Candidate profile / EKYC / CV AI: sd7ds72m8g.execute-api.ap-southeast-1.amazonaws.com/prod
+    // 0. CV AI (Local Python Backend)
+    if (originalUrl.contains('sd7ds72m8g.execute-api.ap-southeast-1.amazonaws.com/prod/api/v1')) {
+      return originalUrl.replaceFirst(
+        'https://sd7ds72m8g.execute-api.ap-southeast-1.amazonaws.com/prod',
+        'http://localhost:8000',
+      );
+    }
+    // 1. Candidate profile / EKYC: sd7ds72m8g.execute-api.ap-southeast-1.amazonaws.com/prod
     if (originalUrl.contains('sd7ds72m8g.execute-api.ap-southeast-1.amazonaws.com/prod')) {
       return originalUrl.replaceFirst(
         'https://sd7ds72m8g.execute-api.ap-southeast-1.amazonaws.com/prod',

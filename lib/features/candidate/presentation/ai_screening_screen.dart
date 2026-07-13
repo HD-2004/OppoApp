@@ -181,6 +181,7 @@ Nhiệm vụ: ${widget.job.responsibilities ?? "Phát triển và bảo trì cá
         jobId: widget.job.idJob,
         cvUrl: widget.cvUrl,
         cvFilename: widget.cvFileName,
+        cvS3Key: widget.cvS3Key,
         notification: ApplicationNotificationDetails(
           employerId: widget.job.employerId,
           candidateId: user.userId,

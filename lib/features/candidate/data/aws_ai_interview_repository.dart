@@ -86,7 +86,7 @@ class AwsAiInterviewRepository implements AiInterviewRepository {
 
     final response = await _client
         .post(
-          Uri.parse('$_baseUrl$path'),
+          Uri.parse(resolveUrl('$_baseUrl$path')),
           headers: {
             'Content-Type': 'application/json',
             'Authorization': 'Bearer $token',

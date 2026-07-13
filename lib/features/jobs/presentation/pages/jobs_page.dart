@@ -201,6 +201,7 @@ class _JobsPageState extends ConsumerState<JobsPage> {
             jobId: job.idJob,
             cvUrl: cvUrl,
             cvFilename: cvFilename,
+            cvS3Key: cvS3Key,
             notification: ApplicationNotificationDetails(
               employerId: job.employerId,
               candidateId: user.userId,
