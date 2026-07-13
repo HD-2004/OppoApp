@@ -15,6 +15,7 @@ import '../application/voice_rss_tts.dart';
 import '../data/aws_application_repository.dart';
 import '../domain/ai_interview_models.dart';
 import '../domain/job_post.dart';
+import 'tts_helper.dart';
 
 enum _VoiceInterviewPhase {
   connecting,
@@ -86,6 +87,9 @@ class _AIInterviewChatScreenState extends ConsumerState<AIInterviewChatScreen> {
     _playbackToken++;
     _speechToText.cancel();
     _flutterTts.stop();
+    if (TtsHelper.isSupported) {
+      TtsHelper.stop();
+    }
     unawaited(_voiceRssPlayer.dispose());
     super.dispose();
   }
@@ -142,6 +146,9 @@ class _AIInterviewChatScreenState extends ConsumerState<AIInterviewChatScreen> {
     await _speechToText.cancel();
     await _flutterTts.stop();
     await _voiceRssPlayer.stop();
+    if (TtsHelper.isSupported) {
+      TtsHelper.stop();
+    }
 
     if (!mounted) return;
     setState(() {
@@ -257,6 +264,9 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
     await _speechToText.cancel();
     await _flutterTts.stop();
     await _voiceRssPlayer.stop();
+    if (TtsHelper.isSupported) {
+      TtsHelper.stop();
+    }
 
     if (!mounted) return;
     setState(() {
@@ -266,6 +276,25 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
     });
 
     try {
+      if (TtsHelper.isSupported) {
+        TtsHelper.speak(
+          spokenQuestion,
+          onStart: () {
+            if (!mounted || _playbackToken != playbackToken) return;
+            setState(() {
+              _phase = _VoiceInterviewPhase.speaking;
+            });
+          },
+          onEnd: () {
+            if (!mounted || _playbackToken != playbackToken) return;
+            setState(() {
+              _phase = _VoiceInterviewPhase.ready;
+            });
+          },
+        );
+        return;
+      }
+
       final spokeWithVoiceRss = await _speakQuestionWithVoiceRss(
         spokenQuestion,
         playbackToken,
@@ -416,6 +445,9 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
     _playbackToken++;
     await _flutterTts.stop();
     await _voiceRssPlayer.stop();
+    if (TtsHelper.isSupported) {
+      TtsHelper.stop();
+    }
 
     final localeId = await _preferredSpeechLocale();
     if (!mounted) return;
@@ -507,6 +539,9 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
     _playbackToken++;
     await _flutterTts.stop();
     await _voiceRssPlayer.stop();
+    if (TtsHelper.isSupported) {
+      TtsHelper.stop();
+    }
 
     await _submitSpokenAnswer(answer);
   }
