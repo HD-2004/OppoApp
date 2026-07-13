@@ -3,6 +3,7 @@ import 'package:amplify_auth_cognito/amplify_auth_cognito.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import 'package:http/http.dart' as http;
 
+import '../../../../core/config/api_config.dart';
 import '../../domain/entities/linked_bank_account.dart';
 import '../../domain/entities/wallet.dart';
 import '../../domain/entities/wallet_transaction.dart';
@@ -46,6 +47,7 @@ class ApiWalletRepository implements WalletRepository {
   final String _resolvedNotificationsBaseUrl;
 
   // In-memory cache to prevent duplicate HTTP requests in parallel _load calls
+  static final Set<String> _invalidJobIds = {};
   Map<String, dynamic>? _cachedProfile;
   List<dynamic>? _cachedApps;
   List<dynamic>? _cachedJobs;
@@ -100,7 +102,7 @@ class ApiWalletRepository implements WalletRepository {
   ) async {
     try {
       final response = await _client.get(
-        Uri.parse('$_resolvedProfileBaseUrl/profile/$userId'),
+        Uri.parse(resolveUrl('$_resolvedProfileBaseUrl/profile/$userId')),
         headers: _buildHeaders(token),
       );
       if (response.statusCode == 200) {
@@ -119,7 +121,7 @@ class ApiWalletRepository implements WalletRepository {
     try {
       final response = await _client.get(
         Uri.parse(
-          '$_resolvedApplicationsBaseUrl/applications/candidate/$userId',
+          resolveUrl('$_resolvedApplicationsBaseUrl/applications/candidate/$userId'),
         ),
         headers: _buildHeaders(token),
       );
@@ -138,7 +140,7 @@ class ApiWalletRepository implements WalletRepository {
   Future<List<dynamic>> _fetchQuickJobs() async {
     try {
       final response = await _client.get(
-        Uri.parse('$_resolvedQuickJobsBaseUrl/quick-jobs'),
+        Uri.parse(resolveUrl('$_resolvedQuickJobsBaseUrl/quick-jobs')),
         headers: const {'Accept': 'application/json'},
       );
       if (response.statusCode == 200) {
@@ -154,7 +156,7 @@ class ApiWalletRepository implements WalletRepository {
     // Fallback to active quick jobs
     try {
       final response = await _client.get(
-        Uri.parse('$_resolvedQuickJobsBaseUrl/quick-jobs/active'),
+        Uri.parse(resolveUrl('$_resolvedQuickJobsBaseUrl/quick-jobs/active')),
         headers: const {'Accept': 'application/json'},
       );
       if (response.statusCode == 200) {
@@ -173,7 +175,7 @@ class ApiWalletRepository implements WalletRepository {
     try {
       final response = await _client.get(
         Uri.parse(
-          '$_resolvedQuickJobsBaseUrl/quick-jobs/${Uri.encodeComponent(jobId)}',
+          resolveUrl('$_resolvedQuickJobsBaseUrl/quick-jobs/${Uri.encodeComponent(jobId)}'),
         ),
         headers: const {'Accept': 'application/json'},
       );
@@ -184,6 +186,8 @@ class ApiWalletRepository implements WalletRepository {
             body['data'] is Map) {
           return Map<String, dynamic>.from(body['data'] as Map);
         }
+      } else if (response.statusCode == 404) {
+        _invalidJobIds.add(jobId);
       }
     } catch (error) {
       safePrint('Error fetching completed quick job $jobId: $error');
@@ -197,7 +201,7 @@ class ApiWalletRepository implements WalletRepository {
     Map<String, dynamic> updates,
   ) async {
     final response = await _client.put(
-      Uri.parse('$_resolvedProfileBaseUrl/profile/$userId'),
+      Uri.parse(resolveUrl('$_resolvedProfileBaseUrl/profile/$userId')),
       headers: _buildHeaders(token),
       body: jsonEncode(updates),
     );
@@ -211,7 +215,7 @@ class ApiWalletRepository implements WalletRepository {
   Future<void> _sendNotificationToAdmin(Map<String, dynamic> payload) async {
     try {
       final response = await _client.post(
-        Uri.parse('$_resolvedNotificationsBaseUrl/notifications'),
+        Uri.parse(resolveUrl('$_resolvedNotificationsBaseUrl/notifications')),
         headers: {
           'Content-Type': 'application/json; charset=utf-8',
           'Accept': 'application/json',
@@ -255,7 +259,7 @@ class ApiWalletRepository implements WalletRepository {
         .whereType<Map>()
         .where((app) => app['status']?.toString().toLowerCase() == 'completed')
         .map((app) => app['jobId']?.toString() ?? '')
-        .where((id) => id.isNotEmpty && !knownJobIds.contains(id))
+        .where((id) => id.isNotEmpty && !knownJobIds.contains(id) && !_invalidJobIds.contains(id))
         .toSet();
 
     if (missingCompletedJobIds.isNotEmpty) {

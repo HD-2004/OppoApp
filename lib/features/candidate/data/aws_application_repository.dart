@@ -5,6 +5,7 @@ import 'package:amplify_flutter/amplify_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 
+import '../../../core/config/api_config.dart';
 import '../../../shared/platform/network_status.dart';
 import '../domain/application_repository.dart';
 
@@ -85,7 +86,7 @@ class AwsApplicationRepository implements ApplicationRepository {
     try {
       final token = await _getAuthToken();
       final response = await http.get(
-        Uri.parse('$_cvBaseUrl/cv/$userId'),
+        Uri.parse(resolveUrl('$_cvBaseUrl/cv/$userId')),
         headers: _buildHeaders(token),
       );
 
@@ -144,7 +145,7 @@ class AwsApplicationRepository implements ApplicationRepository {
 
     final token = await _getAuthToken();
     final response = await http.post(
-      Uri.parse('$_cvBaseUrl/cv/upload'),
+      Uri.parse(resolveUrl('$_cvBaseUrl/cv/upload')),
       headers: _buildHeaders(token),
       body: jsonEncode({
         'userId': userId,
@@ -176,7 +177,7 @@ class AwsApplicationRepository implements ApplicationRepository {
         : '$_cvBaseUrl/cv/$userId/$encodedCvId';
 
     final response = await http.delete(
-      Uri.parse(url),
+      Uri.parse(resolveUrl(url)),
       headers: _buildHeaders(token),
     );
 
@@ -210,7 +211,7 @@ class AwsApplicationRepository implements ApplicationRepository {
     }
 
     final response = await http.post(
-      Uri.parse('$_applicationsBaseUrl/applications'),
+      Uri.parse(resolveUrl('$_applicationsBaseUrl/applications')),
       headers: _buildHeaders(token),
       body: jsonEncode(requestBody),
     );
@@ -253,8 +254,10 @@ class AwsApplicationRepository implements ApplicationRepository {
 
     final response = await http.put(
       Uri.parse(
-        '$_applicationsBaseUrl/applications/'
-        '${Uri.encodeComponent(applicationId)}/status',
+        resolveUrl(
+          '$_applicationsBaseUrl/applications/'
+          '${Uri.encodeComponent(applicationId)}/status',
+        ),
       ),
       headers: _buildHeaders(token),
       body: jsonEncode(
@@ -285,7 +288,7 @@ class AwsApplicationRepository implements ApplicationRepository {
 
     try {
       final response = await http.post(
-        Uri.parse('$_notificationsBaseUrl/notifications'),
+        Uri.parse(resolveUrl('$_notificationsBaseUrl/notifications')),
         headers: const {
           'Content-Type': 'application/json; charset=utf-8',
           'Accept': 'application/json',
@@ -361,7 +364,7 @@ class AwsApplicationRepository implements ApplicationRepository {
       final token = await _getAuthToken();
       final response = await http
           .get(
-            Uri.parse('$_applicationsBaseUrl/applications/candidate/$userId'),
+            Uri.parse(resolveUrl('$_applicationsBaseUrl/applications/candidate/$userId')),
             headers: _buildHeaders(token),
           )
           .timeout(const Duration(seconds: 12));
@@ -397,7 +400,7 @@ class AwsApplicationRepository implements ApplicationRepository {
     }
 
     final response = await http.put(
-      Uri.parse('$_applicationsBaseUrl/applications/$applicationId/status'),
+      Uri.parse(resolveUrl('$_applicationsBaseUrl/applications/$applicationId/status')),
       headers: _buildHeaders(token),
       body: jsonEncode(buildCompletionConfirmationPayload(confirmedAt)),
     );
@@ -423,7 +426,7 @@ class AwsApplicationRepository implements ApplicationRepository {
     }
 
     final response = await http.put(
-      Uri.parse('$_applicationsBaseUrl/applications/$applicationId/status'),
+      Uri.parse(resolveUrl('$_applicationsBaseUrl/applications/$applicationId/status')),
       headers: _buildHeaders(token),
       body: jsonEncode(buildCandidateRatingPayload(candidateRating)),
     );
@@ -450,7 +453,7 @@ class AwsApplicationRepository implements ApplicationRepository {
     }
 
     final response = await http.put(
-      Uri.parse('$_applicationsBaseUrl/applications/$applicationId/status'),
+      Uri.parse(resolveUrl('$_applicationsBaseUrl/applications/$applicationId/status')),
       headers: _buildHeaders(token),
       body: jsonEncode({'status': status, 'chatMessages': chatMessages}),
     );
@@ -474,7 +477,7 @@ class AwsApplicationRepository implements ApplicationRepository {
     }
 
     final response = await http.put(
-      Uri.parse('$_applicationsBaseUrl/applications/$applicationId/status'),
+      Uri.parse(resolveUrl('$_applicationsBaseUrl/applications/$applicationId/status')),
       headers: _buildHeaders(token),
       body: jsonEncode(buildChatArchivePayload(archivedAt)),
     );

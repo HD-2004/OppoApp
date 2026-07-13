@@ -4,6 +4,7 @@ import 'package:amplify_auth_cognito/amplify_auth_cognito.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import 'package:http/http.dart' as http;
 
+import '../../../../core/config/api_config.dart';
 import '../../../../shared/platform/network_status.dart';
 
 typedef NotificationTokenProvider = Future<String?> Function();
@@ -48,7 +49,7 @@ class NotificationRemoteDataSource {
       if (nextToken != null) 'nextToken': nextToken,
     };
     final uri = Uri.parse(
-      '$_baseUrl/notifications',
+      resolveUrl('$_baseUrl/notifications'),
     ).replace(queryParameters: query);
     final response = await _client.get(uri, headers: await _headers());
     final decoded = _decodeResponse(response);
@@ -63,7 +64,7 @@ class NotificationRemoteDataSource {
   Future<void> markAsRead(String notificationId) async {
     _ensureOnline();
     final uri = Uri.parse(
-      '$_baseUrl/notifications/${Uri.encodeComponent(notificationId)}',
+      resolveUrl('$_baseUrl/notifications/${Uri.encodeComponent(notificationId)}'),
     );
     final response = await _client.put(
       uri,
@@ -77,7 +78,7 @@ class NotificationRemoteDataSource {
     _ensureOnline();
     final userId = await _requireCurrentUserId();
     final uri = Uri.parse(
-      '$_baseUrl/notifications/mark-all-read/${Uri.encodeComponent(userId)}',
+      resolveUrl('$_baseUrl/notifications/mark-all-read/${Uri.encodeComponent(userId)}'),
     );
     final response = await _client.put(uri, headers: await _headers());
     _decodeResponse(response);
@@ -86,7 +87,7 @@ class NotificationRemoteDataSource {
   Future<void> archive(String notificationId) async {
     _ensureOnline();
     final uri = Uri.parse(
-      '$_baseUrl/notifications/${Uri.encodeComponent(notificationId)}',
+      resolveUrl('$_baseUrl/notifications/${Uri.encodeComponent(notificationId)}'),
     );
     final response = await _client.delete(uri, headers: await _headers());
     _decodeResponse(response);

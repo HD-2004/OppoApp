@@ -132,6 +132,10 @@ class InterviewAnswerRequest(BaseModel):
 
 class InterviewReport(BaseModel):
     total_score: int = Field(..., description="Tổng điểm đánh giá cuộc phỏng vấn từ 0 đến 100")
+    past_experience_score: int = Field(..., description="Điểm đánh giá về kinh nghiệm làm việc ngành F&B (0-100)")
+    situation_handling_score: int = Field(..., description="Điểm giải quyết và xử lý tình huống thực tế (0-100)")
+    operations_score: int = Field(..., description="Điểm kiến thức quy trình vận hành F&B và tác phong làm việc (0-100)")
+    custom_questions_score: int = Field(..., description="Điểm trả lời các câu hỏi riêng từ Employer (0-100)")
     strengths: list[str] = Field(..., description="Danh sách điểm mạnh rút ra từ cuộc phỏng vấn")
     weaknesses: list[str] = Field(..., description="Danh sách điểm yếu hoặc kỹ năng cần cải thiện")
     recommend_to_employer: bool = Field(..., description="Có khuyên dùng/gửi CV cho Employer không")

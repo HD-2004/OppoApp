@@ -3,6 +3,7 @@ import 'package:amplify_auth_cognito/amplify_auth_cognito.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import 'package:http/http.dart' as http;
 
+import '../../../core/config/api_config.dart';
 import '../../../shared/domain/app_role.dart';
 import '../domain/auth_user_profile.dart';
 import 'user_profile_repository.dart';
@@ -139,7 +140,7 @@ class AwsUserProfileRepository implements UserProfileRepository {
   Future<AuthUserProfile?> getByUserId(String userId) async {
     final token = await _getAuthToken();
     final response = await _client.get(
-      Uri.parse('$_profileBaseUrl/profile/$userId'),
+      Uri.parse(resolveUrl('$_profileBaseUrl/profile/$userId')),
       headers: _buildHeaders(token),
     );
 
@@ -164,7 +165,7 @@ class AwsUserProfileRepository implements UserProfileRepository {
     final token = await _getAuthToken();
     final encodedEmail = Uri.encodeComponent(email);
     final response = await _client.get(
-      Uri.parse('$_profileBaseUrl/profile/email/$encodedEmail'),
+      Uri.parse(resolveUrl('$_profileBaseUrl/profile/email/$encodedEmail')),
       headers: _buildHeaders(token),
     );
 
@@ -226,7 +227,7 @@ class AwsUserProfileRepository implements UserProfileRepository {
     );
 
     final response = await _client.post(
-      Uri.parse('$_profileBaseUrl/profile'),
+      Uri.parse(resolveUrl('$_profileBaseUrl/profile')),
       headers: _buildHeaders(token),
       body: jsonEncode(payload),
     );
@@ -251,7 +252,7 @@ class AwsUserProfileRepository implements UserProfileRepository {
   }) async {
     final token = await _getAuthToken();
     final response = await _client.put(
-      Uri.parse('$_profileBaseUrl/profile/$userId'),
+      Uri.parse(resolveUrl('$_profileBaseUrl/profile/$userId')),
       headers: _buildHeaders(token),
       body: jsonEncode({
         'kycCompleted': completed,
@@ -317,7 +318,7 @@ class AwsUserProfileRepository implements UserProfileRepository {
     }
 
     final response = await _client.put(
-      Uri.parse('$_profileBaseUrl/profile/$userId'),
+      Uri.parse(resolveUrl('$_profileBaseUrl/profile/$userId')),
       headers: _buildHeaders(token),
       body: encodedPayload,
     );
@@ -373,7 +374,7 @@ class AwsUserProfileRepository implements UserProfileRepository {
     try {
       final submittedAtIso = submittedAt.toUtc().toIso8601String();
       final response = await _client.put(
-        Uri.parse('$_profileBaseUrl/profile/$userId'),
+        Uri.parse(resolveUrl('$_profileBaseUrl/profile/$userId')),
         headers: _buildHeaders(token),
         body: jsonEncode({
           'verificationStatus': 'SUBMITTED',
@@ -418,7 +419,7 @@ class AwsUserProfileRepository implements UserProfileRepository {
     required DateTime submittedAt,
   }) async {
     final response = await _client.post(
-      Uri.parse('$_notificationsBaseUrl/notifications'),
+      Uri.parse(resolveUrl('$_notificationsBaseUrl/notifications')),
       headers: const {
         'Content-Type': 'application/json; charset=utf-8',
         'Accept': 'application/json',
@@ -458,7 +459,7 @@ class AwsUserProfileRepository implements UserProfileRepository {
   }) async {
     final token = await _getAuthToken();
     final response = await _client.put(
-      Uri.parse('$_profileBaseUrl/profile/$userId'),
+      Uri.parse(resolveUrl('$_profileBaseUrl/profile/$userId')),
       headers: _buildHeaders(token),
       body: jsonEncode({
         'isActive': isActive,
