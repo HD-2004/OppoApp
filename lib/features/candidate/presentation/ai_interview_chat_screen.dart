@@ -60,7 +60,6 @@ class _AIInterviewChatScreenState extends ConsumerState<AIInterviewChatScreen> {
   _VoiceInterviewPhase _phase = _VoiceInterviewPhase.connecting;
   bool _speechReady = false;
   bool _ttsConfigured = false;
-  bool _hasSubmittedCurrentUtterance = false;
   bool _finished = false;
   int _questionNumber = 0;
   int _playbackToken = 0;
@@ -155,7 +154,6 @@ class _AIInterviewChatScreenState extends ConsumerState<AIInterviewChatScreen> {
       _pendingAnswer = '';
       _questionNumber = 0;
       _soundLevel = 0;
-      _hasSubmittedCurrentUtterance = false;
     });
 
     try {
@@ -426,7 +424,6 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
       _pendingAnswer = '';
       _noticeMessage = null;
       _soundLevel = 0;
-      _hasSubmittedCurrentUtterance = false;
     });
 
     try {

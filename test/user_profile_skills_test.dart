@@ -101,6 +101,7 @@ class _FakeApplicationRepository implements ApplicationRepository {
     required String jobId,
     required String cvUrl,
     required String cvFilename,
+    String? cvS3Key,
     required ApplicationNotificationDetails notification,
     Map<String, dynamic>? extraFields,
   }) async {
