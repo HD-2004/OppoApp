@@ -917,7 +917,7 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.03),
+                color: Colors.black.withValues(alpha: 0.03),
                 blurRadius: 8,
                 offset: const Offset(0, 4),
               ),
@@ -946,9 +946,9 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
                     height: 140,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: AppColors.secondary.withOpacity(0.08),
+                      color: AppColors.secondary.withValues(alpha: 0.08),
                       border: Border.all(
-                        color: AppColors.secondary.withOpacity(0.2),
+                        color: AppColors.secondary.withValues(alpha: 0.2),
                         width: 3,
                       ),
                     ),
@@ -1081,11 +1081,11 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
           shape: BoxShape.circle,
           color: active
               ? const Color(0xFFF8FAFC)
-              : const Color(0xFFCBD5E1).withOpacity(0.3),
+              : const Color(0xFFCBD5E1).withValues(alpha: 0.3),
           border: Border.all(
             color: active
                 ? const Color(0xFFE2E8F0)
-                : const Color(0xFFE2E8F0).withOpacity(0.5),
+                : const Color(0xFFE2E8F0).withValues(alpha: 0.5),
             width: 1.5,
           ),
         ),
@@ -1113,7 +1113,7 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
         shape: BoxShape.circle,
         boxShadow: [
           BoxShadow(
-            color: (isListening ? Colors.red : AppColors.secondary).withOpacity(
+            color: (isListening ? Colors.red : AppColors.secondary).withValues(alpha:
               disabled ? 0.05 : 0.25,
             ),
             blurRadius: 16,
@@ -1147,7 +1147,7 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
         boxShadow: enabled
             ? [
                 BoxShadow(
-                  color: const Color(0xFF10B981).withOpacity(0.25),
+                  color: const Color(0xFF10B981).withValues(alpha: 0.25),
                   blurRadius: 12,
                   offset: const Offset(0, 4),
                 ),
@@ -1211,7 +1211,7 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
             decoration: BoxDecoration(
               color: isActive
                   ? AppColors.secondary
-                  : AppColors.secondary.withOpacity(0.26),
+                  : AppColors.secondary.withValues(alpha: 0.26),
               borderRadius: BorderRadius.circular(999),
             ),
           );
@@ -1228,7 +1228,7 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
         color: const Color(0xFFFFF7ED),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: const Color(0xFFF59E0B).withOpacity(0.3),
+          color: const Color(0xFFF59E0B).withValues(alpha: 0.3),
         ),
       ),
       child: Row(

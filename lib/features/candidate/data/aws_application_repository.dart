@@ -206,6 +206,7 @@ class AwsApplicationRepository implements ApplicationRepository {
       'jobId': jobId,
       'cvUrl': cvUrl,
       'cvFilename': cvFilename,
+      // ignore: use_null_aware_elements
       if (cvS3Key != null) 'cvS3Key': cvS3Key,
     };
     if (extraFields != null) {

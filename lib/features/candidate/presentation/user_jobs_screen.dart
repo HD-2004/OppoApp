@@ -615,7 +615,7 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
                         );
                       }
                     } catch (e, stack) {
-                      print('Lỗi khi nộp đơn: $e\n$stack');
+                      debugPrint('Lỗi khi nộp đơn: $e\n$stack');
                       _showErrorDialog('Lỗi khi nộp đơn: $e');
                     }
                   },

@@ -184,7 +184,7 @@ class _UserHomeFeedScreenState extends ConsumerState<UserHomeFeedScreen> {
                         );
                       }
                     } catch (e, stack) {
-                      print('Lỗi khi nộp đơn: $e\n$stack');
+                      debugPrint('Lỗi khi nộp đơn: $e\n$stack');
                       _showErrorDialog('Lỗi khi nộp đơn: $e');
                     }
                   },
