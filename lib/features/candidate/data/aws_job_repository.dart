@@ -4,6 +4,7 @@ import 'dart:developer' as developer;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 
+import '../../../core/config/s3_asset_config.dart';
 import '../domain/job_post.dart';
 import '../domain/job_repository.dart';
 import '../domain/job_recruitment_window.dart';
@@ -256,9 +257,17 @@ class AwsJobRepository implements JobRepository {
       'profileImage',
     ]) {
       final value = _nullableString(job[key]);
-      if (value != null) return value;
+      if (value != null) return _resolveEmployerLogoUrl(value);
     }
     return null;
+  }
+
+  static String _resolveEmployerLogoUrl(String value) {
+    final uri = Uri.tryParse(value);
+    if (uri != null && uri.hasScheme) return value;
+
+    final key = value.replaceFirst(RegExp(r'^/+'), '');
+    return '${S3AssetConfig.baseUrl}/$key';
   }
 
   static String formatSalary(dynamic raw, {String fallback = 'Thỏa thuận'}) {

@@ -79,6 +79,55 @@ List<String> workShiftTimesForDate(JobPost job, DateTime date) {
   return times;
 }
 
+String displayWorkShiftTime(JobPost job) {
+  final explicitTime = _timeRangeFromStartEnd(job.startTime, job.endTime);
+  if (explicitTime != null) return explicitTime;
+
+  final shiftTime = job.shiftTime.trim();
+  final workHours = job.workHours?.trim();
+  final hasWeekdayMarkers =
+      shiftTime.contains('@') || (workHours?.contains('@') ?? false);
+  if (hasWeekdayMarkers) {
+    final times = <String>[];
+    for (final rule in workShiftRulesFromJob(job)) {
+      if (!times.contains(rule.timeRange)) {
+        times.add(rule.timeRange);
+      }
+    }
+    if (times.isNotEmpty) return times.join(' | ');
+  }
+
+  if (shiftTime.isNotEmpty) return shiftTime;
+  if (workHours != null && workHours.isNotEmpty) return workHours;
+  return '';
+}
+
+String displayWorkShiftDays(JobPost job) {
+  final exactDate = _parseDateOnly(job.workDate);
+  if (exactDate != null) {
+    return AppDateFormatter.formatVietnameseDate(exactDate);
+  }
+
+  final hasExplicitDays =
+      _hasWeekdayMarkers(job.shiftTime) ||
+      _hasWeekdayMarkers(job.workHours) ||
+      (job.workDays?.trim().isNotEmpty ?? false);
+  if (!hasExplicitDays) return '';
+
+  final labels = <String>[];
+  for (final rule in workShiftRulesFromJob(job)) {
+    final date = rule.date;
+    final label = date != null
+        ? AppDateFormatter.formatVietnameseDate(date)
+        : _formatWeekdayRanges(rule.weekdays);
+    if (label.isNotEmpty && !labels.contains(label)) {
+      labels.add(label);
+    }
+  }
+
+  return labels.join(' | ');
+}
+
 bool hasWorkScheduleOnDate(JobPost job, DateTime date) {
   return workShiftTimesForDate(job, date).isNotEmpty;
 }
@@ -197,6 +246,51 @@ String? _simpleTimeRange(String? raw) {
   final value = raw?.trim();
   if (value == null || value.isEmpty || value.contains('@')) return null;
   return value;
+}
+
+bool _hasWeekdayMarkers(String? raw) {
+  final value = raw?.trim();
+  return value != null && value.isNotEmpty && value.contains('@');
+}
+
+String _formatWeekdayRanges(Set<int> weekdays) {
+  if (weekdays.isEmpty) return '';
+
+  final sorted = weekdays.toList()..sort();
+  final ranges = <String>[];
+  var start = sorted.first;
+  var previous = start;
+
+  for (final current in sorted.skip(1)) {
+    if (current == previous + 1) {
+      previous = current;
+      continue;
+    }
+    ranges.add(_weekdayRangeLabel(start, previous));
+    start = current;
+    previous = current;
+  }
+  ranges.add(_weekdayRangeLabel(start, previous));
+
+  return ranges.join(', ');
+}
+
+String _weekdayRangeLabel(int start, int end) {
+  if (start == end) return _weekdayLabel(start);
+  return '${_weekdayLabel(start)} - ${_weekdayLabel(end)}';
+}
+
+String _weekdayLabel(int weekday) {
+  return switch (weekday) {
+    DateTime.monday => 'T2',
+    DateTime.tuesday => 'T3',
+    DateTime.wednesday => 'T4',
+    DateTime.thursday => 'T5',
+    DateTime.friday => 'T6',
+    DateTime.saturday => 'T7',
+    DateTime.sunday => 'CN',
+    _ => '',
+  };
 }
 
 DateTime? _parseDateOnly(String? raw) {

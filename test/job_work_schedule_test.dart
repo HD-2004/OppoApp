@@ -58,6 +58,23 @@ void main() {
 
       expect(firstScheduledWorkDate(job), DateTime(2026, 7, 2));
     });
+
+    test('formats explicit weekdays separately from display shift time', () {
+      final weekdayJob = _job(shiftTime: 'T2,T3,T4,T5,T6 @ 07:00 - 11:30');
+      final splitScheduleJob = _job(
+        shiftTime: 'T2,T3,T4,T5,T6 @ 07:00 - 12:00 | T7,CN @ 12:00 - 17:30',
+      );
+      final simpleShiftJob = _job(shiftTime: '07:00 - 12:00');
+
+      expect(displayWorkShiftDays(weekdayJob), 'T2 - T6');
+      expect(displayWorkShiftTime(weekdayJob), '07:00 - 11:30');
+      expect(displayWorkShiftDays(splitScheduleJob), 'T2 - T6 | T7 - CN');
+      expect(
+        displayWorkShiftTime(splitScheduleJob),
+        '07:00 - 12:00 | 12:00 - 17:30',
+      );
+      expect(displayWorkShiftDays(simpleShiftJob), isEmpty);
+    });
   });
 }
 

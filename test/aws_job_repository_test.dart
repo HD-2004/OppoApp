@@ -33,6 +33,17 @@ void main() {
       expect(logo, 'https://example.com/company.png');
     });
 
+    test('expands relative employer logo S3 keys to asset URLs', () {
+      final logo = AwsJobRepository.employerLogoFrom({
+        'companyLogo': 'employers/katinat-logo.png',
+      });
+
+      expect(
+        logo,
+        'https://opporeview-cv-storage.s3.ap-southeast-1.amazonaws.com/employers/katinat-logo.png',
+      );
+    });
+
     test('maps quick job salary and Vietnamese tags', () {
       final job = AwsJobRepository.mapQuickJob({
         'jobID': 'quick-1',

@@ -214,12 +214,8 @@ class _PolicyDetailScaffold extends StatelessWidget {
                     effectiveDate: policy.effectiveDate,
                   ),
                   const SizedBox(height: 20),
-                  SelectableText(
-                    displayContent,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      height: 1.55,
-                      color: AppColors.textSecondaryFor(context),
-                    ),
+                  SelectableText.rich(
+                    _buildPolicyDetailTextSpan(context, displayContent),
                   ),
                 ],
               ),
@@ -236,7 +232,103 @@ String _formatPolicyDetailContent(String content) {
       .where((line) => line.isNotEmpty)
       .toList(growable: false);
 
-  return lines.join('\n\n');
+  return _joinPolicyDetailLines(_collapsePolicyTables(lines));
+}
+
+List<String> _collapsePolicyTables(List<String> lines) {
+  final collapsed = <String>[];
+  for (var i = 0; i < lines.length; i++) {
+    if (_isProcessTableHeader(lines, i)) {
+      i += 3;
+      while (i + 2 < lines.length && _isPlainNumber(lines[i])) {
+        final step = lines[i].replaceAll('.', '');
+        final action = lines[i + 1];
+        final timing = lines[i + 2];
+        collapsed.add('$step. $action - $timing');
+        i += 3;
+      }
+      i--;
+      continue;
+    }
+    collapsed.add(lines[i]);
+  }
+  return collapsed;
+}
+
+bool _isProcessTableHeader(List<String> lines, int index) {
+  return index + 2 < lines.length &&
+      lines[index].toLowerCase() == 'bước' &&
+      lines[index + 1].toLowerCase() == 'hành động' &&
+      lines[index + 2].toLowerCase() == 'thời gian xử lý';
+}
+
+bool _isPlainNumber(String line) {
+  return RegExp(r'^\d+\.?$').hasMatch(line.trim());
+}
+
+String _joinPolicyDetailLines(List<String> lines) {
+  if (lines.isEmpty) return '';
+  final buffer = StringBuffer(lines.first);
+  for (var i = 1; i < lines.length; i++) {
+    buffer
+      ..write(_shouldCompactPolicyLine(lines[i - 1], lines[i]) ? '\n' : '\n\n')
+      ..write(lines[i]);
+  }
+  return buffer.toString();
+}
+
+bool _shouldCompactPolicyLine(String previous, String current) {
+  return _isCompactProcessItem(previous) && _isCompactProcessItem(current);
+}
+
+bool _isCompactProcessItem(String line) {
+  return RegExp(r'^\d+\.\s+.+\s-\s.+$').hasMatch(line.trim());
+}
+
+TextSpan _buildPolicyDetailTextSpan(BuildContext context, String content) {
+  final baseStyle = Theme.of(context).textTheme.bodyMedium?.copyWith(
+    height: 1.55,
+    color: AppColors.textSecondaryFor(context),
+  );
+  final boldStyle = baseStyle?.copyWith(
+    color: AppColors.textPrimaryFor(context),
+    fontWeight: FontWeight.w800,
+  );
+  final lines = content.split('\n\n');
+  return TextSpan(
+    style: baseStyle,
+    children: [
+      for (var i = 0; i < lines.length; i++) ...[
+        TextSpan(
+          text: lines[i],
+          style: _isPolicyEmphasisLine(lines[i]) ? boldStyle : baseStyle,
+        ),
+        if (i < lines.length - 1) const TextSpan(text: '\n\n'),
+      ],
+    ],
+  );
+}
+
+bool _isPolicyEmphasisLine(String value) {
+  final line = value.trim();
+  if (line.isEmpty) return false;
+  if (RegExp(r'^CHÍNH SÁCH\s+\d{2}:?$', caseSensitive: false).hasMatch(line)) {
+    return true;
+  }
+  if (RegExp(r'^\d+(?:\.\d+)*\.?\s+\S').hasMatch(line)) {
+    return true;
+  }
+  if (_isUppercaseHeading(line)) {
+    return true;
+  }
+  final labelMatch = RegExp(r'^[^:]{2,48}:').firstMatch(line);
+  return labelMatch != null;
+}
+
+bool _isUppercaseHeading(String line) {
+  return line.length >= 4 &&
+      line != line.toLowerCase() &&
+      line == line.toUpperCase();
 }
 
 class _PolicyMetaWrap extends StatelessWidget {

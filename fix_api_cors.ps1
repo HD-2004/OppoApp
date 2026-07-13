@@ -1,6 +1,8 @@
 # =============================================================================
-# Enables CORS on API Gateway (id: sd7ds72m8g) so Flutter Web can call the
-# profile and candidate endpoints from localhost/GitHub Pages.
+# Enables CORS on API Gateway so Flutter Web can call the shared website
+# backends from localhost/GitHub Pages:
+#   - sd7ds72m8g: profile and candidate endpoints
+#   - iuo7ofruu6: notifications endpoint used for admin requests
 #
 # PREREQUISITE: valid, non-expired AWS credentials in ~/.aws/credentials
 # or exported as env vars. Verify first with:
@@ -9,9 +11,11 @@
 $ErrorActionPreference = "Stop"
 
 $apiId = "sd7ds72m8g"
+$notificationsApiId = "iuo7ofruu6"
 $region = "ap-southeast-1"
 $stageName = "prod"
 $apiBaseUrl = "https://$apiId.execute-api.$region.amazonaws.com/$stageName"
+$notificationsApiBaseUrl = "https://$notificationsApiId.execute-api.$region.amazonaws.com"
 
 # HTTP API v2 rejects wildcard ports (for example, http://localhost:*), and
 # this API did not emit CORS response headers when AllowOrigins was "*".
@@ -26,6 +30,8 @@ $allowOrigins = @(
 )
 $allowOrigins += 64740..64760 | ForEach-Object { "http://localhost:$_" }
 $allowOrigins += 64740..64760 | ForEach-Object { "http://127.0.0.1:$_" }
+$allowOrigins += 62940..62980 | ForEach-Object { "http://localhost:$_" }
+$allowOrigins += 62940..62980 | ForEach-Object { "http://127.0.0.1:$_" }
 $allowOrigins += @(
     "https://hd-2004.github.io",
     "https://hd-2004.github.io/OppoApp",
@@ -83,12 +89,15 @@ function Test-CallerIdentity {
 }
 
 function Set-HttpApiCors {
-    param([Parameter(Mandatory = $true)] $HttpApi)
+    param(
+        [Parameter(Mandatory = $true)] $HttpApi,
+        [string] $TargetApiId = $apiId
+    )
 
     Write-Output "Detected HTTP API (v2): $($HttpApi.Name). Applying CORS..."
     Invoke-AwsCli -Arguments @(
         "apigatewayv2", "update-api",
-        "--api-id", $apiId,
+        "--api-id", $TargetApiId,
         "--region", $region,
         "--cors-configuration",
         "AllowOrigins=$allowOriginCsv,AllowMethods=$allowMethods,AllowHeaders=$allowHeaders,MaxAge=3600"
@@ -302,7 +311,7 @@ $httpApi = Invoke-AwsJson -Arguments @(
 ) -AllowFailure
 
 if ($httpApi -and $httpApi.ApiId -eq $apiId) {
-    Set-HttpApiCors -HttpApi $httpApi
+    Set-HttpApiCors -HttpApi $httpApi -TargetApiId $apiId
 } else {
     Write-Output "Not an HTTP API. Checking REST API..."
     $restApi = Invoke-AwsJson -Arguments @(
@@ -313,9 +322,23 @@ if ($httpApi -and $httpApi.ApiId -eq $apiId) {
     Set-RestApiCors -RestApi $restApi
 }
 
+$notificationsHttpApi = Invoke-AwsJson -Arguments @(
+    "apigatewayv2", "get-api",
+    "--api-id", $notificationsApiId,
+    "--region", $region
+) -AllowFailure
+
+if ($notificationsHttpApi -and $notificationsHttpApi.ApiId -eq $notificationsApiId) {
+    Set-HttpApiCors -HttpApi $notificationsHttpApi -TargetApiId $notificationsApiId
+} else {
+    Write-Output "Notifications API $notificationsApiId was not detected as HTTP API v2. Skipping automatic notifications CORS update."
+}
+
 Test-Preflight -Url "$apiBaseUrl/profile/$profileTestUserId" -Method "PUT"
 Test-Preflight -Url "$apiBaseUrl/profile/$profileTestUserId" -Method "GET"
 Test-Preflight -Url "$apiBaseUrl/candidate/recommend-jobs" -Method "POST"
+Test-Preflight -Url "$notificationsApiBaseUrl/notifications" -Method "POST"
+Test-Preflight -Url "$notificationsApiBaseUrl/notifications" -Method "GET"
 
 Write-Output ""
 Write-Output "CORS repair script finished. Confirm the responses above include Access-Control-Allow-Origin, Access-Control-Allow-Methods, and Access-Control-Allow-Headers."

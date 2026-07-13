@@ -71,5 +71,26 @@ Tiêu chuẩn: Tuân thủ Luật An ninh mạng và Nghị định 13/2023/NĐ-
         'VI PHẠM & XỬ LÝ TÀI KHOẢN',
       ]),
     );
+    expect(document.policies.last.content, isNot(contains('BẠN VỪA BỊ ĐUỔI')));
+    expect(
+      document.policies.last.content,
+      isNot(contains('Tài liệu này có hiệu lực kể từ ngày ban hành')),
+    );
+  });
+
+  test('formats violation handling process as readable mobile list', () async {
+    final document = await const BundledPolicyRepository().loadPolicies();
+    final violationPolicy = document.policies.last;
+
+    expect(
+      violationPolicy.content,
+      contains(
+        '1. Tiếp nhận báo cáo/Hệ thống phát hiện vi phạm - Ngay lập tức',
+      ),
+    );
+    expect(
+      violationPolicy.content,
+      isNot(contains('Bước\nHành động\nThời gian xử lý')),
+    );
   });
 }

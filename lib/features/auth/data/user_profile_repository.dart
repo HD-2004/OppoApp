@@ -52,7 +52,10 @@ abstract class UserProfileRepository {
     List<String>? savedJobs,
   });
 
-  Future<AuthUserProfile> submitVerificationRequest({required String userId});
+  Future<AuthUserProfile> submitVerificationRequest({
+    required String userId,
+    AuthUserProfile? currentProfile,
+  });
 
   Future<AuthUserProfile> updateAvailability({
     required String userId,

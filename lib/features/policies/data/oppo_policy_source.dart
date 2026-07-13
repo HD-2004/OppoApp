@@ -473,24 +473,11 @@ Nội dung tin tuyển dụng chưa đầy đủ theo quy định.
 Hủy ca muộn lần đầu (chưa đến mức cảnh cáo chính thức).
 Không cập nhật trạng thái tin khi đã tuyển đủ người.
 2. Quy trình xử lý vi phạm
-Bước
-Hành động
-Thời gian xử lý
-1
-Tiếp nhận báo cáo/Hệ thống phát hiện vi phạm
-Ngay lập tức
-2
-Xem xét bằng chứng và xác minh thông tin từ các bên liên quan
-Trong 24 giờ làm việc
-3
-Ra quyết định xử lý theo phân loại vi phạm
-Trong 48 giờ làm việc
-4
-Thông báo quyết định đến người dùng vi phạm qua email + app
-Ngay sau khi có quyết định
-5
-Thực thi: nhắc nhở / tạm khóa / xóa tài khoản
-Ngay lập tức sau bước 4
+1. Tiếp nhận báo cáo/Hệ thống phát hiện vi phạm - Ngay lập tức
+2. Xem xét bằng chứng và xác minh thông tin từ các bên liên quan - Trong 24 giờ làm việc
+3. Ra quyết định xử lý theo phân loại vi phạm - Trong 48 giờ làm việc
+4. Thông báo quyết định đến người dùng vi phạm qua email + app - Ngay sau khi có quyết định
+5. Thực thi: nhắc nhở / tạm khóa / xóa tài khoản - Ngay lập tức sau bước 4
 
 3. Khiếu nại quyết định xử lý
 Người dùng có quyền khiếu nại quyết định xử lý tài khoản trong vòng 5 ngày làm việc kể từ ngày nhận thông báo.
@@ -505,10 +492,5 @@ Chọn loại vi phạm và mô tả ngắn gọn sự việc.
 Đính kèm bằng chứng nếu có (ảnh chụp màn hình, video...).
 
 Mọi báo cáo đều được xem xét nghiêm túc và bảo mật danh tính người báo cáo. Chúng mình cảm ơn bạn đã giúp Ốp Pờ trở thành nền tảng an toàn và tin cậy hơn!
-
-─────────────────────────────────────────────
-
-ỐP PỜ - BẠN VỪA BỊ ĐUỔI & ĐÃ CÓ ỐP PỜ LO
-Tài liệu này có hiệu lực kể từ ngày ban hành và được cập nhật theo từng phiên bản.
 
 ''';

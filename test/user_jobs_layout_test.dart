@@ -511,7 +511,10 @@ class _FakeUserProfileRepository implements UserProfileRepository {
   }
 
   @override
-  Future<AuthUserProfile> submitVerificationRequest({required String userId}) {
+  Future<AuthUserProfile> submitVerificationRequest({
+    required String userId,
+    AuthUserProfile? currentProfile,
+  }) {
     throw UnimplementedError();
   }
 

@@ -278,7 +278,10 @@ class AuthController extends AsyncNotifier<AuthState> {
 
     final updated = await ref
         .read(authRepositoryProvider)
-        .submitVerificationRequest(userId: current.userId);
+        .submitVerificationRequest(
+          userId: current.userId,
+          currentProfile: current,
+        );
     state = AsyncData(AuthState.authenticated(updated));
   }
 

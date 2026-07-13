@@ -30,11 +30,75 @@ Map<String, dynamic> buildProfileCreatePayload({
   };
 }
 
+Map<String, dynamic> buildQuickJobActivationRequestNotification({
+  required AuthUserProfile user,
+  required DateTime submittedAt,
+}) {
+  final submittedAtIso = submittedAt.toUtc().toIso8601String();
+  final senderName = user.fullName.trim().isNotEmpty
+      ? user.fullName.trim()
+      : (user.email.trim().isNotEmpty ? user.email.trim() : 'Ứng viên');
+
+  return {
+    'type': 'quick_job_activation_request',
+    'title': 'Yêu cầu kích hoạt Công việc tuyển gấp',
+    'titleEn': 'Urgent jobs activation request',
+    'message':
+        '$senderName đã gửi yêu cầu kích hoạt Công việc tuyển gấp và đang chờ admin duyệt.',
+    'messageEn':
+        '$senderName requested urgent jobs activation and is waiting for admin review.',
+    'recipientId': 'admin',
+    'recipientRole': 'admin',
+    'senderId': user.userId,
+    'senderName': senderName,
+    'data': {
+      'candidateId': user.userId,
+      'candidateName': senderName,
+      'candidateEmail': user.email,
+      'verificationStatus': 'SUBMITTED',
+      'verificationSubmittedAt': submittedAtIso,
+    },
+    'icon': 'shield',
+    'color': '#2563eb',
+    'actionUrl': '/admin/candidates',
+    'actionText': 'Duyệt yêu cầu',
+    'actionTextEn': 'Review request',
+  };
+}
+
 class AwsUserProfileRepository implements UserProfileRepository {
-  static const _apiBaseUrl =
+  AwsUserProfileRepository({
+    http.Client? client,
+    Future<String?> Function()? tokenProvider,
+    String profileBaseUrl = _defaultProfileBaseUrl,
+    String notificationsBaseUrl = _defaultNotificationsBaseUrl,
+    DateTime Function()? nowProvider,
+  }) : _client = client ?? http.Client(),
+       // ignore: prefer_initializing_formals
+       _tokenProvider = tokenProvider,
+       // ignore: prefer_initializing_formals
+       _profileBaseUrl = profileBaseUrl,
+       // ignore: prefer_initializing_formals
+       _notificationsBaseUrl = notificationsBaseUrl,
+       _nowProvider = nowProvider ?? DateTime.now;
+
+  static const _defaultProfileBaseUrl =
       'https://sd7ds72m8g.execute-api.ap-southeast-1.amazonaws.com/prod';
+  static const _defaultNotificationsBaseUrl =
+      'https://iuo7ofruu6.execute-api.ap-southeast-1.amazonaws.com';
+
+  final http.Client _client;
+  final Future<String?> Function()? _tokenProvider;
+  final String _profileBaseUrl;
+  final String _notificationsBaseUrl;
+  final DateTime Function() _nowProvider;
 
   Future<String?> _getAuthToken() async {
+    final tokenProvider = _tokenProvider;
+    if (tokenProvider != null) {
+      return tokenProvider();
+    }
+
     try {
       final cognitoPlugin = Amplify.Auth.getPlugin(
         AmplifyAuthCognito.pluginKey,
@@ -74,8 +138,8 @@ class AwsUserProfileRepository implements UserProfileRepository {
   @override
   Future<AuthUserProfile?> getByUserId(String userId) async {
     final token = await _getAuthToken();
-    final response = await http.get(
-      Uri.parse('$_apiBaseUrl/profile/$userId'),
+    final response = await _client.get(
+      Uri.parse('$_profileBaseUrl/profile/$userId'),
       headers: _buildHeaders(token),
     );
 
@@ -99,8 +163,8 @@ class AwsUserProfileRepository implements UserProfileRepository {
   Future<AuthUserProfile?> getByEmail(String email) async {
     final token = await _getAuthToken();
     final encodedEmail = Uri.encodeComponent(email);
-    final response = await http.get(
-      Uri.parse('$_apiBaseUrl/profile/email/$encodedEmail'),
+    final response = await _client.get(
+      Uri.parse('$_profileBaseUrl/profile/email/$encodedEmail'),
       headers: _buildHeaders(token),
     );
 
@@ -161,8 +225,8 @@ class AwsUserProfileRepository implements UserProfileRepository {
       createdAt: DateTime.now(),
     );
 
-    final response = await http.post(
-      Uri.parse('$_apiBaseUrl/profile'),
+    final response = await _client.post(
+      Uri.parse('$_profileBaseUrl/profile'),
       headers: _buildHeaders(token),
       body: jsonEncode(payload),
     );
@@ -186,8 +250,8 @@ class AwsUserProfileRepository implements UserProfileRepository {
     required bool completed,
   }) async {
     final token = await _getAuthToken();
-    final response = await http.put(
-      Uri.parse('$_apiBaseUrl/profile/$userId'),
+    final response = await _client.put(
+      Uri.parse('$_profileBaseUrl/profile/$userId'),
       headers: _buildHeaders(token),
       body: jsonEncode({
         'kycCompleted': completed,
@@ -252,8 +316,8 @@ class AwsUserProfileRepository implements UserProfileRepository {
       safePrint('Updating profile: payloadBytes=$payloadSize');
     }
 
-    final response = await http.put(
-      Uri.parse('$_apiBaseUrl/profile/$userId'),
+    final response = await _client.put(
+      Uri.parse('$_profileBaseUrl/profile/$userId'),
       headers: _buildHeaders(token),
       body: encodedPayload,
     );
@@ -285,29 +349,104 @@ class AwsUserProfileRepository implements UserProfileRepository {
   @override
   Future<AuthUserProfile> submitVerificationRequest({
     required String userId,
+    AuthUserProfile? currentProfile,
   }) async {
-    final token = await _getAuthToken();
-    final response = await http.put(
-      Uri.parse('$_apiBaseUrl/profile/$userId'),
-      headers: _buildHeaders(token),
-      body: jsonEncode({
-        'verificationStatus': 'SUBMITTED',
-        'verificationSubmittedAt': DateTime.now().toIso8601String(),
-        'updatedAt': DateTime.now().toIso8601String(),
-      }),
+    final submittedAt = _nowProvider();
+    final notificationProfile =
+        currentProfile ??
+        AuthUserProfile(
+          userId: userId,
+          username: userId,
+          role: AppRole.candidate,
+          email: '',
+          fullName: '',
+          kycCompleted: false,
+          profileCompleted: false,
+        );
+
+    await _sendQuickJobActivationRequest(
+      user: notificationProfile,
+      submittedAt: submittedAt,
     );
 
-    if (response.statusCode == 200) {
-      final body = jsonDecode(response.body);
-      if (body['success'] == true && body['data'] != null) {
-        final data = body['data'] as Map<String, dynamic>;
-        return _mapJsonToProfile(data, userId);
-      }
-    }
+    final token = await _getAuthToken();
+    try {
+      final submittedAtIso = submittedAt.toUtc().toIso8601String();
+      final response = await _client.put(
+        Uri.parse('$_profileBaseUrl/profile/$userId'),
+        headers: _buildHeaders(token),
+        body: jsonEncode({
+          'verificationStatus': 'SUBMITTED',
+          'verificationSubmittedAt': submittedAtIso,
+          'updatedAt': submittedAtIso,
+        }),
+      );
 
-    final updated = await getByUserId(userId);
-    if (updated != null) return updated;
-    throw Exception('Failed to submit verification request in DynamoDB');
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body);
+        if (body['success'] == true && body['data'] != null) {
+          final data = body['data'] as Map<String, dynamic>;
+          return _mapJsonToProfile(data, userId);
+        }
+      }
+
+      if (currentProfile != null) {
+        safePrint(
+          'Quick job activation notification sent, but profile status update '
+          'returned ${response.statusCode}: ${_truncateForLog(response.body)}',
+        );
+        return _submittedProfile(currentProfile, submittedAt);
+      }
+
+      final updated = await getByUserId(userId);
+      if (updated != null) return updated;
+      throw Exception('Failed to submit verification request in DynamoDB');
+    } catch (error) {
+      if (currentProfile != null) {
+        safePrint(
+          'Quick job activation notification sent, but profile status update '
+          'failed: $error',
+        );
+        return _submittedProfile(currentProfile, submittedAt);
+      }
+      rethrow;
+    }
+  }
+
+  Future<void> _sendQuickJobActivationRequest({
+    required AuthUserProfile user,
+    required DateTime submittedAt,
+  }) async {
+    final response = await _client.post(
+      Uri.parse('$_notificationsBaseUrl/notifications'),
+      headers: const {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Accept': 'application/json',
+      },
+      body: jsonEncode(
+        buildQuickJobActivationRequestNotification(
+          user: user,
+          submittedAt: submittedAt,
+        ),
+      ),
+    );
+
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw Exception(
+        'Không thể gửi yêu cầu đến admin '
+        '(HTTP ${response.statusCode}).',
+      );
+    }
+  }
+
+  AuthUserProfile _submittedProfile(
+    AuthUserProfile profile,
+    DateTime submittedAt,
+  ) {
+    return profile.copyWith(
+      verificationStatus: 'SUBMITTED',
+      updatedAt: submittedAt,
+    );
   }
 
   @override
@@ -318,8 +457,8 @@ class AwsUserProfileRepository implements UserProfileRepository {
     double? longitude,
   }) async {
     final token = await _getAuthToken();
-    final response = await http.put(
-      Uri.parse('$_apiBaseUrl/profile/$userId'),
+    final response = await _client.put(
+      Uri.parse('$_profileBaseUrl/profile/$userId'),
       headers: _buildHeaders(token),
       body: jsonEncode({
         'isActive': isActive,

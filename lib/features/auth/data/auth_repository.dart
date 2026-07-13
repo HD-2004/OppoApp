@@ -213,8 +213,14 @@ class AuthRepository {
     );
   }
 
-  Future<AuthUserProfile> submitVerificationRequest({required String userId}) {
-    return _userProfileRepository.submitVerificationRequest(userId: userId);
+  Future<AuthUserProfile> submitVerificationRequest({
+    required String userId,
+    AuthUserProfile? currentProfile,
+  }) {
+    return _userProfileRepository.submitVerificationRequest(
+      userId: userId,
+      currentProfile: currentProfile,
+    );
   }
 
   Future<AuthUserProfile> updateAvailability({

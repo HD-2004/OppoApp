@@ -151,14 +151,14 @@ void main() {
     expect(secondPageView.controller?.page, closeTo(1, 0.01));
   });
 
-  testWidgets('popular job card expands work shifts inline', (tester) async {
+  testWidgets('popular job card shows compact schedule line', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
           body: Center(
             child: SizedBox(
-              height: 352,
-              width: 286,
+              height: 430,
+              width: 328,
               child: JobCard(job: _multiShiftJob, onTap: () {}, onApply: () {}),
             ),
           ),
@@ -166,18 +166,16 @@ void main() {
       ),
     );
 
-    expect(find.text('T2 @ 06:30 - 11:00 | T5 @ 08:00 - 11:30'), findsNothing);
-    expect(find.text('10/07/2026'), findsOneWidget);
-    expect(find.text('Ca 1: 06:30 - 11:00'), findsOneWidget);
-    expect(find.text('Ca 2: 08:00 - 11:30'), findsOneWidget);
-    expect(find.text('Ca 3: 13:00 - 17:00'), findsNothing);
-    expect(find.text('Xem thêm...'), findsOneWidget);
-
-    await tester.tap(find.text('Xem thêm...'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Ca 3: 13:00 - 17:00'), findsOneWidget);
-    expect(find.text('Thu gọn'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    expect(
+      find.text('Thời gian: 06:30 - 11:00 | 08:00 - 11:30 | 13:00 - 17:00'),
+      findsOneWidget,
+    );
+    expect(find.text('Ngày làm: T2 | T5 | T7'), findsOneWidget);
+    expect(find.textContaining('@'), findsNothing);
+    expect(find.text('Hạn nộp: 12/07/2026'), findsOneWidget);
+    expect(find.text('Xem thêm...'), findsNothing);
+    expect(find.text('Thu gọn'), findsNothing);
   });
 
   testWidgets('popular job card hides undisclosed schedule placeholder', (
@@ -188,8 +186,8 @@ void main() {
         home: Scaffold(
           body: Center(
             child: SizedBox(
-              height: 352,
-              width: 286,
+              height: 430,
+              width: 328,
               child: JobCard(job: _shiftOnlyJob, onTap: () {}, onApply: () {}),
             ),
           ),
@@ -197,8 +195,9 @@ void main() {
       ),
     );
 
+    expect(tester.takeException(), isNull);
     expect(find.text('Không công khai'), findsNothing);
-    expect(find.text('Ca 1: 07:00 - 12:00'), findsOneWidget);
+    expect(find.text('Thời gian: 07:00 - 12:00'), findsOneWidget);
   });
 
   testWidgets('popular job card keeps salary close to company name', (
@@ -209,8 +208,8 @@ void main() {
         home: Scaffold(
           body: Center(
             child: SizedBox(
-              height: 352,
-              width: 286,
+              height: 430,
+              width: 328,
               child: JobCard(
                 job: _compactRecommendedJob,
                 onTap: () {},
@@ -225,9 +224,65 @@ void main() {
     final companyBottom = tester
         .getBottomLeft(find.text('Katinat Quận Cam'))
         .dy;
-    final salaryTop = tester.getTopLeft(find.text('468 VNĐ/0 giờ')).dy;
+    final salaryTop = tester
+        .getTopLeft(find.text('Thu nhập: 468 VNĐ/0 giờ'))
+        .dy;
 
-    expect(salaryTop - companyBottom, lessThan(48));
+    expect(tester.takeException(), isNull);
+    expect(salaryTop - companyBottom, lessThan(96));
+  });
+
+  testWidgets('popular job card uses compact reference layout with S3 logo', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              height: 430,
+              width: 328,
+              child: JobCard(
+                job: _referenceCardJob,
+                onTap: () {},
+                onApply: () {},
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('THU NGÂN QUÁN'), findsOneWidget);
+    expect(find.text('Katinat Quận Cam'), findsOneWidget);
+    expect(find.text('Tiêu chuẩn'), findsOneWidget);
+    expect(find.text('Quận 2'), findsOneWidget);
+    expect(find.text('Part-time'), findsOneWidget);
+    expect(find.text('43 lượt xem'), findsOneWidget);
+    expect(find.text('Thu ngân'), findsOneWidget);
+    expect(find.text('F&B'), findsOneWidget);
+    expect(find.text('Coffee'), findsOneWidget);
+    expect(find.text('Thu nhập: 25.000 VNĐ/giờ'), findsOneWidget);
+    expect(
+      find.text('Thời gian: 07:00 - 12:00 | 12:00 - 17:30'),
+      findsOneWidget,
+    );
+    expect(find.text('Hạn nộp: 11/07/2026'), findsOneWidget);
+    expect(find.text('Vị trí này có thể phù hợp với bạn'), findsOneWidget);
+
+    final logoImage = tester.widget<Image>(find.byType(Image).first);
+    expect(
+      (logoImage.image as NetworkImage).url,
+      'https://opporeview-cv-storage.s3.ap-southeast-1.amazonaws.com/system/katinatlogo.jpg',
+    );
   });
 
   testWidgets('popular jobs section keeps cards visible while refreshing', (
@@ -401,4 +456,21 @@ final _shiftOnlyJob = JobPost(
   description: 'Phụ ca buổi sáng.',
   tags: const ['F&B'],
   postedAt: DateTime(2026, 7, 2),
+);
+
+final _referenceCardJob = JobPost(
+  id: 'job-reference',
+  idJob: 'job-reference',
+  employerId: 'employer-1',
+  employerName: 'Katinat Quận Cam',
+  title: 'THU NGÂN QUÁN',
+  jobType: JobPostType.partTime,
+  location: 'Quận 2',
+  salary: '25.000 VNĐ/giờ',
+  shiftTime: '07:00 - 12:00 | 12:00 - 17:30',
+  description: 'Thu ngân tại quán.',
+  tags: const ['Thu ngân', 'F&B', 'Coffee'],
+  postedAt: DateTime(2026, 7, 1),
+  recruitmentEndDate: DateTime(2026, 7, 11),
+  views: 43,
 );
