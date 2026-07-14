@@ -209,6 +209,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return AuthScaffold(
+      leading: Align(
+        alignment: Alignment.centerLeft,
+        child: IconButton.filledTonal(
+          tooltip: l10n.back,
+          onPressed: () => context.go('/login'),
+          icon: const Icon(Icons.arrow_back_rounded),
+        ),
+      ),
       child: _RegisterFormStep(
         formKey: _formKey,
         fullNameController: _fullNameController,

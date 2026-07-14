@@ -8,10 +8,7 @@ class AuthColors {
   static const primary = AppColors.primary;
   static const secondary = AppColors.secondary;
   static const accent = AppColors.accent;
-  static const heroPrimary = Color(0xFF2F55C7);
-  static const heroSecondary = Color(0xFF4D79E6);
-  static const heroHighlight = Color(0xFF6A92F2);
-  static const authBackgroundTone = heroSecondary;
+  static const authBackgroundTone = Color(0xFF4D79E6);
   static const cta = AppColors.primary;
   static const ctaDark = AppColors.secondary;
   static const lightBackground = AppColors.lightBackground;
@@ -25,12 +22,6 @@ class AuthColors {
   static const success = AppColors.success;
   static const warning = AppColors.warning;
   static const danger = AppColors.danger;
-  static const heroGradient = LinearGradient(
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-    colors: [Color(0xE6335FD0), Color(0xD94D79E6), Color(0xCC6A92F2)],
-    stops: [0.0, 0.56, 1.0],
-  );
 
   static bool isDark(BuildContext context) {
     return Theme.of(context).brightness == Brightness.dark;

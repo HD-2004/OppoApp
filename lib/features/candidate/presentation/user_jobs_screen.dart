@@ -850,10 +850,11 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
                   quickJobs,
                 );
                 _pruneExpiredSavedJobs(rawSavedJobIds, savedJobIds);
+                final visibleQuickJobs = enabledQuickJobs;
                 final filteredJobs = _getFilteredJobs(
                   allJobs,
                   standardJobs,
-                  quickJobs,
+                  visibleQuickJobs,
                   savedJobIds,
                   user,
                 );
@@ -861,7 +862,15 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
                   _jobsTabUrgent,
                   allJobs,
                   standardJobs,
-                  quickJobs,
+                  visibleQuickJobs,
+                  savedJobIds,
+                  user,
+                ).length;
+                final savedJobsCount = _getFilteredJobsForTab(
+                  _jobsTabSaved,
+                  allJobs,
+                  standardJobs,
+                  visibleQuickJobs,
                   savedJobIds,
                   user,
                 ).length;
@@ -1021,7 +1030,7 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
                           allCount: allJobs.length,
                           standardCount: standardJobs.length,
                           urgentCount: urgentJobsCount,
-                          savedCount: savedJobIds.length,
+                          savedCount: savedJobsCount,
                           onTabChanged: (tab) =>
                               setState(() => _activeTab = tab),
                         ),

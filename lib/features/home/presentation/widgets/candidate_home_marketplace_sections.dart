@@ -1,7 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:ui' as ui;
-
 import 'package:flutter/material.dart';
 
 import '../../../../core/config/s3_asset_config.dart';
@@ -381,24 +379,12 @@ class _CandidateBannerCard extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          // Blurred fill of the same image so the empty space around a
-          // letterboxed banner is never an ugly black bar — keeps the frame
-          // full while the real image is shown uncropped on top.
-          Image.network(
-            imageUrl,
-            fit: BoxFit.cover,
-            errorBuilder: (_, _, _) => const _CandidateBannerFallback(),
-          ),
-          ClipRect(
-            child: BackdropFilter(
-              filter: ui.ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-              child: Container(color: Colors.black.withValues(alpha: 0.18)),
-            ),
-          ),
-          // The actual banner shown in full (no cropping, no distortion).
+          const ColoredBox(color: Color(0xFFEFF6FF)),
           Image.network(
             imageUrl,
             fit: BoxFit.contain,
+            filterQuality: FilterQuality.medium,
+            gaplessPlayback: true,
             errorBuilder: (_, _, _) => const _CandidateBannerFallback(),
           ),
           const Positioned(left: 18, top: 16, child: _RecommendationBadge()),

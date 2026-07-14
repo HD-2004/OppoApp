@@ -8,25 +8,101 @@ import 'package:oppo_temp_jobs/features/candidate/domain/job_repository.dart';
 import 'package:oppo_temp_jobs/features/candidate/presentation/user_job_detail_screen.dart';
 
 void main() {
-  testWidgets('job detail header keeps back button and hides right actions', (
+  testWidgets(
+    'job detail header keeps back button, shows logo, and hides legacy actions',
+    (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [jobRepositoryProvider.overrideWithValue(_FakeJobRepo())],
+          child: MaterialApp(
+            home: UserJobDetailScreen(job: _job, onApplyPressed: () {}),
+          ),
+        ),
+      );
+
+      await tester.pump();
+
+      expect(find.byIcon(Icons.arrow_back_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.share_outlined), findsNothing);
+      expect(find.byIcon(Icons.bookmark_border_rounded), findsNothing);
+      expect(find.byKey(const Key('job-detail-s3-logo')), findsOneWidget);
+      expect(find.text('Ứng tuyển ngay'), findsOneWidget);
+    },
+  );
+
+  testWidgets('job detail renders every description line as a bullet', (
     tester,
   ) async {
+    final job = _jobFixture(
+      description:
+          'Pha chế đồ uống theo công thức chuẩn.\n- Giữ khu vực làm việc sạch sẽ.',
+      requirements: null,
+    );
+
     await tester.pumpWidget(
       ProviderScope(
         overrides: [jobRepositoryProvider.overrideWithValue(_FakeJobRepo())],
         child: MaterialApp(
-          home: UserJobDetailScreen(job: _job, onApplyPressed: () {}),
+          home: UserJobDetailScreen(
+            job: job,
+            onApplyPressed: () {},
+            showApplyButton: false,
+          ),
         ),
       ),
     );
 
     await tester.pump();
 
-    expect(find.byIcon(Icons.arrow_back_rounded), findsOneWidget);
-    expect(find.byIcon(Icons.share_outlined), findsNothing);
-    expect(find.byIcon(Icons.bookmark_border_rounded), findsNothing);
-    expect(find.text('Ứng tuyển ngay'), findsOneWidget);
+    expect(find.text('Mô tả công việc'), findsOneWidget);
+    expect(find.text('Pha chế đồ uống theo công thức chuẩn.'), findsOneWidget);
+    expect(find.text('Giữ khu vực làm việc sạch sẽ.'), findsOneWidget);
+    expect(find.text('- Giữ khu vực làm việc sạch sẽ.'), findsNothing);
+    expect(
+      find.byWidgetPredicate(
+        (widget) => widget is CircleAvatar && widget.radius == 3,
+      ),
+      findsNWidgets(2),
+    );
   });
+
+  testWidgets(
+    'job detail renders every requirement line like description bullets',
+    (tester) async {
+      final job = _jobFixture(
+        description: '',
+        requirements:
+            '- Ưu tiên ứng viên đã có kinh nghiệm.\n- Có khả năng giao tiếp tốt.',
+      );
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [jobRepositoryProvider.overrideWithValue(_FakeJobRepo())],
+          child: MaterialApp(
+            home: UserJobDetailScreen(
+              job: job,
+              onApplyPressed: () {},
+              showApplyButton: false,
+            ),
+          ),
+        ),
+      );
+
+      await tester.pump();
+
+      expect(find.text('Mô tả công việc'), findsNothing);
+      expect(find.text('Yêu cầu'), findsOneWidget);
+      expect(find.text('Ưu tiên ứng viên đã có kinh nghiệm.'), findsOneWidget);
+      expect(find.text('Có khả năng giao tiếp tốt.'), findsOneWidget);
+      expect(find.text('- Ưu tiên ứng viên đã có kinh nghiệm.'), findsNothing);
+      expect(
+        find.byWidgetPredicate(
+          (widget) => widget is CircleAvatar && widget.radius == 3,
+        ),
+        findsNWidgets(2),
+      );
+    },
+  );
 
   testWidgets('job detail renders work schedule as a selectable calendar', (
     tester,
@@ -182,6 +258,8 @@ final _job = _jobFixture();
 
 JobPost _jobFixture({
   String shiftTime = 'T2,T3,T4,T5,T6 @ 07:00 - 11:30',
+  String description = 'Phục vụ khách hàng tại quầy.',
+  String? requirements = 'Nhanh nhẹn',
   DateTime? recruitmentStartDate,
   DateTime? recruitmentEndDate,
   bool isQuickJob = false,
@@ -196,8 +274,8 @@ JobPost _jobFixture({
     location: 'Quận 1',
     salary: '24.000 VNĐ/giờ',
     shiftTime: shiftTime,
-    description: 'Phục vụ khách hàng tại quầy.',
-    requirements: 'Nhanh nhẹn',
+    description: description,
+    requirements: requirements,
     benefits: 'Lương theo ca',
     tags: const ['F&B'],
     postedAt: DateTime(2026, 6, 1),

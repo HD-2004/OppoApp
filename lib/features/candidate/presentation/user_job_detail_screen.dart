@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:oppo_temp_jobs/core/config/s3_asset_config.dart';
 import 'package:oppo_temp_jobs/core/formatters/app_date_formatter.dart';
 import 'package:oppo_temp_jobs/core/theme/app_colors.dart';
 import 'package:flutter/services.dart';
@@ -69,6 +70,7 @@ class _UserJobDetailScreenState extends ConsumerState<UserJobDetailScreen> {
                   icon: Icons.arrow_back_rounded,
                   onTap: () => Navigator.of(context).pop(),
                 ),
+                actions: const [_JobDetailLogoAction()],
                 flexibleSpace: FlexibleSpaceBar(
                   background: _HeroBanner(job: widget.job),
                 ),
@@ -347,6 +349,51 @@ class _CircleIconBtn extends StatelessWidget {
             shape: BoxShape.circle,
           ),
           child: Icon(icon, color: Colors.white, size: 18),
+        ),
+      ),
+    );
+  }
+}
+
+class _JobDetailLogoAction extends StatelessWidget {
+  const _JobDetailLogoAction();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 12),
+      child: Center(
+        child: Semantics(
+          label: 'Logo Ốp Pờ',
+          image: true,
+          child: Container(
+            key: const Key('job-detail-s3-logo'),
+            width: 44,
+            height: 44,
+            padding: const EdgeInsets.all(6),
+            clipBehavior: Clip.antiAlias,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.16),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Image.network(
+              S3AssetConfig.logo,
+              fit: BoxFit.contain,
+              filterQuality: FilterQuality.medium,
+              errorBuilder: (_, _, _) => const Icon(
+                Icons.work_rounded,
+                color: AppColors.primary,
+                size: 24,
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -1031,8 +1078,7 @@ class _DescriptionSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Parse bullet points nếu có (dấu • hoặc - hoặc \n)
-    final lines = _parseLines(text);
+    final lines = _parseBulletLines(text);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1048,14 +1094,6 @@ class _DescriptionSection extends StatelessWidget {
       ],
     );
   }
-
-  List<String> _parseLines(String raw) {
-    return raw
-        .split('\n')
-        .map((l) => l.trim())
-        .where((l) => l.isNotEmpty)
-        .toList();
-  }
 }
 
 // ── Requirements section ──────────────────────────────────────────────────────
@@ -1067,11 +1105,7 @@ class _RequirementsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final lines = text
-        .split('\n')
-        .map((l) => l.trim())
-        .where((l) => l.isNotEmpty)
-        .toList();
+    final lines = _parseBulletLines(text);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1080,82 +1114,11 @@ class _RequirementsSection extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Column(
-            children: lines
-                .map((line) => _RequirementCard(text: line))
-                .toList(),
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: lines.map((line) => _ContentLine(text: line)).toList(),
           ),
         ),
       ],
-    );
-  }
-}
-
-class _RequirementCard extends StatelessWidget {
-  const _RequirementCard({required this.text});
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    // Tách label: value nếu có dấu :
-    final colonIdx = text.indexOf(':');
-    String? label;
-    String body = text;
-    if (colonIdx > 0 && colonIdx < 30) {
-      label = text.substring(0, colonIdx).trim();
-      body = text.substring(colonIdx + 1).trim();
-    }
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-      ),
-      child: IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Left accent bar
-            Container(
-              width: 3,
-              decoration: BoxDecoration(
-                color: AppColors.primary,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (label != null) ...[
-                    Text(
-                      label,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: Color(0xFF111827),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                  ],
-                  Text(
-                    body,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: Color(0xFF6B7280),
-                      height: 1.5,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
@@ -1237,53 +1200,45 @@ class _ContentLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isBullet =
-        text.startsWith('•') || text.startsWith('-') || text.startsWith('*');
-    final clean = isBullet
-        ? text.replaceFirst(RegExp(r'^[-•*]\s*'), '').trim()
-        : text;
-
-    if (isBullet) {
-      return Padding(
-        padding: const EdgeInsets.only(bottom: 8),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Padding(
-              padding: EdgeInsets.only(top: 6),
-              child: CircleAvatar(
-                radius: 3,
-                backgroundColor: AppColors.primary,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                clean,
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Color(0xFF374151),
-                  height: 1.6,
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Text(
-        clean,
-        style: const TextStyle(
-          fontSize: 14,
-          color: Color(0xFF374151),
-          height: 1.7,
-        ),
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.only(top: 6),
+            child: CircleAvatar(radius: 3, backgroundColor: AppColors.primary),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(
+                fontSize: 14,
+                color: Color(0xFF374151),
+                height: 1.6,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
+}
+
+List<String> _parseBulletLines(String raw) {
+  return raw
+      .replaceAll('\r\n', '\n')
+      .replaceAll('\r', '\n')
+      .split(RegExp(r'\n+'))
+      .expand((line) => line.trim().split(RegExp(r'\s+•\s+')))
+      .map(_cleanBulletLine)
+      .where((line) => line.isNotEmpty)
+      .toList(growable: false);
+}
+
+String _cleanBulletLine(String line) {
+  return line.trim().replaceFirst(RegExp(r'^(?:[-•*]|\d+[\.)])\s*'), '').trim();
 }
 
 // ── Employer info card ────────────────────────────────────────────────────────

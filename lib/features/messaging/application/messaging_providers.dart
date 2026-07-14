@@ -13,6 +13,8 @@ const candidateChatAvailabilityMessage =
     'Bạn cần bật trạng thái Sẵn sàng làm việc để sử dụng Chatting.';
 const chatCompletedMessage =
     'Cuộc trò chuyện đã kết thúc vì ca làm đã hoàn thành.';
+const candidateChatListRefreshInterval = Duration(seconds: 30);
+const candidateChatRoomRefreshInterval = Duration(seconds: 3);
 
 int countUnreadEmployerMessages(List<ChatMessage> messages, {int? lastReadId}) {
   final lastReadIndex = lastReadId == null
@@ -138,7 +140,7 @@ class CandidateChatsNotifier extends AsyncNotifier<List<CandidateApplication>> {
 
   void _startPolling(String userId) {
     _timer?.cancel();
-    _timer = Timer.periodic(const Duration(seconds: 10), (timer) async {
+    _timer = Timer.periodic(candidateChatListRefreshInterval, (timer) async {
       final repository = ref.read(applicationRepositoryProvider);
       try {
         final data = await _fetch(userId, repository);
@@ -436,7 +438,7 @@ class ActiveChatNotifier extends AsyncNotifier<List<ChatMessage>> {
 
   void _startPolling(String userId) {
     _timer?.cancel();
-    _timer = Timer.periodic(const Duration(seconds: 3), (timer) async {
+    _timer = Timer.periodic(candidateChatRoomRefreshInterval, (timer) async {
       final repository = ref.read(applicationRepositoryProvider);
       try {
         final messages = await _fetch(userId, repository);

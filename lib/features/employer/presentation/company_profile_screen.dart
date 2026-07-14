@@ -22,6 +22,28 @@ final _employerJobsProvider = FutureProvider.family<List<JobPost>, String>((
 
 // ── Screen ────────────────────────────────────────────────────────────────────
 
+class CompanyEmployeeReview {
+  const CompanyEmployeeReview({
+    required this.id,
+    required this.authorName,
+    required this.rating,
+    required this.comment,
+    required this.createdAt,
+    this.jobTitle,
+    this.heartCount = 0,
+  });
+
+  final String id;
+  final String authorName;
+  final double rating;
+  final String comment;
+  final DateTime createdAt;
+  final String? jobTitle;
+  final int heartCount;
+
+  bool get isFiveStar => rating >= 5;
+}
+
 /// Trang công ty — dữ liệu đồng bộ với website qua cùng backend AWS.
 /// Không có mock/fake data.
 /// Mọi thông tin derive từ [JobPost] fields thật từ AwsJobRepository.
@@ -34,6 +56,7 @@ class CompanyProfileScreen extends ConsumerWidget {
     this.location,
     this.tags = const [],
     this.applicants = 0,
+    this.employeeReviews = const [],
   });
 
   final String employerId;
@@ -42,6 +65,7 @@ class CompanyProfileScreen extends ConsumerWidget {
   final String? location;
   final List<String> tags;
   final int applicants;
+  final List<CompanyEmployeeReview> employeeReviews;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -62,6 +86,7 @@ class CompanyProfileScreen extends ConsumerWidget {
           location: location,
           tags: tags,
           applicants: applicants,
+          employeeReviews: employeeReviews,
           jobs: jobs,
         ),
       ),
@@ -94,16 +119,6 @@ class _CompanyAppBar extends StatelessWidget implements PreferredSizeWidget {
           color: AppColors.primary,
         ),
       ),
-      actions: [
-        IconButton(
-          icon: const Icon(
-            Icons.notifications_none_rounded,
-            color: Color(0xFF1E293B),
-          ),
-          onPressed: () {},
-        ),
-        const SizedBox(width: 4),
-      ],
     );
   }
 }
@@ -118,6 +133,7 @@ class _CompanyBody extends StatelessWidget {
     required this.location,
     required this.tags,
     required this.applicants,
+    required this.employeeReviews,
     required this.jobs,
   });
 
@@ -127,6 +143,7 @@ class _CompanyBody extends StatelessWidget {
   final String? location;
   final List<String> tags;
   final int applicants;
+  final List<CompanyEmployeeReview> employeeReviews;
   final List<JobPost> jobs;
 
   @override
@@ -154,7 +171,7 @@ class _CompanyBody extends StatelessWidget {
           const _SectionGap(),
 
           // ── Đánh giá từ nhân viên ──────────────────────────────
-          const _ReviewsSection(),
+          _ReviewsSection(reviews: employeeReviews),
 
           const _SectionGap(),
 
@@ -424,13 +441,46 @@ class _HighlightItem extends StatelessWidget {
 }
 
 // ── Reviews section ───────────────────────────────────────────────────────────
-// App-only empty state + nút "Viết đánh giá".
+// App-only review surface. Review data is provided by backend-backed callers;
+// the UI only filters and orders the supplied records.
 
-class _ReviewsSection extends StatelessWidget {
-  const _ReviewsSection();
+enum _ReviewFilter { latest, helpful }
+
+class _ReviewsSection extends StatefulWidget {
+  const _ReviewsSection({required this.reviews});
+
+  final List<CompanyEmployeeReview> reviews;
+
+  @override
+  State<_ReviewsSection> createState() => _ReviewsSectionState();
+}
+
+class _ReviewsSectionState extends State<_ReviewsSection> {
+  _ReviewFilter _filter = _ReviewFilter.latest;
+
+  List<CompanyEmployeeReview> get _visibleReviews {
+    final reviews = switch (_filter) {
+      _ReviewFilter.latest => [...widget.reviews],
+      _ReviewFilter.helpful => [
+        for (final review in widget.reviews)
+          if (review.isFiveStar) review,
+      ],
+    };
+
+    reviews.sort((a, b) {
+      if (_filter == _ReviewFilter.helpful) {
+        final heartComparison = b.heartCount.compareTo(a.heartCount);
+        if (heartComparison != 0) return heartComparison;
+      }
+      return b.createdAt.compareTo(a.createdAt);
+    });
+    return reviews;
+  }
 
   @override
   Widget build(BuildContext context) {
+    final visibleReviews = _visibleReviews;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
@@ -449,46 +499,33 @@ class _ReviewsSection extends StatelessWidget {
                   ),
                 ),
               ),
-              _ReviewFilterTab(label: 'MỚI NHẤT', isActive: true),
+              _ReviewFilterTab(
+                label: 'MỚI NHẤT',
+                isActive: _filter == _ReviewFilter.latest,
+                onTap: () => setState(() => _filter = _ReviewFilter.latest),
+              ),
               const SizedBox(width: 8),
-              _ReviewFilterTab(label: 'HỮU ÍCH', isActive: false),
+              _ReviewFilterTab(
+                label: 'HỮU ÍCH',
+                isActive: _filter == _ReviewFilter.helpful,
+                onTap: () => setState(() => _filter = _ReviewFilter.helpful),
+              ),
             ],
           ),
           const SizedBox(height: 16),
 
-          // Empty state — reviews sẽ load từ backend khi có API
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF9FAFB),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFE5E7EB)),
-            ),
-            child: const Column(
+          if (visibleReviews.isEmpty)
+            _ReviewEmptyState(filter: _filter)
+          else
+            Column(
               children: [
-                Icon(
-                  Icons.rate_review_outlined,
-                  size: 36,
-                  color: Color(0xFFD1D5DB),
-                ),
-                SizedBox(height: 10),
-                Text(
-                  'Chưa có đánh giá nào',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF6B7280),
-                  ),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  'Hãy là người đầu tiên chia sẻ trải nghiệm làm việc!',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 12, color: Color(0xFF9CA3AF)),
-                ),
+                for (var index = 0; index < visibleReviews.length; index++) ...[
+                  _ReviewCard(review: visibleReviews[index]),
+                  if (index < visibleReviews.length - 1)
+                    const SizedBox(height: 10),
+                ],
               ],
             ),
-          ),
           const SizedBox(height: 16),
 
           // CTA viết đánh giá
@@ -562,27 +599,183 @@ class _ReviewsSection extends StatelessWidget {
 }
 
 class _ReviewFilterTab extends StatelessWidget {
-  const _ReviewFilterTab({required this.label, required this.isActive});
+  const _ReviewFilterTab({
+    required this.label,
+    required this.isActive,
+    required this.onTap,
+  });
 
   final String label;
   final bool isActive;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: isActive ? AppColors.primary : const Color(0xFFF3F4F6),
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(6),
+      child: InkWell(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.w700,
-          color: isActive ? Colors.white : const Color(0xFF6B7280),
-          letterSpacing: 0.3,
+        child: Ink(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(
+            color: isActive ? AppColors.primary : const Color(0xFFF3F4F6),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: isActive ? Colors.white : const Color(0xFF6B7280),
+              letterSpacing: 0.3,
+            ),
+          ),
         ),
+      ),
+    );
+  }
+}
+
+class _ReviewEmptyState extends StatelessWidget {
+  const _ReviewEmptyState({required this.filter});
+
+  final _ReviewFilter filter;
+
+  @override
+  Widget build(BuildContext context) {
+    final isHelpful = filter == _ReviewFilter.helpful;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF9FAFB),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Column(
+        children: [
+          const Icon(
+            Icons.rate_review_outlined,
+            size: 36,
+            color: Color(0xFFD1D5DB),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            isHelpful ? 'Chưa có đánh giá hữu ích' : 'Chưa có đánh giá nào',
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF6B7280),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            isHelpful
+                ? 'Các đánh giá 5 sao được nhiều tim sẽ hiển thị tại đây.'
+                : 'Hãy là người đầu tiên chia sẻ trải nghiệm làm việc!',
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 12, color: Color(0xFF9CA3AF)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ReviewCard extends StatelessWidget {
+  const _ReviewCard({required this.review});
+
+  final CompanyEmployeeReview review;
+
+  @override
+  Widget build(BuildContext context) {
+    final jobTitle = review.jobTitle?.trim();
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  review.authorName.trim().isEmpty
+                      ? 'Ứng viên'
+                      : review.authorName.trim(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF111827),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.favorite_rounded,
+                    size: 15,
+                    color: Color(0xFFEF4444),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${review.heartCount}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF6B7280),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          if (jobTitle != null && jobTitle.isNotEmpty) ...[
+            const SizedBox(height: 3),
+            Text(
+              jobTitle,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 12, color: Color(0xFF9CA3AF)),
+            ),
+          ],
+          const SizedBox(height: 8),
+          Row(
+            children: List.generate(
+              5,
+              (index) => Icon(
+                index < review.rating.round().clamp(0, 5)
+                    ? Icons.star_rounded
+                    : Icons.star_border_rounded,
+                size: 16,
+                color: const Color(0xFFFBBF24),
+              ),
+            ),
+          ),
+          if (review.comment.trim().isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              review.comment.trim(),
+              style: const TextStyle(
+                fontSize: 13,
+                height: 1.45,
+                color: Color(0xFF4B5563),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

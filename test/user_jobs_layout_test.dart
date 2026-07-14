@@ -330,6 +330,44 @@ void main() {
     expect(find.byKey(const Key('saved-jobs-badge')), findsNothing);
     expect(find.text('1'), findsNothing);
   });
+
+  testWidgets('saved jobs badge ignores quick jobs hidden from the flow', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authControllerProvider.overrideWithBuild(
+            (_, _) => AuthState.authenticated(_candidateWithSavedQuickJob),
+          ),
+          activeJobsProvider.overrideWith((_) async => <JobPost>[]),
+          activeQuickJobsProvider.overrideWith((_) async => [_quickJob]),
+        ],
+        child: const MaterialApp(
+          localizationsDelegates: [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: UserJobsScreen(showBackButton: false),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('saved-jobs-button')), findsOneWidget);
+    expect(find.byKey(const Key('saved-jobs-badge')), findsNothing);
+    expect(find.text('1'), findsNothing);
+  });
 }
 
 const _candidateUser = AuthUserProfile(
@@ -380,6 +418,17 @@ const _candidateWithExpiredSavedJob = AuthUserProfile(
   kycCompleted: true,
   profileCompleted: true,
   savedJobs: ['expired-job'],
+);
+
+const _candidateWithSavedQuickJob = AuthUserProfile(
+  userId: 'candidate-1',
+  username: 'candidate',
+  role: AppRole.candidate,
+  email: 'candidate@example.com',
+  fullName: 'Nguyen An',
+  kycCompleted: true,
+  profileCompleted: true,
+  savedJobs: ['quick-job'],
 );
 
 final _job = JobPost(

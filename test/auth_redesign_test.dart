@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:oppo_temp_jobs/core/localization/app_localizations.dart';
 import 'package:oppo_temp_jobs/features/auth/application/auth_controller.dart';
 import 'package:oppo_temp_jobs/features/auth/data/auth_repository.dart';
@@ -36,19 +37,43 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('login presents the fast F&B value proposition and CTA', (
+  Future<void> pumpAuthRouter(WidgetTester tester) async {
+    final router = GoRouter(
+      initialLocation: '/register',
+      routes: [
+        GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
+        GoRoute(path: '/register', builder: (_, _) => const RegisterScreen()),
+      ],
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp.router(
+          locale: const Locale('vi'),
+          theme: ThemeData(useMaterial3: true),
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+          routerConfig: router,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('login presents the auth form and CTA without hero banner', (
     tester,
   ) async {
     await pumpAuthScreen(tester, const LoginScreen());
 
-    expect(find.text('Tìm việc & Tuyển Dụng Nhanh Hơn'), findsOneWidget);
+    expect(find.text('Tìm việc & Tuyển Dụng Nhanh Hơn'), findsNothing);
     expect(
       find.text('Kết nối ứng viên với cơ hội. Nền tảng tuyển dụng hiện đại.'),
-      findsOneWidget,
-    );
-    expect(
-      tester.getTopLeft(find.text('Tìm việc & Tuyển Dụng Nhanh Hơn')).dy,
-      greaterThan(tester.getTopLeft(find.text('Email')).dy),
+      findsNothing,
     );
     expect(find.textContaining('Tìm việc nhanh'), findsNothing);
     expect(find.textContaining('Chủ động ca làm'), findsNothing);
@@ -110,14 +135,10 @@ void main() {
   ) async {
     await pumpAuthScreen(tester, const RegisterScreen());
 
-    expect(find.text('Tìm việc & Tuyển Dụng Nhanh Hơn'), findsOneWidget);
+    expect(find.text('Tìm việc & Tuyển Dụng Nhanh Hơn'), findsNothing);
     expect(
       find.text('Kết nối ứng viên với cơ hội. Nền tảng tuyển dụng hiện đại.'),
-      findsOneWidget,
-    );
-    expect(
-      tester.getTopLeft(find.text('Tìm việc & Tuyển Dụng Nhanh Hơn')).dy,
-      greaterThan(tester.getTopLeft(find.text('Họ và tên')).dy),
+      findsNothing,
     );
     expect(find.text('Tạo tài khoản ứng viên'), findsOneWidget);
     expect(find.text('Nhà tuyển dụng'), findsNothing);
@@ -125,6 +146,19 @@ void main() {
     expect(find.text('Ngày sinh'), findsOneWidget);
     expect(find.text('Tối thiểu 8 ký tự'), findsOneWidget);
     expect(find.text('Có ký tự đặc biệt'), findsOneWidget);
+  });
+
+  testWidgets('register back arrow returns to login', (tester) async {
+    await pumpAuthRouter(tester);
+
+    expect(find.text('Tạo tài khoản ứng viên'), findsOneWidget);
+    expect(find.byTooltip('Quay lại'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Quay lại'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Đăng nhập'), findsWidgets);
+    expect(find.text('Tạo tài khoản ứng viên'), findsNothing);
   });
 
   testWidgets('register blocks candidates under 18 before sign up', (
