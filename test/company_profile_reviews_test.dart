@@ -6,6 +6,44 @@ import 'package:oppo_temp_jobs/features/candidate/domain/job_post.dart';
 import 'package:oppo_temp_jobs/features/employer/presentation/company_profile_screen.dart';
 
 void main() {
+  testWidgets('company profile does not render static highlight benefits', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          activeJobsProvider.overrideWith((_) async => const <JobPost>[]),
+          activeQuickJobsProvider.overrideWith((_) async => const <JobPost>[]),
+        ],
+        child: const MaterialApp(
+          home: CompanyProfileScreen(
+            employerId: 'employer-1',
+            companyName: 'Bamos',
+            tags: ['F&B'],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Lương thưởng'), findsNothing);
+    expect(find.text('Môi trường'), findsNothing);
+    expect(find.text('Cơ hội học hỏi'), findsNothing);
+    expect(
+      find.text('Mức lương cạnh tranh so với thị trường, thanh toán đúng hạn.'),
+      findsNothing,
+    );
+    expect(
+      find.text('Đồng nghiệp trẻ trung, năng động, hỗ trợ nhau nhiệt tình.'),
+      findsNothing,
+    );
+    expect(
+      find.text('Được đào tạo và phát triển kỹ năng chuyên môn.'),
+      findsNothing,
+    );
+    expect(find.text('Đánh giá từ nhân viên'), findsOneWidget);
+  });
+
   testWidgets('helpful reviews tab shows five-star reviews sorted by hearts', (
     tester,
   ) async {
