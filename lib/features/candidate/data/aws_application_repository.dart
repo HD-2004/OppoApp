@@ -230,7 +230,7 @@ class AwsApplicationRepository implements ApplicationRepository {
         ? <String, dynamic>{}
         : jsonDecode(response.body);
 
-    await _sendEmployerApplicationNotification(
+    await sendEmployerApplicationNotification(
       jobId: jobId,
       details: notification,
     );
@@ -278,7 +278,8 @@ class AwsApplicationRepository implements ApplicationRepository {
     }
   }
 
-  Future<void> _sendEmployerApplicationNotification({
+  @override
+  Future<void> sendEmployerApplicationNotification({
     required String jobId,
     required ApplicationNotificationDetails details,
   }) async {

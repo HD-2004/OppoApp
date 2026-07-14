@@ -89,6 +89,10 @@ abstract class ApplicationRepository {
     required String companyName,
     required String jobId,
   });
+  Future<void> sendEmployerApplicationNotification({
+    required String jobId,
+    required ApplicationNotificationDetails details,
+  });
 }
 
 bool isAlreadyAppliedApplicationError(Object error) {

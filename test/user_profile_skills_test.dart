@@ -160,4 +160,10 @@ class _FakeApplicationRepository implements ApplicationRepository {
     required String companyName,
     required String jobId,
   }) async {}
+
+  @override
+  Future<void> sendEmployerApplicationNotification({
+    required String jobId,
+    required ApplicationNotificationDetails details,
+  }) async {}
 }

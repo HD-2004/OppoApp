@@ -242,12 +242,38 @@ Nhiệm vụ: ${widget.job.responsibilities ?? "Phát triển và bảo trì cá
           existingApplicationIdForJob(applications, widget.job.idJob) ??
           existingApplicationIdForJob(applications, widget.job.id);
 
+      if (existingId != null) {
+        try {
+          // Update the existing application with the latest AI screening results
+          await repository.updateApplicationStatus(
+            applicationId: existingId,
+            status: 'pending',
+            extraFields: result.toApplicationExtraFields(),
+          );
+
+          // Notify the employer about this updated application
+          await repository.sendEmployerApplicationNotification(
+            jobId: widget.job.idJob,
+            details: ApplicationNotificationDetails(
+              employerId: widget.job.employerId,
+              candidateId: user.userId,
+              candidateName: user.fullName,
+              jobTitle: widget.job.title,
+              companyName: widget.job.companyName ?? widget.job.employerName,
+              isQuickJob: widget.job.isQuickJob,
+            ),
+          );
+        } catch (updateErr) {
+          debugPrint('⚠️ [AI_SCREENING] Failed to update existing application or send notification: $updateErr');
+        }
+      }
+
       if (!mounted) return;
       setState(() {
         _applicationId = existingId;
         _applicationNotice = existingId == null
             ? 'Bạn đã ứng tuyển công việc này rồi. App chưa lấy được mã hồ sơ hiện có nên chưa thể mở vòng phỏng vấn tiếp theo.'
-            : 'Bạn đã ứng tuyển công việc này rồi. App sẽ dùng hồ sơ hiện có để tiếp tục vòng phỏng vấn AI.';
+            : 'Bạn đã ứng tuyển công việc này rồi. App đã cập nhật hồ sơ với điểm số AI mới nhất và gửi lại cho Nhà tuyển dụng.';
       });
     }
   }
