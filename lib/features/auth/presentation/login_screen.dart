@@ -1,11 +1,12 @@
 import 'package:amplify_flutter/amplify_flutter.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/errors/auth_failure.dart';
 import '../../../core/localization/app_localizations.dart';
-import '../../../main.dart' show amplifyConfigError, amplifyConfigDebugInfo;
+import '../../../main.dart' show amplifyConfigError;
 import '../../candidate/presentation/policy_terms_screen.dart';
 import '../application/auth_controller.dart';
 import '../data/check_email_service.dart';
@@ -61,6 +62,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    final l10n = AppLocalizations.of(context);
     setState(() {
       _isSubmitting = true;
       _emailError = null;
@@ -89,7 +91,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           );
     } on CheckEmailException catch (e) {
       // Lỗi gọi check-email API — hiện snackbar và vẫn cho phép thử đăng nhập
-      _showError('CheckEmail: ${e.message}');
+      _showError(e.message);
       // Fallthrough: không block luồng đăng nhập khi API check lỗi
       try {
         await ref
@@ -99,24 +101,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               password: _passwordController.text,
             );
       } on AuthFailure catch (failure) {
-        _showError('${failure.message} [code=${failure.code}]');
+        _showError(failure.message);
         if (failure.code == 'user_unconfirmed' && mounted) {
           context.go(
             '/confirm-signup?email=${Uri.encodeComponent(_emailController.text)}',
           );
         }
-      } catch (e2) {
-        _showError('RAW inner: $e2');
+      } catch (_) {
+        _showError(l10n.unknownError);
       }
     } on AuthFailure catch (failure) {
-      _showError('${failure.message} [code=${failure.code}]');
+      _showError(failure.message);
       if (failure.code == 'user_unconfirmed' && mounted) {
         context.go(
           '/confirm-signup?email=${Uri.encodeComponent(_emailController.text)}',
         );
       }
-    } catch (e) {
-      _showError('RAW: $e');
+    } catch (_) {
+      _showError(l10n.unknownError);
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
@@ -124,18 +126,53 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _submitSocial(AuthProvider provider) async {
     if (_isSubmitting || _socialProviderSubmitting != null) return;
+    final l10n = AppLocalizations.of(context);
     setState(() => _socialProviderSubmitting = provider);
     try {
       await ref
           .read(authControllerProvider.notifier)
           .signInWithSocialProvider(provider);
     } on AuthFailure catch (f) {
-      _showError('${f.message} [code=${f.code}]');
+      // Trong debug mode: hiện dialog với lỗi gốc đầy đủ thay vì snackbar
+      // cụt để dễ đọc (snackbar tự ẩn quá nhanh với message dài).
+      if (kDebugMode && f.code == 'social_debug') {
+        _showDebugDialog('[DEBUG] Social sign-in failure', f.message);
+      } else {
+        _showError(f.message);
+      }
     } catch (e) {
-      _showError('RAW social: $e');
+      final raw = e.toString();
+      debugPrint('[LoginScreen] _submitSocial unexpected error: $raw');
+      if (kDebugMode) {
+        _showDebugDialog('[DEBUG] Unexpected error', raw);
+      } else {
+        _showError(l10n.unknownError);
+      }
     } finally {
       if (mounted) setState(() => _socialProviderSubmitting = null);
     }
+  }
+
+  void _showDebugDialog(String title, String body) {
+    if (!mounted) return;
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title, style: const TextStyle(fontSize: 14)),
+        content: SingleChildScrollView(
+          child: SelectableText(
+            body,
+            style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showError(String message) {
@@ -279,24 +316,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   amplifyConfigError!,
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 10,
-                    fontFamily: 'monospace',
-                  ),
-                ),
-              ),
-            // ── Debug: always show config values ──────────────────────
-            if (amplifyConfigDebugInfo != null)
-              Container(
-                margin: const EdgeInsets.only(top: 8),
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Colors.black87,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: SelectableText(
-                  amplifyConfigDebugInfo!,
-                  style: const TextStyle(
-                    color: Colors.greenAccent,
                     fontSize: 10,
                     fontFamily: 'monospace',
                   ),

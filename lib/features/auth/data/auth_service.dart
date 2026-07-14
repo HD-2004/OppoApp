@@ -435,19 +435,25 @@ class AuthService {
   Future<void> _ensureConfigured() async {
     // Kiểm tra đủ 3 giá trị bắt buộc trước khi gọi Amplify.configure()
     if (!hasCognitoAppClientId || !hasCognitoUserPoolId || !hasCognitoRegion) {
-      throw AuthFailure(
-        'Config thiếu: region=$hasCognitoRegion poolId=$hasCognitoUserPoolId clientId=$hasCognitoAppClientId',
-        code: 'configuration',
+      safePrint(
+        '[AuthService] _ensureConfigured: thiếu/sai config → throwing configuration failure.\n'
+        '  region: "$cognitoRegion" (valid=$hasCognitoRegion)\n'
+        '  poolId: "$cognitoUserPoolId" (valid=$hasCognitoUserPoolId)\n'
+        '  clientId: "$cognitoUserPoolClientId" (valid=$hasCognitoAppClientId)',
       );
+      throw AuthFailure.configuration;
     }
 
     await configureAmplify();
 
     if (!Amplify.isConfigured) {
-      throw AuthFailure(
-        'Amplify.isConfigured=false sau configureAmplify(). clientId="${cognitoUserPoolClientId.substring(0, cognitoUserPoolClientId.length > 10 ? 10 : cognitoUserPoolClientId.length)}..."',
-        code: 'configuration',
+      safePrint(
+        '[AuthService] _ensureConfigured: Amplify still not configured after configureAmplify() → throwing configuration failure.\n'
+        '  clientId: "${cognitoUserPoolClientId.substring(0, cognitoUserPoolClientId.length > 10 ? 10 : cognitoUserPoolClientId.length)}..."\n'
+        '  region: "$cognitoRegion"\n'
+        '  poolId: "$cognitoUserPoolId"',
       );
+      throw AuthFailure.configuration;
     }
   }
 
