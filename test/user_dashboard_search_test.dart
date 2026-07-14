@@ -61,7 +61,13 @@ void main() {
     await tester.pump(const Duration(milliseconds: 350));
     await tester.pump();
 
-    await tester.tap(find.widgetWithText(ListTile, 'Công việc'));
+    final drawerJobsItem = find.descendant(
+      of: find.byType(Drawer),
+      matching: find.text('Công việc'),
+    );
+    expect(drawerJobsItem, findsOneWidget);
+
+    await tester.tap(drawerJobsItem);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 350));
     await tester.pump();

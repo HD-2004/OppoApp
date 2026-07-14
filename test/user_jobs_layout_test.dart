@@ -283,6 +283,7 @@ void main() {
     expect(find.text('Loại công việc'), findsOneWidget);
     expect(find.text('Công việc tiêu chuẩn'), findsNothing);
     expect(find.byKey(const Key('saved-jobs-button')), findsOneWidget);
+    expect(find.byKey(const Key('saved-jobs-back-button')), findsNothing);
     expect(find.byKey(const Key('saved-jobs-badge')), findsOneWidget);
     expect(find.text('2'), findsOneWidget);
 
@@ -290,6 +291,13 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(JobPostCard), findsNWidgets(2));
+    expect(find.byKey(const Key('saved-jobs-back-button')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('saved-jobs-back-button')));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(JobPostCard), findsNWidgets(3));
+    expect(find.byKey(const Key('saved-jobs-back-button')), findsNothing);
   });
 
   testWidgets('saved jobs badge ignores expired saved job ids', (tester) async {

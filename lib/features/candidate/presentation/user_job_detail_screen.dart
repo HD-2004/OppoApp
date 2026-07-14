@@ -5,6 +5,7 @@ import 'package:oppo_temp_jobs/core/formatters/app_date_formatter.dart';
 import 'package:oppo_temp_jobs/core/theme/app_colors.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../employer/presentation/company_profile_screen.dart';
 import '../application/jobs_providers.dart';
@@ -410,6 +411,7 @@ class _QuickInfoSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final recruitmentWindow = recruitmentWindowValue(job);
+    final workTime = _jobWorkTimeValue(job);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 4),
@@ -428,6 +430,16 @@ class _QuickInfoSection extends StatelessWidget {
                 color: Color(0xFF111827),
               ),
             ),
+          if (workTime.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            _InfoTile(
+              icon: Icons.schedule_outlined,
+              iconBg: AppColors.primarySoft,
+              iconColor: AppColors.primary,
+              label: 'THỜI GIAN LÀM VIỆC',
+              value: workTime,
+            ),
+          ],
           if (job.location.isNotEmpty) ...[
             const SizedBox(height: 10),
             _InfoTile(
@@ -436,6 +448,8 @@ class _QuickInfoSection extends StatelessWidget {
               iconColor: AppColors.primary,
               label: 'ĐỊA ĐIỂM',
               value: job.location,
+              actionLabel: 'Mở Google Maps',
+              onTap: () => _openJobLocationInMaps(context, job),
             ),
           ],
           if (recruitmentWindow.isNotEmpty) ...[
@@ -452,6 +466,73 @@ class _QuickInfoSection extends StatelessWidget {
       ),
     );
   }
+}
+
+String _jobWorkTimeValue(JobPost job) {
+  final date = AppDateFormatter.formatVietnameseDateString(
+    job.workDate,
+    fallback: '',
+  );
+  final startTime = job.startTime?.trim() ?? '';
+  final endTime = job.endTime?.trim() ?? '';
+  final explicitRange = startTime.isNotEmpty && endTime.isNotEmpty
+      ? '$startTime - $endTime'
+      : '';
+  final shiftTime = job.shiftTime.trim();
+  final workHours = job.workHours?.trim() ?? '';
+  final workDays = job.workDays?.trim() ?? '';
+  final time = explicitRange.isNotEmpty
+      ? explicitRange
+      : shiftTime.isNotEmpty
+      ? shiftTime
+      : workHours;
+
+  return [
+    if (date.isNotEmpty) date,
+    if (workDays.isNotEmpty && !time.contains(workDays)) workDays,
+    if (time.isNotEmpty) time,
+  ].join(' • ');
+}
+
+Uri? _googleMapsUriForJob(JobPost job) {
+  final latitude = job.latitude;
+  final longitude = job.longitude;
+  if (latitude != null && longitude != null) {
+    return Uri.https('www.google.com', '/maps/search/', {
+      'api': '1',
+      'query': '$latitude,$longitude',
+    });
+  }
+
+  final location = job.location.trim();
+  if (location.isEmpty) return null;
+  return Uri.https('www.google.com', '/maps/search/', {
+    'api': '1',
+    'query': location,
+  });
+}
+
+Future<void> _openJobLocationInMaps(BuildContext context, JobPost job) async {
+  final uri = _googleMapsUriForJob(job);
+  if (uri == null) return;
+
+  try {
+    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!launched && context.mounted) {
+      _showMapLaunchError(context);
+    }
+  } catch (_) {
+    if (!context.mounted) return;
+    _showMapLaunchError(context);
+  }
+}
+
+void _showMapLaunchError(BuildContext context) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(
+      content: Text('Không thể mở Google Maps. Vui lòng thử lại.'),
+    ),
+  );
 }
 
 bool _shouldShowWorkScheduleCalendar(JobPost job) {
@@ -963,6 +1044,8 @@ class _InfoTile extends StatelessWidget {
     required this.label,
     required this.value,
     this.valueStyle,
+    this.actionLabel,
+    this.onTap,
   });
 
   final IconData icon;
@@ -971,10 +1054,12 @@ class _InfoTile extends StatelessWidget {
   final String label;
   final String value;
   final TextStyle? valueStyle;
+  final String? actionLabel;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    final content = Row(
       children: [
         Container(
           width: 44,
@@ -1010,10 +1095,47 @@ class _InfoTile extends StatelessWidget {
                       color: Color(0xFF111827),
                     ),
               ),
+              if (actionLabel != null) ...[
+                const SizedBox(height: 4),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.map_outlined,
+                      size: 14,
+                      color: AppColors.primary,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      actionLabel!,
+                      key: const Key('job-location-map-link'),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ],
           ),
         ),
       ],
+    );
+
+    if (onTap == null) return content;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 2),
+          child: content,
+        ),
+      ),
     );
   }
 }

@@ -104,6 +104,39 @@ void main() {
     },
   );
 
+  testWidgets('job detail quick info shows work time and Google Maps action', (
+    tester,
+  ) async {
+    final job = _jobFixture(
+      location: 'Số 03 Hòa Bình, Bình Thọ, Thủ Đức',
+      latitude: 10.851,
+      longitude: 106.759,
+      shiftTime: '08:00 - 12:00',
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [jobRepositoryProvider.overrideWithValue(_FakeJobRepo())],
+        child: MaterialApp(
+          home: UserJobDetailScreen(
+            job: job,
+            onApplyPressed: () {},
+            showApplyButton: false,
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+
+    expect(find.text('THỜI GIAN LÀM VIỆC'), findsOneWidget);
+    expect(find.text('08:00 - 12:00'), findsOneWidget);
+    expect(find.text('ĐỊA ĐIỂM'), findsOneWidget);
+    expect(find.text('Số 03 Hòa Bình, Bình Thọ, Thủ Đức'), findsOneWidget);
+    expect(find.byKey(const Key('job-location-map-link')), findsOneWidget);
+    expect(find.text('Mở Google Maps'), findsOneWidget);
+  });
+
   testWidgets('job detail renders work schedule as a selectable calendar', (
     tester,
   ) async {
@@ -123,8 +156,9 @@ void main() {
 
     expect(find.text('Thời gian tuyển dụng'), findsOneWidget);
     expect(find.text(recruitmentWindowValue(job)), findsOneWidget);
+    expect(find.text('THỜI GIAN LÀM VIỆC'), findsOneWidget);
+    expect(find.text(rawSchedule), findsOneWidget);
     expect(find.text('Lịch làm việc'), findsOneWidget);
-    expect(find.text(rawSchedule), findsNothing);
     expect(find.text('07:00 - 11:30'), findsOneWidget);
     expect(find.text('THỜI GIAN'), findsNothing);
   });
@@ -148,8 +182,9 @@ void main() {
 
     expect(find.text('Thời gian tuyển dụng'), findsOneWidget);
     expect(find.text(recruitmentWindowValue(job)), findsOneWidget);
+    expect(find.text('THỜI GIAN LÀM VIỆC'), findsOneWidget);
+    expect(find.text(rawSchedule), findsOneWidget);
     expect(find.text('Lịch làm việc'), findsNothing);
-    expect(find.text(rawSchedule), findsNothing);
     expect(find.text('07:00 - 11:30'), findsNothing);
   });
 
@@ -258,6 +293,9 @@ final _job = _jobFixture();
 
 JobPost _jobFixture({
   String shiftTime = 'T2,T3,T4,T5,T6 @ 07:00 - 11:30',
+  String location = 'Quận 1',
+  double? latitude,
+  double? longitude,
   String description = 'Phục vụ khách hàng tại quầy.',
   String? requirements = 'Nhanh nhẹn',
   DateTime? recruitmentStartDate,
@@ -271,7 +309,9 @@ JobPost _jobFixture({
     employerName: 'Công ty cổ phần cafe Katinat',
     title: 'Nhân viên phục vụ',
     jobType: isQuickJob ? JobPostType.urgent : JobPostType.partTime,
-    location: 'Quận 1',
+    location: location,
+    latitude: latitude,
+    longitude: longitude,
     salary: '24.000 VNĐ/giờ',
     shiftTime: shiftTime,
     description: description,

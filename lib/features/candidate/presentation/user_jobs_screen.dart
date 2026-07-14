@@ -1414,14 +1414,41 @@ class _JobCategoryTabs extends StatefulWidget {
 
 class _JobCategoryTabsState extends State<_JobCategoryTabs> {
   bool _isExpanded = false;
+  int _lastNonSavedTab = _jobsTabAll;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.activeTab != _jobsTabSaved) {
+      _lastNonSavedTab = widget.activeTab;
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _JobCategoryTabs oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.activeTab != _jobsTabSaved) {
+      _lastNonSavedTab = widget.activeTab;
+    }
+  }
 
   void _selectTab(int tab) {
+    if (tab == _jobsTabSaved && widget.activeTab != _jobsTabSaved) {
+      _lastNonSavedTab = widget.activeTab;
+    } else if (tab != _jobsTabSaved) {
+      _lastNonSavedTab = tab;
+    }
     setState(() => _isExpanded = false);
     widget.onTabChanged(tab);
   }
 
+  void _backFromSavedJobs() {
+    _selectTab(_lastNonSavedTab);
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isViewingSavedJobs = widget.activeTab == _jobsTabSaved;
     final selectedIcon = switch (widget.activeTab) {
       _jobsTabAll => Icons.all_inbox_outlined,
       _jobsTabUrgent => Icons.flash_on_outlined,
@@ -1434,22 +1461,26 @@ class _JobCategoryTabsState extends State<_JobCategoryTabs> {
         Row(
           children: [
             Expanded(
-              child: _JobTypeDropdownButton(
-                icon: selectedIcon,
-                isExpanded: _isExpanded,
-                isActive: widget.activeTab != _jobsTabSaved,
-                onTap: () => setState(() => _isExpanded = !_isExpanded),
-              ),
+              child: isViewingSavedJobs
+                  ? _SavedJobsBackButton(onTap: _backFromSavedJobs)
+                  : _JobTypeDropdownButton(
+                      icon: selectedIcon,
+                      isExpanded: _isExpanded,
+                      isActive: true,
+                      onTap: () => setState(() => _isExpanded = !_isExpanded),
+                    ),
             ),
             const SizedBox(width: 12),
             _SavedJobsIconButton(
               count: widget.savedCount,
-              isActive: widget.activeTab == _jobsTabSaved,
-              onTap: () => _selectTab(_jobsTabSaved),
+              isActive: isViewingSavedJobs,
+              onTap: isViewingSavedJobs
+                  ? _backFromSavedJobs
+                  : () => _selectTab(_jobsTabSaved),
             ),
           ],
         ),
-        if (_isExpanded) ...[
+        if (_isExpanded && !isViewingSavedJobs) ...[
           const SizedBox(height: 10),
           _JobTypeDropdownPanel(
             activeTab: widget.activeTab,
@@ -1460,6 +1491,60 @@ class _JobCategoryTabsState extends State<_JobCategoryTabs> {
           ),
         ],
       ],
+    );
+  }
+}
+
+class _SavedJobsBackButton extends StatelessWidget {
+  const _SavedJobsBackButton({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Tooltip(
+      message: 'Quay lại danh sách công việc',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          key: const Key('saved-jobs-back-button'),
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Ink(
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: theme.colorScheme.outlineVariant),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.arrow_back_rounded,
+                    color: AppColors.primary,
+                    size: 22,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Quay lại',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
