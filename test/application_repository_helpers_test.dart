@@ -176,7 +176,7 @@ void main() {
   );
 
   test(
-    'pending standard application continues AI interview when report is missing',
+    'pending standard application does not continue AI interview when pending employer approval',
     () {
       final continuation = aiInterviewContinuationForExistingApplication(
         applications: const [
@@ -192,13 +192,12 @@ void main() {
         jobRequiresAiInterview: true,
       );
 
-      expect(continuation?.applicationId, 'app-pending');
-      expect(continuation?.aiScreeningResult, 'pass');
+      expect(continuation, isNull);
     },
   );
 
   test(
-    'statusless standard application continues AI interview when report is missing',
+    'statusless standard application does not continue AI interview when pending employer approval',
     () {
       final continuation = aiInterviewContinuationForExistingApplication(
         applications: const [
@@ -210,8 +209,7 @@ void main() {
         jobRequiresAiInterview: true,
       );
 
-      expect(continuation?.applicationId, 'app-statusless');
-      expect(continuation?.aiScreeningResult, 'pass');
+      expect(continuation, isNull);
     },
   );
 
