@@ -6,7 +6,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/errors/auth_failure.dart';
 import '../../../core/localization/app_localizations.dart';
-import '../../../main.dart' show amplifyConfigError;
 import '../../candidate/presentation/policy_terms_screen.dart';
 import '../application/auth_controller.dart';
 import '../data/check_email_service.dart';
@@ -303,24 +302,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             const SizedBox(height: 4),
             const PolicyInlineLinks(),
             const SizedBox(height: 8),
-            // ── Debug: show Amplify config error details ──────────────
-            if (amplifyConfigError != null)
-              Container(
-                margin: const EdgeInsets.only(top: 12),
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Colors.red.shade900.withValues(alpha: 0.9),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: SelectableText(
-                  amplifyConfigError!,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 10,
-                    fontFamily: 'monospace',
-                  ),
-                ),
-              ),
           ],
         ),
       ),
