@@ -494,4 +494,114 @@ class AwsApplicationRepository implements ApplicationRepository {
       throw Exception(errorMsg);
     }
   }
+
+  @override
+  Future<void> sendCandidateAiScreeningPassedNotification({
+    required String candidateId,
+    required String jobTitle,
+    required String companyName,
+    required String jobId,
+    required int score,
+  }) async {
+    if (candidateId.trim().isEmpty) return;
+
+    final safeJobTitle = jobTitle.trim().isNotEmpty ? jobTitle.trim() : 'công việc';
+    final safeCompanyName = companyName.trim().isNotEmpty ? companyName.trim() : 'Nhà tuyển dụng';
+
+    try {
+      final response = await http.post(
+        Uri.parse(resolveUrl('$_notificationsBaseUrl/notifications')),
+        headers: const {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({
+          'type': 'ai_screening_passed',
+          'title': 'Hồ sơ ứng tuyển đã qua sàng lọc AI',
+          'titleEn': 'Your CV passed AI screening',
+          'message': 'CV của bạn cho vị trí $safeJobTitle tại $safeCompanyName đã qua vòng sơ loại AI và đang chờ Nhà tuyển dụng xét duyệt.',
+          'messageEn': 'Your CV for the $safeJobTitle position at $safeCompanyName has passed the AI screening and is pending employer review.',
+          'recipientId': candidateId,
+          'recipientRole': 'candidate',
+          'senderId': 'system',
+          'senderName': 'Hệ thống AI',
+          'data': {
+            'jobId': jobId,
+            'jobTitle': safeJobTitle,
+            'companyName': safeCompanyName,
+            'score': score,
+            'stage': 'ai_passed',
+          },
+          'icon': 'check-circle',
+          'color': '#10b981',
+          'actionUrl': '/candidate/jobs?tab=standard',
+          'actionText': 'Xem trạng thái hồ sơ',
+          'actionTextEn': 'View application status',
+        }),
+      );
+
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        safePrint(
+          'Failed to send candidate AI screening passed notification '
+          '(${response.statusCode}): ${response.body}',
+        );
+      }
+    } catch (error) {
+      safePrint('Error sending candidate AI screening passed notification: $error');
+    }
+  }
+
+  @override
+  Future<void> sendCandidateAiScreeningRejectedNotification({
+    required String candidateId,
+    required String jobTitle,
+    required String companyName,
+    required String jobId,
+  }) async {
+    if (candidateId.trim().isEmpty) return;
+
+    final safeJobTitle = jobTitle.trim().isNotEmpty ? jobTitle.trim() : 'công việc';
+    final safeCompanyName = companyName.trim().isNotEmpty ? companyName.trim() : 'Nhà tuyển dụng';
+
+    try {
+      final response = await http.post(
+        Uri.parse(resolveUrl('$_notificationsBaseUrl/notifications')),
+        headers: const {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({
+          'type': 'ai_screening_rejected',
+          'title': 'Hồ sơ không qua sàng lọc AI',
+          'titleEn': 'Your CV did not pass AI screening',
+          'message': 'Rất tiếc, CV ứng tuyển vị trí $safeJobTitle tại $safeCompanyName của bạn chưa phù hợp ở vòng sơ loại AI. Hãy cập nhật thêm kỹ năng và thử sức với các cơ hội khác nhé!',
+          'messageEn': 'Unfortunately, your CV for the $safeJobTitle position at $safeCompanyName did not meet the AI screening criteria. Update your skills and try other opportunities!',
+          'recipientId': candidateId,
+          'recipientRole': 'candidate',
+          'senderId': 'system',
+          'senderName': 'Hệ thống AI',
+          'data': {
+            'jobId': jobId,
+            'jobTitle': safeJobTitle,
+            'companyName': safeCompanyName,
+            'stage': 'ai_rejected',
+          },
+          'icon': 'alert-circle',
+          'color': '#ef4444',
+          'actionUrl': '/candidate/jobs?tab=standard',
+          'actionText': 'Xem việc làm khác',
+          'actionTextEn': 'Browse other jobs',
+        }),
+      );
+
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        safePrint(
+          'Failed to send candidate AI screening rejected notification '
+          '(${response.statusCode}): ${response.body}',
+        );
+      }
+    } catch (error) {
+      safePrint('Error sending candidate AI screening rejected notification: $error');
+    }
+  }
 }

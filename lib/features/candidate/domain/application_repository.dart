@@ -76,6 +76,19 @@ abstract class ApplicationRepository {
     required String applicationId,
     required DateTime archivedAt,
   });
+  Future<void> sendCandidateAiScreeningPassedNotification({
+    required String candidateId,
+    required String jobTitle,
+    required String companyName,
+    required String jobId,
+    required int score,
+  });
+  Future<void> sendCandidateAiScreeningRejectedNotification({
+    required String candidateId,
+    required String jobTitle,
+    required String companyName,
+    required String jobId,
+  });
 }
 
 bool isAlreadyAppliedApplicationError(Object error) {
@@ -245,9 +258,7 @@ bool isApplicationReadyForAiInterview(
     return true;
   }
 
-  if (jobRequiresAiInterview) return true;
-
-  return _hasPositiveApplicationScreeningResult(application);
+  return false;
 }
 
 bool _hasPositiveApplicationScreeningResult(Map<String, dynamic> application) {

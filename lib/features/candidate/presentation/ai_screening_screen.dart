@@ -7,7 +7,6 @@ import '../data/aws_application_repository.dart';
 import '../domain/ai_interview_models.dart';
 import '../domain/application_repository.dart';
 import '../domain/job_post.dart';
-import 'ai_interview_chat_screen.dart';
 
 class AIScreeningScreen extends ConsumerStatefulWidget {
   final JobPost job;
@@ -75,6 +74,12 @@ class _AIScreeningScreenState extends ConsumerState<AIScreeningScreen>
           ? user!.fullName
           : 'Ứng viên';
       final title = widget.job.title;
+      final education = (user?.education != null && user!.education!.isNotEmpty)
+          ? user.education!
+          : 'Chưa cập nhật';
+      final experience = (user?.experience != null && user!.experience!.isNotEmpty)
+          ? user.experience!
+          : 'Đã có kinh nghiệm làm việc ở vị trí tương đương.';
       final skills = (user?.skills != null && user!.skills!.isNotEmpty)
           ? user.skills!.join(', ')
           : 'Nhanh nhẹn, chăm chỉ, có trách nhiệm';
@@ -86,8 +91,8 @@ class _AIScreeningScreenState extends ConsumerState<AIScreeningScreen>
           '''
 Họ tên: $fullName
 Vị trí mong muốn: $title
-Kinh nghiệm làm việc: Đã có kinh nghiệm làm việc ở vị trí tương đương.
-Học vấn: Chưa cập nhật
+Kinh nghiệm làm việc: $experience
+Học vấn: $education
 Kỹ năng: $skills
 Giới thiệu bản thân: $bio
 '''
@@ -156,6 +161,17 @@ Nhiệm vụ: ${widget.job.responsibilities ?? "Phát triển và bảo trì cá
     if (screeningResult.canContinueToInterview) {
       try {
         await _submitRoundOneApplication(screeningResult);
+        final user = ref.read(authControllerProvider).asData?.value.user;
+        if (user != null) {
+          final repository = ref.read(applicationRepositoryProvider);
+          await repository.sendCandidateAiScreeningPassedNotification(
+            candidateId: user.userId,
+            jobTitle: widget.job.title,
+            companyName: widget.job.companyName ?? widget.job.employerName,
+            jobId: widget.job.idJob,
+            score: screeningResult.score,
+          );
+        }
       } catch (e) {
         if (!mounted) return;
         setState(() {
@@ -163,6 +179,21 @@ Nhiệm vụ: ${widget.job.responsibilities ?? "Phát triển và bảo trì cá
               'AI đã phân tích xong, nhưng chưa thể tạo hồ sơ ứng tuyển. '
               'Vui lòng thử lại sau.\nChi tiết: ${e.toString().replaceAll('Exception: ', '')}';
         });
+      }
+    } else {
+      try {
+        final user = ref.read(authControllerProvider).asData?.value.user;
+        if (user != null) {
+          final repository = ref.read(applicationRepositoryProvider);
+          await repository.sendCandidateAiScreeningRejectedNotification(
+            candidateId: user.userId,
+            jobTitle: widget.job.title,
+            companyName: widget.job.companyName ?? widget.job.employerName,
+            jobId: widget.job.idJob,
+          );
+        }
+      } catch (e) {
+        debugPrint('Failed to send candidate AI rejected notification: $e');
       }
     }
   }
@@ -570,45 +601,56 @@ Nhiệm vụ: ${widget.job.responsibilities ?? "Phát triển và bảo trì cá
           ],
 
           // ── Action Button ──────────────────────────────────────────────
-          if (isPassed)
-            FilledButton.icon(
+          if (isPassed) ...[
+            Card(
+              color: Colors.green[50],
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: const BorderSide(color: Colors.green, width: 1.5),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  children: [
+                    const Icon(Icons.info_outline, color: Colors.green),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Hồ sơ đã được gửi! Bạn cần đợi Nhà tuyển dụng duyệt CV để tiếp tục phỏng vấn Vòng 2 với AI.',
+                        style: TextStyle(
+                          color: Colors.green[900],
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            FilledButton(
               style: FilledButton.styleFrom(
-                backgroundColor: AppColors.secondary,
+                backgroundColor: AppColors.primary,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              onPressed: _applicationId == null
-                  ? null
-                  : () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => AIInterviewChatScreen(
-                            job: widget.job,
-                            cvFileName: widget.cvFileName,
-                            cvUrl: widget.cvUrl,
-                            cvS3Key: widget.cvS3Key,
-                            applicationId: _applicationId,
-                            aiScreeningScore: _score,
-                            aiScreeningResult: _result,
-                            aiScreeningReason: _reason,
-                          ),
-                        ),
-                      );
-                    },
-              icon: const Icon(Icons.forum_outlined),
-              label: const Text(
-                'Bắt đầu Vòng 2: Phỏng vấn với AI',
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text(
+                'Đóng và Quay lại',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
-            )
-          else
+            ),
+          ] else ...[
             Card(
               color: Colors.red[50],
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
-                side: const BorderSide(color: Colors.red, width: 1),
+                side: const BorderSide(color: Colors.red, width: 1.5),
               ),
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
@@ -618,14 +660,36 @@ Nhiệm vụ: ${widget.job.responsibilities ?? "Phát triển và bảo trì cá
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        'Hồ sơ của bạn chưa đạt mức độ phù hợp tối thiểu để bước vào vòng phỏng vấn AI. Đơn ứng tuyển của bạn đã được lưu lại để nhà tuyển dụng xem xét thủ công.',
-                        style: TextStyle(color: Colors.red[900], fontSize: 13),
+                        'Hồ sơ không đáp ứng đủ tiêu chuẩn tối thiểu của AI. CV của bạn không được gửi đi.',
+                        style: TextStyle(
+                          color: Colors.red[900],
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
             ),
+            const SizedBox(height: 16),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.grey[400],
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text(
+                'Đóng',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
           const SizedBox(height: 32),
         ],
       ),

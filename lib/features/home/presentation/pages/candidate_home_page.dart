@@ -6,7 +6,6 @@ import '../../../auth/application/auth_controller.dart';
 import '../../../auth/domain/auth_user_profile.dart';
 import '../../../candidate/application/jobs_providers.dart';
 import '../../../candidate/data/aws_application_repository.dart';
-import '../../../candidate/domain/application_repository.dart';
 import '../../../candidate/domain/job_post.dart';
 import '../../../candidate/notifications/application/notification_controller.dart';
 import '../../../candidate/presentation/application_flow_navigation.dart';
@@ -299,37 +298,30 @@ class _CandidateHomePageState extends ConsumerState<CandidateHomePage> {
     String cvFilename, {
     String? cvS3Key,
   }) async {
-    _showLoading();
-    try {
-      final user = ref.read(authControllerProvider).asData?.value.user;
-      if (user == null) {
-        throw Exception('Vui lòng đăng nhập để ứng tuyển.');
-      }
-      await ref
-          .read(applicationRepositoryProvider)
-          .submitApplication(
-            jobId: job.idJob,
-            cvUrl: cvUrl,
-            cvFilename: cvFilename,
-            notification: ApplicationNotificationDetails(
-              employerId: job.employerId,
-              candidateId: user.userId,
-              candidateName: user.fullName,
-              jobTitle: job.title,
-              companyName: job.companyName ?? job.employerName,
-              isQuickJob: job.isQuickJob,
-            ),
-          );
-      if (!mounted) return;
-      Navigator.pop(context);
-      _showMessage('Ứng tuyển thành công!', backgroundColor: AppColors.primary);
-    } catch (error) {
-      if (!mounted) return;
-      Navigator.pop(context);
-      final message = error.toString();
-      if (isAlreadyAppliedApplicationError(error)) {
-        final user = ref.read(authControllerProvider).asData?.value.user;
-        if (user != null) {
+    final user = ref.read(authControllerProvider).asData?.value.user;
+    if (user == null) {
+      _showMessage('Vui lòng đăng nhập để ứng tuyển.');
+      return;
+    }
+
+    await submitApplicationWithBackgroundEval(
+      context: context,
+      ref: ref,
+      job: job,
+      user: user,
+      cvUrl: cvUrl,
+      cvFilename: cvFilename,
+      cvS3Key: cvS3Key,
+      onSuccess: () {
+        if (mounted) {
+          _showMessage('Ứng tuyển thành công!', backgroundColor: AppColors.primary);
+        }
+      },
+      onError: (msg) async {
+        if (!mounted) return;
+        if (msg.contains('ALREADY_APPLIED') ||
+            msg.contains('already applied') ||
+            msg.contains('đã ứng tuyển')) {
           final openedInterview =
               await openExistingAiInterviewForDuplicateApplication(
                 context: context,
@@ -341,15 +333,12 @@ class _CandidateHomePageState extends ConsumerState<CandidateHomePage> {
                 selectedCvS3Key: cvS3Key,
               );
           if (openedInterview || !mounted) return;
+          _showMessage('Bạn đã ứng tuyển công việc này rồi!', backgroundColor: Colors.red);
+        } else {
+          _showMessage(msg.replaceAll('Exception: ', ''), backgroundColor: Colors.red);
         }
-      }
-      _showMessage(
-        isAlreadyAppliedApplicationError(error)
-            ? 'Bạn đã ứng tuyển công việc này rồi!'
-            : message.replaceAll('Exception: ', ''),
-        backgroundColor: Colors.red,
-      );
-    }
+      },
+    );
   }
 
   @override

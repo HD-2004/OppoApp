@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../auth/application/auth_controller.dart';
 import '../../../candidate/data/aws_application_repository.dart';
-import '../../../candidate/domain/application_repository.dart';
 import '../../../candidate/domain/job_post.dart';
 import '../../../candidate/presentation/application_flow_navigation.dart';
 import '../../../candidate/presentation/user_job_detail_screen.dart';
@@ -185,47 +184,37 @@ class _JobsPageState extends ConsumerState<JobsPage> {
     String cvFilename, {
     String? cvS3Key,
   }) async {
-    showDialog(
+    final user = ref.read(authControllerProvider).asData?.value.user;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Vui lòng đăng nhập để ứng tuyển.')),
+      );
+      return;
+    }
+
+    await submitApplicationWithBackgroundEval(
       context: context,
-      barrierDismissible: false,
-      builder: (_) => const Center(child: CircularProgressIndicator()),
-    );
-    try {
-      final user = ref.read(authControllerProvider).asData?.value.user;
-      if (user == null) {
-        throw Exception('Vui lòng đăng nhập để ứng tuyển.');
-      }
-      await ref
-          .read(applicationRepositoryProvider)
-          .submitApplication(
-            jobId: job.idJob,
-            cvUrl: cvUrl,
-            cvFilename: cvFilename,
-            cvS3Key: cvS3Key,
-            notification: ApplicationNotificationDetails(
-              employerId: job.employerId,
-              candidateId: user.userId,
-              candidateName: user.fullName,
-              jobTitle: job.title,
-              companyName: job.companyName ?? job.employerName,
-              isQuickJob: job.isQuickJob,
+      ref: ref,
+      job: job,
+      user: user,
+      cvUrl: cvUrl,
+      cvFilename: cvFilename,
+      cvS3Key: cvS3Key,
+      onSuccess: () {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Hồ sơ ứng tuyển đã được gửi thành công!'),
+              backgroundColor: AppColors.secondary,
             ),
           );
-      if (!mounted) return;
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Hồ sơ ứng tuyển đã được gửi thành công!'),
-          backgroundColor: AppColors.secondary,
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      Navigator.pop(context);
-      final msg = e.toString();
-      if (isAlreadyAppliedApplicationError(e)) {
-        final user = ref.read(authControllerProvider).asData?.value.user;
-        if (user != null) {
+        }
+      },
+      onError: (msg) async {
+        if (!mounted) return;
+        if (msg.contains('ALREADY_APPLIED') ||
+            msg.contains('already applied') ||
+            msg.contains('đã ứng tuyển')) {
           final openedInterview =
               await openExistingAiInterviewForDuplicateApplication(
                 context: context,
@@ -237,19 +226,22 @@ class _JobsPageState extends ConsumerState<JobsPage> {
                 selectedCvS3Key: cvS3Key,
               );
           if (openedInterview || !mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Bạn đã ứng tuyển công việc này rồi!'),
+              backgroundColor: AppColors.danger,
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(msg.replaceAll('Exception: ', '')),
+              backgroundColor: AppColors.danger,
+            ),
+          );
         }
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            isAlreadyAppliedApplicationError(e)
-                ? 'Bạn đã ứng tuyển công việc này rồi!'
-                : msg.replaceAll('Exception: ', ''),
-          ),
-          backgroundColor: AppColors.danger,
-        ),
-      );
-    }
+      },
+    );
   }
 
   @override

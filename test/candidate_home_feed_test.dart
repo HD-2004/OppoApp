@@ -586,4 +586,21 @@ class _FakeApplicationRepository implements ApplicationRepository {
     required String applicationId,
     required DateTime archivedAt,
   }) async {}
+
+  @override
+  Future<void> sendCandidateAiScreeningPassedNotification({
+    required String candidateId,
+    required String jobTitle,
+    required String companyName,
+    required String jobId,
+    required int score,
+  }) async {}
+
+  @override
+  Future<void> sendCandidateAiScreeningRejectedNotification({
+    required String candidateId,
+    required String jobTitle,
+    required String companyName,
+    required String jobId,
+  }) async {}
 }
