@@ -146,8 +146,11 @@ class AuthExceptionMapper {
     // not a generic exception that happens to contain the word "config".
     // Note: configureAmplify() already throws AuthFailure.configuration directly,
     // so reaching here with a config-related exception is unexpected.
+    // IMPORTANT: Do NOT match on 'userpool' alone — many runtime errors from
+    // Cognito mention the user pool in their message (e.g. "User does not exist
+    // in UserPool" or "UserPool client ... does not exist"). Only match when
+    // the error clearly indicates a misconfigured Amplify setup.
     if (combined.contains('appclientid') ||
-        combined.contains('userpool') ||
         (combined.contains('configuration') && combined.contains('amplify'))) {
       return AuthFailure.configuration;
     }

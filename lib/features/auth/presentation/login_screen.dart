@@ -62,7 +62,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    final l10n = AppLocalizations.of(context);
     setState(() {
       _isSubmitting = true;
       _emailError = null;
@@ -91,7 +90,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           );
     } on CheckEmailException catch (e) {
       // Lỗi gọi check-email API — hiện snackbar và vẫn cho phép thử đăng nhập
-      _showError(e.message);
+      _showError('CheckEmail: ${e.message}');
       // Fallthrough: không block luồng đăng nhập khi API check lỗi
       try {
         await ref
@@ -101,24 +100,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               password: _passwordController.text,
             );
       } on AuthFailure catch (failure) {
-        _showError(failure.message);
+        _showError('${failure.message} [code=${failure.code}]');
         if (failure.code == 'user_unconfirmed' && mounted) {
           context.go(
             '/confirm-signup?email=${Uri.encodeComponent(_emailController.text)}',
           );
         }
-      } catch (_) {
-        _showError(l10n.unknownError);
+      } catch (e2) {
+        _showError('RAW inner: $e2');
       }
     } on AuthFailure catch (failure) {
-      _showError(failure.message);
+      _showError('${failure.message} [code=${failure.code}]');
       if (failure.code == 'user_unconfirmed' && mounted) {
         context.go(
           '/confirm-signup?email=${Uri.encodeComponent(_emailController.text)}',
         );
       }
-    } catch (_) {
-      _showError(l10n.unknownError);
+    } catch (e) {
+      _showError('RAW: $e');
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
