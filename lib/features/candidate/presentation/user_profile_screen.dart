@@ -1123,10 +1123,12 @@ class _CvSectionState extends ConsumerState<_CvSection> {
     });
 
     try {
+      debugPrint('🔗 [UserProfile] Attempting to open CV URL: $rawUrl');
       final launched = await launchUrl(
         uri,
         mode: LaunchMode.externalApplication,
       );
+      debugPrint('ℹ️ [UserProfile] launchUrl success status: $launched');
       if (!launched && mounted) {
         setState(() {
           _error = 'Không thể mở CV. Vui lòng thử lại.';
