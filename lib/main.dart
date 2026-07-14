@@ -6,7 +6,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app/app.dart';
+import 'core/config/amplify_config.dart';
 import 'features/auth/data/auth_service.dart';
+
+/// Holds the Amplify configuration error (if any) so the UI can display it.
+String? amplifyConfigError;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,9 +31,17 @@ Future<void> main() async {
   if (kIsWeb) {
     try {
       await AuthService().configureAmplify();
-    } catch (e) {
-      // Configuration errors are handled later in authControllerProvider.build()
-      safePrint('[main] Amplify configuration failed: $e');
+    } catch (e, st) {
+      // Store error for UI display (console is unavailable in release mode)
+      amplifyConfigError =
+          'Amplify configure failed: $e\n'
+          'region=$cognitoRegion\n'
+          'poolId=$cognitoUserPoolId\n'
+          'clientId=$cognitoUserPoolClientId\n'
+          'hostedUi=$cognitoHostedUiDomain\n'
+          'redirectUri=$cognitoSignInRedirectUri\n'
+          'stack=${st.toString().split('\n').take(5).join('\n')}';
+      safePrint('[main] $amplifyConfigError');
     }
 
     // ── OAuth callback guard ──────────────────────────────────────────────────
