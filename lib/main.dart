@@ -34,23 +34,23 @@ Future<void> main() async {
   if (kIsWeb) {
     // Capture actual runtime config values for debugging
     amplifyConfigDebugInfo =
-        'region="${cognitoRegion}" (valid=${hasCognitoRegion})\n'
-        'poolId="${cognitoUserPoolId}" (valid=${hasCognitoUserPoolId})\n'
-        'clientId="${cognitoUserPoolClientId}" (valid=${hasCognitoAppClientId})\n'
-        'hostedUi="${cognitoHostedUiDomain}"\n'
-        'redirectUri="${cognitoSignInRedirectUri}"\n'
+        'region="$cognitoRegion" (valid=$hasCognitoRegion)\n'
+        'poolId="$cognitoUserPoolId" (valid=$hasCognitoUserPoolId)\n'
+        'clientId="$cognitoUserPoolClientId" (valid=$hasCognitoAppClientId)\n'
+        'hostedUi="$cognitoHostedUiDomain"\n'
+        'redirectUri="$cognitoSignInRedirectUri"\n'
         'Amplify.isConfigured=${Amplify.isConfigured}';
     try {
       await AuthService().configureAmplify();
       amplifyConfigDebugInfo =
-          '${amplifyConfigDebugInfo}\nAfter configure: Amplify.isConfigured=${Amplify.isConfigured}';
+          '$amplifyConfigDebugInfo\nAfter configure: Amplify.isConfigured=${Amplify.isConfigured}';
     } catch (e, st) {
       // Store error for UI display (console is unavailable in release mode)
       amplifyConfigError =
           'Amplify configure failed: $e\n'
           'stack=${st.toString().split('\n').take(5).join('\n')}';
       amplifyConfigDebugInfo =
-          '${amplifyConfigDebugInfo}\nEXCEPTION: $e';
+          '$amplifyConfigDebugInfo\nEXCEPTION: $e';
     }
 
     // ── OAuth callback guard ──────────────────────────────────────────────────
