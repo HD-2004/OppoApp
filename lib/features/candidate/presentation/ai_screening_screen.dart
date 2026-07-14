@@ -131,7 +131,8 @@ Nhiệm vụ: ${widget.job.responsibilities ?? "Phát triển và bảo trì cá
             );
         _progressController.forward();
       });
-    } catch (_) {
+    } catch (e, stack) {
+      debugPrint('⚠️ [AI_SCREENING] CV screening failed: $e\n$stack');
       screeningResult = CvScreeningResult.websiteMockFallback(
         jobTitle: widget.job.title,
       );
