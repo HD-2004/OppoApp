@@ -20,11 +20,20 @@ const cognitoJwksUrl = '$cognitoEndpoint/.well-known/jwks.json';
 const useCognitoCustomRoleAttribute = false;
 
 // App Client IDs are public identifiers. Mobile apps must not use client
-// secrets. The default below was found read-only in OpPoWebUserPool.
-const cognitoUserPoolClientId = String.fromEnvironment(
-  'COGNITO_USER_POOL_CLIENT_ID',
+// secrets.
+// ── Web client (OpPoWebClient) ──
+const _cognitoWebClientId = String.fromEnvironment(
+  'COGNITO_WEB_CLIENT_ID',
   defaultValue: '2mv7qt4gpmq03dmlm0or9724n8',
 );
+// ── Android client (OpPoAppClient) ──
+const _cognitoAndroidClientId = String.fromEnvironment(
+  'COGNITO_ANDROID_CLIENT_ID',
+  defaultValue: '6o6jofrs8m69ls9rq4n9pvn9cl',
+);
+// Resolved at runtime based on platform.
+String get cognitoUserPoolClientId =>
+    kIsWeb ? _cognitoWebClientId : _cognitoAndroidClientId;
 
 // ── Hosted UI / OAuth (Google sign-in) ──────────────────────────────────────
 // Google federated sign-in goes through the SAME Cognito Hosted UI that the
@@ -50,10 +59,18 @@ const cognitoWebRedirectUri = String.fromEnvironment(
   defaultValue: '',
 );
 
-// App-owned redirect URI. Derived from the Android applicationId / iOS bundle
-// id (com.oppo.tempjobs) so it is a real scheme this app controls. This exact
-// value must be added to the Cognito App Client's Allowed callback URLs and
-// Allowed sign-out URLs for federated sign-in to return to the app.
+// App-owned redirect URI.
+// - Web: detected from Uri.base or overridden via --dart-define.
+// - Android: uses the HTTPS redirect URI registered on OpPoAppClient
+//   (https://hd-2004.github.io/OppoApp/). This requires App Links
+//   (Digital Asset Links) to be verified so Android routes the redirect
+//   back to the app.
+const cognitoAndroidRedirectUri = String.fromEnvironment(
+  'COGNITO_ANDROID_REDIRECT_URI',
+  defaultValue: 'https://hd-2004.github.io/OppoApp/',
+);
+
+// Legacy custom scheme kept for reference / fallback.
 const cognitoRedirectScheme = String.fromEnvironment(
   'COGNITO_REDIRECT_SCHEME',
   defaultValue: 'com.oppo.tempjobs',
@@ -62,19 +79,20 @@ const cognitoRedirectScheme = String.fromEnvironment(
 String get cognitoSignInRedirectUri => resolveCognitoRedirectUri(
   isWeb: kIsWeb,
   webRedirectUri: cognitoWebRedirectUri,
-  redirectScheme: cognitoRedirectScheme,
+  androidRedirectUri: cognitoAndroidRedirectUri,
 );
 
 String get cognitoSignOutRedirectUri => cognitoSignInRedirectUri;
 
 String resolveCognitoRedirectUri({
   required bool isWeb,
-  required String redirectScheme,
+  required String androidRedirectUri,
   String? webRedirectUri,
   Uri? baseUri,
 }) {
   if (!isWeb) {
-    return '${redirectScheme.trim()}://';
+    // Android: use the HTTPS redirect URI registered on OpPoAppClient.
+    return androidRedirectUri;
   }
 
   final configuredUri = _normalizeWebRedirectUri(webRedirectUri);
@@ -116,8 +134,9 @@ String? _normalizeWebRedirectUri(String? value) {
 bool get hasHostedUiConfig => cognitoHostedUiDomain.trim().isNotEmpty;
 
 bool get hasCognitoAppClientId {
-  return cognitoUserPoolClientId.trim().isNotEmpty &&
-      cognitoUserPoolClientId != 'REPLACE_WITH_COGNITO_APP_CLIENT_ID';
+  final id = cognitoUserPoolClientId;
+  return id.trim().isNotEmpty &&
+      id != 'REPLACE_WITH_COGNITO_APP_CLIENT_ID';
 }
 
 /// Kiểm tra User Pool ID có đúng format Cognito hay không.
@@ -173,7 +192,7 @@ String get _oauthBlock {
 
 String get _socialProviders => hasHostedUiConfig ? '"GOOGLE"' : '';
 
-final amplifyconfig =
+String get amplifyconfig =>
     '''
 {
   "UserAgent": "aws-amplify-flutter/2.0",

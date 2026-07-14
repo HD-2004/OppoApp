@@ -36,6 +36,23 @@
                 <category android:name="android.intent.category.BROWSABLE"/>
                 <data android:scheme="com.oppo.tempjobs"/>
             </intent-filter>
+            <!-- App Links: Cognito OAuth redirect via HTTPS.
+                 After Google sign-in, Cognito redirects to
+                 https://hd-2004.github.io/OppoApp/ which Android
+                 intercepts via this verified intent-filter and brings
+                 the user back into the app.
+                 NOTE: You must host a Digital Asset Links file at
+                 https://hd-2004.github.io/.well-known/assetlinks.json
+                 for Android to auto-verify the domain. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data
+                    android:scheme="https"
+                    android:host="hd-2004.github.io"
+                    android:pathPrefix="/OppoApp"/>
+            </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->

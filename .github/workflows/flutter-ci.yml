@@ -94,7 +94,7 @@ jobs:
               'COGNITO_HOSTED_UI_DOMAIN':    clean('COGNITO_HOSTED_UI_DOMAIN'),
               'COGNITO_REGION':              clean('COGNITO_REGION'),
               'COGNITO_USER_POOL_ID':        clean('COGNITO_USER_POOL_ID'),
-              'COGNITO_USER_POOL_CLIENT_ID': clean('COGNITO_USER_POOL_CLIENT_ID'),
+              'COGNITO_WEB_CLIENT_ID':       clean('COGNITO_USER_POOL_CLIENT_ID'),
           }
           missing = [k for k, v in defines.items() if not v]
           if missing:
