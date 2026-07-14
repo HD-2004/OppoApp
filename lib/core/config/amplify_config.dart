@@ -140,7 +140,7 @@ bool get hasCognitoAppClientId {
 }
 
 /// Kiểm tra User Pool ID có đúng format Cognito hay không.
-/// Format hợp lệ: <region>_<alphanumeric>, vd: ap-southeast-1_ShCajkmJd
+/// Format hợp lệ: `<region>_<alphanumeric>`, vd: ap-southeast-1_ShCajkmJd
 bool get hasCognitoUserPoolId {
   final id = cognitoUserPoolId.trim();
   if (id.isEmpty) return false;
