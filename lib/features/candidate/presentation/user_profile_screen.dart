@@ -1045,7 +1045,7 @@ class _CvSectionState extends ConsumerState<_CvSection> {
       return;
     }
 
-    final fileName = file.name.trim();
+    final fileName = _sanitizeFilename(file.name.trim());
     final fileType = _resolveMimeType(fileName);
     if (fileType == null) {
       setState(() {
@@ -1196,6 +1196,47 @@ class _CvSectionState extends ConsumerState<_CvSection> {
       return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
     }
     return null;
+  }
+
+  String _sanitizeFilename(String filename) {
+    final lastDot = filename.lastIndexOf('.');
+    final name = lastDot > 0 ? filename.substring(0, lastDot) : filename;
+    final ext = lastDot > 0 ? filename.substring(lastDot) : '';
+
+    var cleanName = name;
+    const vietnameseMap = {
+      'a': 'àáạảãâầấậẩẫăằắặẳẵ',
+      'A': 'ÀÁẠẢÃÂẦẤẬẨẪĂẰẮẶẲẴ',
+      'e': 'èéẹẻẽêềếệểễ',
+      'E': 'ÈÉẸẺẼÊỀẾỆỂỄ',
+      'i': 'ìíịỉĩ',
+      'I': 'ÌÍỊỈĨ',
+      'o': 'òóọỏõôồốộổỗơờớợởỡ',
+      'O': 'ÒÓỌỎÕÔỒỐỘỔỖƠỜỚỢỞỠ',
+      'u': 'ùúụủũưừứựửữ',
+      'U': 'ÙÚỤỦŨƯỪỨỰỬỮ',
+      'y': 'ỳýỵỷỹ',
+      'Y': 'ỲÝỴỶỸ',
+      'd': 'đ',
+      'D': 'Đ',
+    };
+
+    for (final entry in vietnameseMap.entries) {
+      for (final char in entry.value.codeUnits) {
+        cleanName = cleanName.replaceAll(String.fromCharCode(char), entry.key);
+      }
+    }
+
+    cleanName = cleanName
+        .replaceAll(RegExp(r'[^a-zA-Z0-9\s_-]'), '_')
+        .replaceAll(RegExp(r'\s+'), '_')
+        .replaceAll(RegExp(r'_+'), '_');
+
+    if (cleanName.length > 100) {
+      cleanName = cleanName.substring(0, 100);
+    }
+
+    return cleanName + ext;
   }
 
   @override
