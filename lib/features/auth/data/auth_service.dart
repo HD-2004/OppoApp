@@ -18,9 +18,14 @@ class AuthService {
 
     logAmplifyConfigForDebug();
 
-    if (!hasCognitoAppClientId) {
-      safePrint('Amplify Auth skipped: missing Cognito App Client ID.');
-      // Don't throw here — treat missing client ID as unconfigured,
+    if (!hasCognitoAppClientId || !hasCognitoUserPoolId || !hasCognitoRegion) {
+      safePrint(
+        'Amplify Auth skipped: thiếu config.\n'
+        '  region valid: $hasCognitoRegion ($cognitoRegion)\n'
+        '  poolId valid: $hasCognitoUserPoolId ($cognitoUserPoolId)\n'
+        '  clientId valid: $hasCognitoAppClientId',
+      );
+      // Don't throw here — treat missing config as unconfigured,
       // _ensureConfigured() will catch Amplify.isConfigured == false.
       return;
     }
@@ -425,9 +430,13 @@ class AuthService {
   }
 
   Future<void> _ensureConfigured() async {
-    if (!hasCognitoAppClientId) {
+    // Kiểm tra đủ 3 giá trị bắt buộc trước khi gọi Amplify.configure()
+    if (!hasCognitoAppClientId || !hasCognitoUserPoolId || !hasCognitoRegion) {
       safePrint(
-        '[AuthService] _ensureConfigured: no app client ID → throwing configuration failure.',
+        '[AuthService] _ensureConfigured: thiếu/sai config → throwing configuration failure.\n'
+        '  region: "$cognitoRegion" (valid=$hasCognitoRegion)\n'
+        '  poolId: "$cognitoUserPoolId" (valid=$hasCognitoUserPoolId)\n'
+        '  clientId: "$cognitoUserPoolClientId" (valid=$hasCognitoAppClientId)',
       );
       throw AuthFailure.configuration;
     }
@@ -436,7 +445,10 @@ class AuthService {
 
     if (!Amplify.isConfigured) {
       safePrint(
-        '[AuthService] _ensureConfigured: Amplify still not configured after configureAmplify() → throwing configuration failure.',
+        '[AuthService] _ensureConfigured: Amplify still not configured after configureAmplify() → throwing configuration failure.\n'
+        '  clientId: "${cognitoUserPoolClientId.substring(0, cognitoUserPoolClientId.length > 10 ? 10 : cognitoUserPoolClientId.length)}..."\n'
+        '  region: "$cognitoRegion"\n'
+        '  poolId: "$cognitoUserPoolId"',
       );
       throw AuthFailure.configuration;
     }

@@ -1,7 +1,15 @@
 import 'package:flutter/foundation.dart';
 
-const cognitoRegion = 'ap-southeast-1';
-const cognitoUserPoolId = 'ap-southeast-1_ShCajkmJd';
+// Region và User Pool ID có thể override qua --dart-define nếu cần đổi
+// environment (staging/production). Default là giá trị production hiện tại.
+const cognitoRegion = String.fromEnvironment(
+  'COGNITO_REGION',
+  defaultValue: 'ap-southeast-1',
+);
+const cognitoUserPoolId = String.fromEnvironment(
+  'COGNITO_USER_POOL_ID',
+  defaultValue: 'ap-southeast-1_ShCajkmJd',
+);
 const cognitoUserPoolName = 'OpPoWebUserPool';
 const cognitoEndpoint =
     'https://cognito-idp.$cognitoRegion.amazonaws.com/$cognitoUserPoolId';
@@ -112,13 +120,29 @@ bool get hasCognitoAppClientId {
       cognitoUserPoolClientId != 'REPLACE_WITH_COGNITO_APP_CLIENT_ID';
 }
 
+/// Kiểm tra User Pool ID có đúng format Cognito hay không.
+/// Format hợp lệ: <region>_<alphanumeric>, vd: ap-southeast-1_ShCajkmJd
+bool get hasCognitoUserPoolId {
+  final id = cognitoUserPoolId.trim();
+  if (id.isEmpty) return false;
+  // Cognito User Pool ID luôn có dạng: region_id
+  return RegExp(r'^[a-z]{2}-[a-z]+-\d+_\w+$').hasMatch(id);
+}
+
+/// Kiểm tra Region có đúng format AWS hay không.
+bool get hasCognitoRegion {
+  final region = cognitoRegion.trim();
+  if (region.isEmpty) return false;
+  return RegExp(r'^[a-z]{2}-[a-z]+-\d+$').hasMatch(region);
+}
+
 void logAmplifyConfigForDebug() {
   if (!kDebugMode) {
     return;
   }
 
-  debugPrint('Amplify Auth config: region=$cognitoRegion');
-  debugPrint('Amplify Auth config: userPoolId=$cognitoUserPoolId');
+  debugPrint('Amplify Auth config: region=$cognitoRegion (valid=$hasCognitoRegion)');
+  debugPrint('Amplify Auth config: userPoolId=$cognitoUserPoolId (valid=$hasCognitoUserPoolId)');
   debugPrint('Amplify Auth config: endpoint=$cognitoEndpoint');
   debugPrint('Amplify Auth config: hasAppClientId=$hasCognitoAppClientId');
   debugPrint('Amplify Auth config: hasHostedUiConfig=$hasHostedUiConfig');
