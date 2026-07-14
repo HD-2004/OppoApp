@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -7,10 +5,11 @@ import 'package:intl/intl.dart';
 import 'package:oppo_temp_jobs/core/theme/app_colors.dart';
 import 'package:oppo_temp_jobs/features/auth/application/auth_controller.dart';
 import 'package:oppo_temp_jobs/features/candidate/data/aws_application_repository.dart';
+import 'package:oppo_temp_jobs/features/candidate/application/jobs_providers.dart';
 import 'package:oppo_temp_jobs/features/candidate/domain/application_repository.dart';
+import 'package:oppo_temp_jobs/features/candidate/domain/job_post.dart';
 import 'package:oppo_temp_jobs/features/candidate/notifications/application/notification_navigation.dart';
 import 'package:oppo_temp_jobs/features/candidate/notifications/domain/candidate_notification.dart';
-import 'package:oppo_temp_jobs/features/candidate/notifications/domain/notification_status.dart';
 import 'package:oppo_temp_jobs/features/candidate/notifications/domain/notification_type.dart';
 import 'package:oppo_temp_jobs/features/candidate/presentation/digital_wallet_screen.dart';
 import 'package:oppo_temp_jobs/features/candidate/presentation/user_profile_screen.dart';
@@ -23,7 +22,7 @@ final _candidateApplicationsForNotificationProvider = FutureProvider.autoDispose
           .getCandidateApplications(userId);
     });
 
-class CandidateNotificationDetailScreen extends StatelessWidget {
+class CandidateNotificationDetailScreen extends ConsumerWidget {
   const CandidateNotificationDetailScreen({
     super.key,
     required this.notification,
@@ -32,9 +31,17 @@ class CandidateNotificationDetailScreen extends StatelessWidget {
   final CandidateNotification notification;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final destination = resolveCandidateNotificationDestination(notification);
     final theme = Theme.of(context);
+    final tone = _toneFor(notification.type);
+    final relatedJobs = _needsRelatedJobLookup(notification)
+        ? [
+            ...?ref.watch(activeJobsProvider).asData?.value,
+            ...?ref.watch(activeQuickJobsProvider).asData?.value,
+          ]
+        : const <JobPost>[];
+    final senderName = _senderName(notification, relatedJobs: relatedJobs);
 
     return Scaffold(
       backgroundColor: AppColors.background(context),
@@ -55,48 +62,17 @@ class CandidateNotificationDetailScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
         children: [
-          _NotificationHeader(notification: notification),
-          const SizedBox(height: 14),
-          _DetailSection(
-            children: [
-              _DetailRow(
-                icon: Icons.schedule_rounded,
-                label: 'Thời gian',
-                value: _formatDateTime(notification.createdAt),
-              ),
-              _DetailRow(
-                icon: notification.status == CandidateNotificationStatus.unread
-                    ? Icons.mark_email_unread_outlined
-                    : Icons.mark_email_read_outlined,
-                label: 'Trạng thái',
-                value: notification.status == CandidateNotificationStatus.unread
-                    ? 'Chưa đọc'
-                    : 'Đã đọc',
-              ),
-              if (notification.readAt != null)
-                _DetailRow(
-                  icon: Icons.done_all_rounded,
-                  label: 'Đã đọc lúc',
-                  value: _formatDateTime(notification.readAt!),
-                ),
-              if (_text(notification.entityType).isNotEmpty)
-                _DetailRow(
-                  icon: Icons.category_outlined,
-                  label: 'Loại liên kết',
-                  value: notification.entityType!.trim(),
-                ),
-              if (_text(notification.entityId).isNotEmpty)
-                _DetailRow(
-                  icon: Icons.tag_rounded,
-                  label: 'Mã liên quan',
-                  value: notification.entityId!.trim(),
-                ),
-            ],
+          _NotificationHeader(
+            notification: notification,
+            tone: tone,
+            senderName: senderName,
           ),
-          if (notification.data.isNotEmpty) ...[
-            const SizedBox(height: 14),
-            _PayloadSection(data: notification.data),
-          ],
+          const SizedBox(height: 14),
+          _LetterMetadataSection(
+            notification: notification,
+            tone: tone,
+            senderName: senderName,
+          ),
           if (destination.hasAction) ...[
             const SizedBox(height: 18),
             FilledButton.icon(
@@ -232,9 +208,15 @@ class CandidateApplicationNotificationDetailScreen extends ConsumerWidget {
 }
 
 class _NotificationHeader extends StatelessWidget {
-  const _NotificationHeader({required this.notification});
+  const _NotificationHeader({
+    required this.notification,
+    required this.tone,
+    required this.senderName,
+  });
 
   final CandidateNotification notification;
+  final _NotificationTone tone;
+  final String senderName;
 
   @override
   Widget build(BuildContext context) {
@@ -243,21 +225,22 @@ class _NotificationHeader extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.cardBackground(context),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.borderFor(context)),
+        border: Border.all(color: tone.borderColor),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
+            key: const Key('notification-tone-indicator'),
             width: 46,
             height: 46,
             decoration: BoxDecoration(
-              color: AppColors.softPrimaryFor(context),
+              color: tone.softColor,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
               _iconFor(notification.type),
-              color: AppColors.primary,
+              color: tone.color,
               size: 23,
             ),
           ),
@@ -267,7 +250,7 @@ class _NotificationHeader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  notification.title,
+                  _personalizeNotificationText(notification.title, senderName),
                   style: TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w800,
@@ -277,7 +260,7 @@ class _NotificationHeader extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  notification.body,
+                  _personalizeNotificationText(notification.body, senderName),
                   style: TextStyle(
                     fontSize: 14,
                     color: AppColors.textSecondaryFor(context),
@@ -293,10 +276,50 @@ class _NotificationHeader extends StatelessWidget {
   }
 }
 
+class _LetterMetadataSection extends StatelessWidget {
+  const _LetterMetadataSection({
+    required this.notification,
+    required this.tone,
+    required this.senderName,
+  });
+
+  final CandidateNotification notification;
+  final _NotificationTone tone;
+  final String senderName;
+
+  @override
+  Widget build(BuildContext context) {
+    return _DetailSection(
+      borderColor: tone.borderColor,
+      children: [
+        _DetailRow(
+          icon: Icons.outbox_rounded,
+          label: 'Người gửi',
+          value: senderName,
+          iconColor: tone.color,
+        ),
+        _DetailRow(
+          icon: Icons.person_outline_rounded,
+          label: 'Người nhận',
+          value: _receiverName(notification),
+          iconColor: tone.color,
+        ),
+        _DetailRow(
+          icon: Icons.calendar_today_outlined,
+          label: 'Ngày',
+          value: _formatDateOnly(notification.createdAt),
+          iconColor: tone.color,
+        ),
+      ],
+    );
+  }
+}
+
 class _DetailSection extends StatelessWidget {
-  const _DetailSection({required this.children});
+  const _DetailSection({required this.children, this.borderColor});
 
   final List<Widget> children;
+  final Color? borderColor;
 
   @override
   Widget build(BuildContext context) {
@@ -304,7 +327,7 @@ class _DetailSection extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.cardBackground(context),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.borderFor(context)),
+        border: Border.all(color: borderColor ?? AppColors.borderFor(context)),
       ),
       child: Column(children: children),
     );
@@ -316,11 +339,13 @@ class _DetailRow extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.value,
+    this.iconColor,
   });
 
   final IconData icon;
   final String label;
   final String value;
+  final Color? iconColor;
 
   @override
   Widget build(BuildContext context) {
@@ -329,7 +354,11 @@ class _DetailRow extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 19, color: AppColors.textMutedFor(context)),
+          Icon(
+            icon,
+            size: 19,
+            color: iconColor ?? AppColors.textMutedFor(context),
+          ),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -358,31 +387,6 @@ class _DetailRow extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _PayloadSection extends StatelessWidget {
-  const _PayloadSection({required this.data});
-
-  final Map<String, dynamic> data;
-
-  @override
-  Widget build(BuildContext context) {
-    final entries = data.entries
-        .where((entry) => _displayValue(entry.value).isNotEmpty)
-        .toList(growable: false);
-    if (entries.isEmpty) return const SizedBox.shrink();
-
-    return _DetailSection(
-      children: [
-        for (final entry in entries.take(8))
-          _DetailRow(
-            icon: Icons.info_outline_rounded,
-            label: _friendlyKey(entry.key),
-            value: _displayValue(entry.value),
-          ),
-      ],
     );
   }
 }
@@ -731,6 +735,335 @@ IconData _iconFor(CandidateNotificationType type) {
   };
 }
 
+_NotificationTone _toneFor(CandidateNotificationType type) {
+  return switch (type) {
+    CandidateNotificationType.cvAccepted ||
+    CandidateNotificationType.shiftAccepted ||
+    CandidateNotificationType.shiftConfirmed ||
+    CandidateNotificationType.shiftCompleted ||
+    CandidateNotificationType.paymentReleased ||
+    CandidateNotificationType.kycApproved => const _NotificationTone(
+      color: Color(0xFF16A34A),
+      softColor: Color(0xFFEAF7EE),
+      borderColor: Color(0xFFBBF7D0),
+    ),
+    CandidateNotificationType.cvRejected ||
+    CandidateNotificationType.paymentFailed ||
+    CandidateNotificationType.kycRejected => const _NotificationTone(
+      color: Color(0xFFDC2626),
+      softColor: Color(0xFFFEE2E2),
+      borderColor: Color(0xFFFECACA),
+    ),
+    _ => const _NotificationTone(
+      color: AppColors.primary,
+      softColor: Color(0xFFEFF6FF),
+      borderColor: Color(0xFFDDE6F3),
+    ),
+  };
+}
+
+class _NotificationTone {
+  const _NotificationTone({
+    required this.color,
+    required this.softColor,
+    required this.borderColor,
+  });
+
+  final Color color;
+  final Color softColor;
+  final Color borderColor;
+}
+
+const _senderNameKeys = [
+  'senderName',
+  'sender_name',
+  'senderDisplayName',
+  'sender_display_name',
+  'fromName',
+  'from_name',
+  'fromDisplayName',
+  'from_display_name',
+  'sender',
+  'from',
+  'employerName',
+  'employer_name',
+  'employerDisplayName',
+  'employer_display_name',
+  'companyName',
+  'company_name',
+  'company',
+  'businessName',
+  'business_name',
+  'organizationName',
+  'organization_name',
+];
+
+const _senderNestedKeys = [
+  'sender',
+  'from',
+  'employer',
+  'company',
+  'organization',
+  'job',
+];
+
+const _jobIdKeys = [
+  'jobId',
+  'jobID',
+  'job_id',
+  'idJob',
+  'id_job',
+  'jobPostId',
+  'job_post_id',
+  'postId',
+  'post_id',
+];
+
+const _employerIdKeys = [
+  'employerId',
+  'employerID',
+  'employer_id',
+  'companyId',
+  'company_id',
+  'ownerId',
+  'owner_id',
+];
+
+String _senderName(
+  CandidateNotification notification, {
+  List<JobPost> relatedJobs = const [],
+}) {
+  final sender = _firstSpecificText(notification.data, _senderNameKeys);
+  if (sender.isNotEmpty) return sender;
+
+  final nestedSender = _firstSpecificNestedText(
+    notification.data,
+    _senderNestedKeys,
+    _senderNameKeys,
+  );
+  if (nestedSender.isNotEmpty) return nestedSender;
+
+  final senderFromJob = _senderNameFromRelatedJob(notification, relatedJobs);
+  if (senderFromJob.isNotEmpty) return senderFromJob;
+
+  final senderFromText = _senderNameFromNotificationText(notification);
+  if (senderFromText.isNotEmpty) return senderFromText;
+
+  if (_isSystemNotification(notification.type)) {
+    return 'Hệ thống';
+  }
+  return 'Người gửi chưa xác định';
+}
+
+bool _needsRelatedJobLookup(CandidateNotification notification) {
+  if (_firstSpecificText(notification.data, _senderNameKeys).isNotEmpty) {
+    return false;
+  }
+  if (_firstSpecificNestedText(
+    notification.data,
+    _senderNestedKeys,
+    _senderNameKeys,
+  ).isNotEmpty) {
+    return false;
+  }
+  return _valuesForKeys(notification.data, _jobIdKeys).isNotEmpty ||
+      _valuesForKeys(notification.data, _employerIdKeys).isNotEmpty;
+}
+
+String _senderNameFromRelatedJob(
+  CandidateNotification notification,
+  List<JobPost> relatedJobs,
+) {
+  if (relatedJobs.isEmpty) return '';
+
+  final jobIds = _valuesForKeys(
+    notification.data,
+    _jobIdKeys,
+  ).map(_normalizeLookupValue).where((value) => value.isNotEmpty).toSet();
+  final employerIds = _valuesForKeys(
+    notification.data,
+    _employerIdKeys,
+  ).map(_normalizeLookupValue).where((value) => value.isNotEmpty).toSet();
+
+  JobPost? match;
+  if (jobIds.isNotEmpty) {
+    for (final job in relatedJobs) {
+      final ids = {
+        _normalizeLookupValue(job.id),
+        _normalizeLookupValue(job.idJob),
+      };
+      if (ids.any(jobIds.contains)) {
+        match = job;
+        break;
+      }
+    }
+  }
+
+  if (match == null && employerIds.isNotEmpty) {
+    for (final job in relatedJobs) {
+      if (employerIds.contains(_normalizeLookupValue(job.employerId))) {
+        match = job;
+        break;
+      }
+    }
+  }
+
+  if (match == null) return '';
+  return _specificJobCompanyName(match);
+}
+
+String _specificJobCompanyName(JobPost job) {
+  final companyName = job.companyName?.trim() ?? '';
+  if (_isSpecificPartyLabel(companyName)) return companyName;
+
+  final employerName = job.employerName.trim();
+  if (_isSpecificPartyLabel(employerName)) return employerName;
+
+  return '';
+}
+
+String _senderNameFromNotificationText(CandidateNotification notification) {
+  for (final text in [notification.body, notification.title]) {
+    final candidate = _extractSpecificSenderFromText(text);
+    if (candidate.isNotEmpty) return candidate;
+  }
+  return '';
+}
+
+String _extractSpecificSenderFromText(String text) {
+  final patterns = [
+    RegExp(
+      r'\btại\s+(.+?)(?=\s+(?:đã|sẽ|vừa|cho|chưa|không|sớm|ở)\b|[,.]|$)',
+      caseSensitive: false,
+      unicode: true,
+    ),
+    RegExp(
+      r'\bđược\s+(.+?)\s+(?:chấp nhận|duyệt|thông qua|từ chối)\b',
+      caseSensitive: false,
+      unicode: true,
+    ),
+    RegExp(
+      r'\btừ\s+(.+?)(?=\s+(?:vừa|đã|gửi)\b|[,.]|$)',
+      caseSensitive: false,
+      unicode: true,
+    ),
+  ];
+
+  for (final pattern in patterns) {
+    final match = pattern.firstMatch(text);
+    final value = match?.group(1)?.trim() ?? '';
+    if (_isSpecificPartyLabel(value)) return value;
+  }
+  return '';
+}
+
+String _personalizeNotificationText(String text, String senderName) {
+  if (!_isSpecificPartyLabel(senderName)) return text;
+  return text
+      .replaceAll(
+        RegExp(r'\bNTD\b', caseSensitive: false, unicode: true),
+        senderName,
+      )
+      .replaceAll('Nhà tuyển dụng', senderName)
+      .replaceAll('nhà tuyển dụng', senderName);
+}
+
+bool _isSystemNotification(CandidateNotificationType type) {
+  return switch (type) {
+    CandidateNotificationType.system ||
+    CandidateNotificationType.kycApproved ||
+    CandidateNotificationType.kycRejected ||
+    CandidateNotificationType.paymentReleased ||
+    CandidateNotificationType.paymentFailed => true,
+    _ => false,
+  };
+}
+
+bool _isSpecificPartyLabel(String value) {
+  final normalized = value.trim().toLowerCase();
+  if (normalized.isEmpty) return false;
+  const genericLabels = {
+    'ntd',
+    'nha tuyen dung',
+    'nhà tuyển dụng',
+    'employer',
+    'company',
+    'công ty',
+    'nguoi gui',
+    'người gửi',
+    'nguoi gui chua xac dinh',
+    'người gửi chưa xác định',
+    'sender',
+    'he thong',
+    'hệ thống',
+    'system',
+    'ban',
+    'bạn',
+  };
+  return !genericLabels.contains(normalized);
+}
+
+String _firstSpecificText(Map<String, dynamic> map, List<String> keys) {
+  final text = _firstText(map, keys);
+  return _isSpecificPartyLabel(text) ? text : '';
+}
+
+String _firstSpecificNestedText(
+  Map<String, dynamic> map,
+  List<String> nestedKeys,
+  List<String> valueKeys,
+) {
+  for (final key in nestedKeys) {
+    final nested = map[key];
+    if (nested is Map) {
+      final text = _firstSpecificText(
+        Map<String, dynamic>.from(nested),
+        valueKeys,
+      );
+      if (text.isNotEmpty) return text;
+    }
+  }
+  return '';
+}
+
+List<String> _valuesForKeys(Map<String, dynamic> map, List<String> keys) {
+  final values = <String>[];
+  for (final key in keys) {
+    final value = map[key]?.toString().trim() ?? '';
+    if (value.isNotEmpty) values.add(value);
+  }
+  for (final nestedKey in _senderNestedKeys) {
+    final nested = map[nestedKey];
+    if (nested is Map) {
+      values.addAll(_valuesForKeys(Map<String, dynamic>.from(nested), keys));
+    }
+  }
+  return values;
+}
+
+String _normalizeLookupValue(String value) => value.trim().toLowerCase();
+
+String _receiverName(CandidateNotification notification) {
+  return _firstText(notification.data, const [
+    'recipientName',
+    'recipient_name',
+    'receiverName',
+    'receiver_name',
+    'toName',
+    'to_name',
+    'to',
+    'candidateName',
+    'candidate_name',
+    'fullName',
+    'full_name',
+  ], fallback: 'Bạn');
+}
+
+String _formatDateOnly(DateTime value) {
+  if (value.millisecondsSinceEpoch == 0) return '---';
+  return DateFormat('dd/MM/yyyy').format(value.toLocal());
+}
+
 String _formatDateTime(DateTime value) {
   if (value.millisecondsSinceEpoch == 0) return '---';
   return DateFormat('HH:mm, dd/MM/yyyy').format(value.toLocal());
@@ -783,32 +1116,3 @@ String _statusLabel(Object? value) {
           : '---',
   };
 }
-
-String _friendlyKey(String key) {
-  return switch (key) {
-    'jobId' => 'Mã công việc',
-    'jobTitle' => 'Công việc',
-    'companyName' => 'Công ty',
-    'candidateId' => 'Mã ứng viên',
-    'candidateName' => 'Ứng viên',
-    'applicationId' => 'Mã ứng tuyển',
-    'isQuickJob' => 'Công việc tuyển gấp',
-    _ => key,
-  };
-}
-
-String _displayValue(Object? value) {
-  if (value == null) return '';
-  if (value is bool) return value ? 'Có' : 'Không';
-  if (value is String) {
-    final trimmed = value.trim();
-    if (trimmed.toLowerCase() == 'true') return 'Có';
-    if (trimmed.toLowerCase() == 'false') return 'Không';
-    return trimmed;
-  }
-  if (value is num) return value.toString();
-  if (value is Map || value is List) return jsonEncode(value);
-  return value.toString().trim();
-}
-
-String _text(String? value) => value?.trim() ?? '';

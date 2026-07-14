@@ -51,6 +51,54 @@ void main() {
     expect(find.byType(JobPostCard), findsNWidgets(1));
   });
 
+  testWidgets('compact filter chips select industry from job tags', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authControllerProvider.overrideWithBuild(
+            (_, _) => AuthState.authenticated(_activeCandidateUser),
+          ),
+          activeJobsProvider.overrideWith((_) async => [_job, _secondJob]),
+          activeQuickJobsProvider.overrideWith((_) async => <JobPost>[]),
+        ],
+        child: const MaterialApp(
+          localizationsDelegates: [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: UserJobsScreen(showBackButton: false),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('position-filter-chip')), findsOneWidget);
+    expect(find.byKey(const Key('location-filter-chip')), findsOneWidget);
+    expect(find.byKey(const Key('industry-filter-chip')), findsOneWidget);
+    expect(find.text('Vị trí'), findsOneWidget);
+    expect(find.text('Khu vực'), findsOneWidget);
+    expect(find.text('Loại hình F&B'), findsOneWidget);
+    expect(find.byType(JobPostCard), findsNWidgets(2));
+
+    await tester.tap(find.byKey(const Key('industry-filter-chip')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.descendant(of: find.byType(ListTile), matching: find.text('Retail')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Retail'), findsOneWidget);
+    expect(find.text('Thu ngân'), findsOneWidget);
+    expect(find.text('Nhân viên phục vụ'), findsNothing);
+    expect(find.byType(JobPostCard), findsNWidgets(1));
+  });
+
   testWidgets('job type dropdown selects urgent jobs', (tester) async {
     await tester.pumpWidget(
       ProviderScope(

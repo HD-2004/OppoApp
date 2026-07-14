@@ -149,7 +149,7 @@ class AwsJobRepository implements JobRepository {
       workHours: _nullableString(job['workHours']),
       workDays: _nullableString(job['workDays']),
       responsibilities: _nullableString(job['responsibilities']),
-      requirements: _nullableString(job['requirements']),
+      requirements: _requirementsFrom(job),
       benefits: _nullableString(job['benefits']),
       isAiScreeningEnabled: _aiWorkflowEnabled(job, customQuestions),
       customQuestions: customQuestions,
@@ -241,7 +241,7 @@ class AwsJobRepository implements JobRepository {
       totalSalary: totalSalary,
       startTime: startTime,
       endTime: endTime,
-      requirements: _nullableString(job['requirements']),
+      requirements: _requirementsFrom(job),
       isQuickJob: true,
       isAiScreeningEnabled: _aiWorkflowEnabled(job, customQuestions),
       customQuestions: customQuestions,
@@ -361,6 +361,41 @@ class AwsJobRepository implements JobRepository {
     }
 
     return const [];
+  }
+
+  static String? _requirementsFrom(Map<String, dynamic> job) {
+    for (final key in const [
+      'requirements',
+      'requirement',
+      'jobRequirements',
+      'jobRequirement',
+      'job_requirements',
+      'job_requirement',
+      'candidateRequirements',
+      'candidate_requirements',
+      'qualifications',
+      'qualification',
+      'requiredSkills',
+      'required_skills',
+      'skillsRequired',
+      'skills_required',
+    ]) {
+      final value = _nullableText(job[key]);
+      if (value != null) return value;
+    }
+    return null;
+  }
+
+  static String? _nullableText(dynamic raw) {
+    if (raw is List) {
+      final values = raw
+          .map(_string)
+          .where((value) => value.isNotEmpty)
+          .toList(growable: false);
+      if (values.isEmpty) return null;
+      return values.join('\n');
+    }
+    return _nullableString(raw);
   }
 
   static bool _aiWorkflowEnabled(

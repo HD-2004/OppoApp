@@ -469,10 +469,7 @@ class _QuickInfoSection extends StatelessWidget {
 }
 
 String _jobWorkTimeValue(JobPost job) {
-  final date = AppDateFormatter.formatVietnameseDateString(
-    job.workDate,
-    fallback: '',
-  );
+  final explicitDate = _formatWorkDateToken(job.workDate);
   final startTime = job.startTime?.trim() ?? '';
   final endTime = job.endTime?.trim() ?? '';
   final explicitRange = startTime.isNotEmpty && endTime.isNotEmpty
@@ -486,12 +483,90 @@ String _jobWorkTimeValue(JobPost job) {
       : shiftTime.isNotEmpty
       ? shiftTime
       : workHours;
+  final normalizedTime = _normalizeWorkTimeText(time);
+  final date = explicitDate.isNotEmpty
+      ? explicitDate
+      : normalizedTime.leadingDate;
+  final compactTime = _compactWorkSchedule(normalizedTime.text);
+  final compactWorkDays = _compactWorkSchedule(workDays);
 
   return [
     if (date.isNotEmpty) date,
-    if (workDays.isNotEmpty && !time.contains(workDays)) workDays,
-    if (time.isNotEmpty) time,
+    if (compactWorkDays.isNotEmpty && !compactTime.contains(compactWorkDays))
+      compactWorkDays,
+    if (compactTime.isNotEmpty) compactTime,
   ].join(' • ');
+}
+
+String _formatWorkDateToken(String? value) {
+  return AppDateFormatter.formatVietnameseDateString(value, fallback: '');
+}
+
+_NormalizedWorkTime _normalizeWorkTimeText(String raw) {
+  var text = raw.trim();
+  var leadingDate = '';
+  final leadingDateMatch = RegExp(
+    r'^\s*(\d{4}-\d{1,2}-\d{1,2}|\d{1,2}/\d{1,2}/\d{4})(?:\s*[•|,\-–—]\s*)?',
+  ).firstMatch(text);
+
+  if (leadingDateMatch != null) {
+    final formattedDate = _formatWorkDateToken(leadingDateMatch.group(1));
+    if (formattedDate.isNotEmpty) {
+      leadingDate = formattedDate;
+      text = text.substring(leadingDateMatch.end).trim();
+    }
+  }
+
+  return _NormalizedWorkTime(
+    leadingDate: leadingDate,
+    text: _formatEmbeddedIsoDates(text),
+  );
+}
+
+String _formatEmbeddedIsoDates(String raw) {
+  return raw.replaceAllMapped(RegExp(r'\b\d{4}-\d{1,2}-\d{1,2}\b'), (match) {
+    final formatted = _formatWorkDateToken(match.group(0));
+    return formatted.isEmpty ? match.group(0)! : formatted;
+  });
+}
+
+String _compactWorkSchedule(String raw) {
+  final segments = raw
+      .split(RegExp(r'\s*(?:\||\n)\s*'))
+      .map((segment) => segment.trim())
+      .where((segment) => segment.isNotEmpty)
+      .toList(growable: false);
+  if (segments.isEmpty) return '';
+
+  final firstSegment = _compactWeekdayList(segments.first);
+  if (segments.length == 1) return firstSegment;
+  return '$firstSegment +${segments.length - 1}';
+}
+
+String _compactWeekdayList(String raw) {
+  final match = RegExp(
+    r'^((?:T[2-7]|CN)(?:\s*,\s*(?:T[2-7]|CN)){3,})(.*)$',
+    caseSensitive: false,
+  ).firstMatch(raw.trim());
+  if (match == null) return raw.trim();
+
+  final days = match
+      .group(1)!
+      .split(',')
+      .map((day) => day.trim())
+      .where((day) => day.isNotEmpty)
+      .toList(growable: false);
+  if (days.length <= 3) return raw.trim();
+
+  final suffix = match.group(2)?.trimRight() ?? '';
+  return '${days.take(3).join(',')} +${days.length - 3}$suffix';
+}
+
+class _NormalizedWorkTime {
+  const _NormalizedWorkTime({required this.leadingDate, required this.text});
+
+  final String leadingDate;
+  final String text;
 }
 
 Uri? _googleMapsUriForJob(JobPost job) {
