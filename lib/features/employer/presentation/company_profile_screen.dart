@@ -164,12 +164,6 @@ class _CompanyBody extends StatelessWidget {
 
           const _SectionGap(),
 
-          // ── Điểm nổi bật ───────────────────────────────────────
-          // App-only: derive highlights from real job tags.
-          if (tags.isNotEmpty) _HighlightsSection(tags: tags),
-
-          const _SectionGap(),
-
           // ── Đánh giá từ nhân viên ──────────────────────────────
           _ReviewsSection(reviews: employeeReviews),
 
@@ -327,115 +321,6 @@ class _StatChip extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-// ── Highlights section ────────────────────────────────────────────────────────
-
-class _HighlightsSection extends StatelessWidget {
-  const _HighlightsSection({required this.tags});
-
-  final List<String> tags;
-
-  // Map tag → icon + description template.
-
-  static const _defaultHighlights = [
-    (
-      Icons.payments_outlined,
-      'Lương thưởng',
-      'Mức lương cạnh tranh so với thị trường, thanh toán đúng hạn.',
-    ),
-    (
-      Icons.groups_outlined,
-      'Môi trường',
-      'Đồng nghiệp trẻ trung, năng động, hỗ trợ nhau nhiệt tình.',
-    ),
-    (
-      Icons.school_outlined,
-      'Cơ hội học hỏi',
-      'Được đào tạo và phát triển kỹ năng chuyên môn.',
-    ),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        children: _defaultHighlights
-            .map((h) => _HighlightItem(icon: h.$1, title: h.$2, desc: h.$3))
-            .toList(),
-      ),
-    );
-  }
-}
-
-class _HighlightItem extends StatelessWidget {
-  const _HighlightItem({
-    required this.icon,
-    required this.title,
-    required this.desc,
-  });
-
-  final IconData icon;
-  final String title;
-  final String desc;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: AppColors.primarySoft,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, size: 18, color: AppColors.primary),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF111827),
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  desc,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: Color(0xFF6B7280),
-                    height: 1.5,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                // Progress bar decorative
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(2),
-                  child: LinearProgressIndicator(
-                    value: 0.85,
-                    backgroundColor: const Color(0xFFE5E7EB),
-                    color: AppColors.primary,
-                    minHeight: 3,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
