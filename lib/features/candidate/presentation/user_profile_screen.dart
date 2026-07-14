@@ -981,6 +981,14 @@ class _CvSectionState extends ConsumerState<_CvSection> {
     _loadCvs();
   }
 
+  @override
+  void didUpdateWidget(_CvSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.userId != oldWidget.userId) {
+      _loadCvs();
+    }
+  }
+
   Future<void> _loadCvs() async {
     final userId = widget.userId;
     if (userId == null || userId.isEmpty) {
