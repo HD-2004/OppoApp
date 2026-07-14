@@ -191,6 +191,7 @@ Future<bool> checkExistingApplicationBeforeApply({
   required WidgetRef ref,
   required JobPost job,
   required AuthUserProfile user,
+  VoidCallback? onBeforeHandleExistingApplication,
 }) async {
   final applications = await ref
       .read(applicationRepositoryProvider)
@@ -204,6 +205,18 @@ Future<bool> checkExistingApplicationBeforeApply({
   if (!context.mounted) return true;
 
   final status = (existingApp['status']?.toString().trim() ?? '').toLowerCase();
+  final hasInterviewAudio =
+      (existingApp['aiInterviewAudio']?.toString().trim() ?? '').isNotEmpty ||
+      (existingApp['aiInterviewAudioKey']?.toString().trim() ?? '').isNotEmpty;
+
+  if (status == 'pending' ||
+      status == 'rejected' ||
+      status == 'approved' ||
+      status == 'accepted' ||
+      hasInterviewAudio) {
+    onBeforeHandleExistingApplication?.call();
+    if (!context.mounted) return true;
+  }
 
   // ── pending: CV is waiting for employer review ──
   if (status == 'pending') {
@@ -265,9 +278,6 @@ Future<bool> checkExistingApplicationBeforeApply({
   }
 
   // ── already completed AI interview ──
-  final hasInterviewAudio =
-      (existingApp['aiInterviewAudio']?.toString().trim() ?? '').isNotEmpty ||
-      (existingApp['aiInterviewAudioKey']?.toString().trim() ?? '').isNotEmpty;
   if (hasInterviewAudio) {
     await showDialog<void>(
       context: context,

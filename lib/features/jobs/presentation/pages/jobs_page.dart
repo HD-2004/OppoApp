@@ -72,6 +72,8 @@ class _JobsPageState extends ConsumerState<JobsPage> {
       barrierDismissible: false,
       builder: (_) => const Center(child: CircularProgressIndicator()),
     );
+    var isLoadingVisible = true;
+
     try {
       // Check if an existing application already exists → skip CV picker
       if (user is AuthUserProfile) {
@@ -80,18 +82,24 @@ class _JobsPageState extends ConsumerState<JobsPage> {
           ref: ref,
           job: job,
           user: user,
+          onBeforeHandleExistingApplication: () {
+            if (mounted && isLoadingVisible) {
+              Navigator.of(context).pop(); // Dismiss loading before navigation
+              isLoadingVisible = false;
+            }
+          },
         );
         if (!mounted) return;
-        if (handled) {
-          Navigator.of(context).pop(); // Dismiss loading
-          return;
-        }
+        if (handled) return;
       }
 
       final repo = ref.read(applicationRepositoryProvider);
       final cvs = await repo.getCandidateCVs(user.userId);
       if (!mounted) return;
-      Navigator.of(context).pop();
+      if (isLoadingVisible) {
+        Navigator.of(context).pop();
+        isLoadingVisible = false;
+      }
       if (cvs.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -103,7 +111,10 @@ class _JobsPageState extends ConsumerState<JobsPage> {
       }
     } catch (_) {
       if (!mounted) return;
-      Navigator.of(context).pop();
+      if (isLoadingVisible) {
+        Navigator.of(context).pop();
+        isLoadingVisible = false;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Không thể tải danh sách CV.')),
       );

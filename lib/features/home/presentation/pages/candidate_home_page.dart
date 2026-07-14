@@ -169,6 +169,8 @@ class _CandidateHomePageState extends ConsumerState<CandidateHomePage> {
     }
 
     _showLoading();
+    var isLoadingVisible = true;
+
     try {
       // Check if an existing application already exists → skip CV picker
       final handled = await checkExistingApplicationBeforeApply(
@@ -176,17 +178,23 @@ class _CandidateHomePageState extends ConsumerState<CandidateHomePage> {
         ref: ref,
         job: job,
         user: user,
+        onBeforeHandleExistingApplication: () {
+          if (mounted && isLoadingVisible) {
+            Navigator.of(context).pop(); // Dismiss loading before navigation
+            isLoadingVisible = false;
+          }
+        },
       );
       if (!mounted) return;
-      if (handled) {
-        Navigator.of(context).pop(); // Dismiss loading
-        return;
-      }
+      if (handled) return;
 
       final repository = ref.read(applicationRepositoryProvider);
       final cvs = await repository.getCandidateCVs(user.userId);
       if (!mounted) return;
-      Navigator.of(context).pop();
+      if (isLoadingVisible) {
+        Navigator.of(context).pop();
+        isLoadingVisible = false;
+      }
       if (cvs.isEmpty) {
         _showMessage(
           'Bạn chưa có CV. Vui lòng tải CV lên trong phần Hồ sơ trước.',
@@ -196,7 +204,10 @@ class _CandidateHomePageState extends ConsumerState<CandidateHomePage> {
       }
     } catch (_) {
       if (!mounted) return;
-      Navigator.of(context).pop();
+      if (isLoadingVisible) {
+        Navigator.of(context).pop();
+        isLoadingVisible = false;
+      }
       _showMessage('Không thể tải danh sách CV.');
     }
   }

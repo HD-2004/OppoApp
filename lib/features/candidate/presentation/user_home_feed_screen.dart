@@ -45,6 +45,8 @@ class _UserHomeFeedScreenState extends ConsumerState<UserHomeFeedScreen> {
       builder: (_) => const Center(child: CircularProgressIndicator()),
     );
 
+    var isLoadingVisible = true;
+
     try {
       // Check if an existing application already exists → skip CV picker
       final handled = await checkExistingApplicationBeforeApply(
@@ -52,19 +54,25 @@ class _UserHomeFeedScreenState extends ConsumerState<UserHomeFeedScreen> {
         ref: ref,
         job: job,
         user: user,
+        onBeforeHandleExistingApplication: () {
+          if (mounted && isLoadingVisible) {
+            Navigator.of(context).pop(); // Dismiss loading before navigation
+            isLoadingVisible = false;
+          }
+        },
       );
       if (!mounted) return;
-      if (handled) {
-        Navigator.of(context).pop(); // Dismiss loading
-        return;
-      }
+      if (handled) return;
 
       final repository = ref.read(applicationRepositoryProvider);
       final cvs = await repository.getCandidateCVs(user.userId);
       if (!mounted) {
         return;
       }
-      Navigator.of(context).pop(); // Dismiss loading
+      if (isLoadingVisible) {
+        Navigator.of(context).pop(); // Dismiss loading
+        isLoadingVisible = false;
+      }
 
       if (cvs.isEmpty) {
         _showNoCVDialog();
@@ -75,7 +83,10 @@ class _UserHomeFeedScreenState extends ConsumerState<UserHomeFeedScreen> {
       if (!mounted) {
         return;
       }
-      Navigator.of(context).pop(); // Dismiss loading
+      if (isLoadingVisible) {
+        Navigator.of(context).pop(); // Dismiss loading
+        isLoadingVisible = false;
+      }
       _showErrorDialog('Không thể tải danh sách CV. Vui lòng thử lại.');
     }
   }
