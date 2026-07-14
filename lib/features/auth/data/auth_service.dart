@@ -52,7 +52,10 @@ class AuthService {
         'clientId=$cognitoUserPoolClientId '
         'region=$cognitoRegion',
       );
-      throw AuthFailure.configuration;
+      throw AuthFailure(
+        'Cognito cấu hình thất bại: ${error.toString()}',
+        code: 'configuration',
+      );
     }
   }
 

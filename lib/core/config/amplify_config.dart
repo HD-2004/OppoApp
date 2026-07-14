@@ -1,15 +1,7 @@
 import 'package:flutter/foundation.dart';
 
-// Region và User Pool ID có thể override qua --dart-define nếu cần đổi
-// environment (staging/production). Default là giá trị production hiện tại.
-const cognitoRegion = String.fromEnvironment(
-  'COGNITO_REGION',
-  defaultValue: 'ap-southeast-1',
-);
-const cognitoUserPoolId = String.fromEnvironment(
-  'COGNITO_USER_POOL_ID',
-  defaultValue: 'ap-southeast-1_ShCajkmJd',
-);
+const cognitoRegion = 'ap-southeast-1';
+const cognitoUserPoolId = 'ap-southeast-1_ShCajkmJd';
 const cognitoUserPoolName = 'OpPoWebUserPool';
 const cognitoEndpoint =
     'https://cognito-idp.$cognitoRegion.amazonaws.com/$cognitoUserPoolId';
@@ -20,20 +12,11 @@ const cognitoJwksUrl = '$cognitoEndpoint/.well-known/jwks.json';
 const useCognitoCustomRoleAttribute = false;
 
 // App Client IDs are public identifiers. Mobile apps must not use client
-// secrets.
-// ── Web client (OpPoWebClient) ──
-const _cognitoWebClientId = String.fromEnvironment(
-  'COGNITO_WEB_CLIENT_ID',
+// secrets. The default below was found read-only in OpPoWebUserPool.
+const cognitoUserPoolClientId = String.fromEnvironment(
+  'COGNITO_USER_POOL_CLIENT_ID',
   defaultValue: '2mv7qt4gpmq03dmlm0or9724n8',
 );
-// ── Android client (OpPoAppClient) ──
-const _cognitoAndroidClientId = String.fromEnvironment(
-  'COGNITO_ANDROID_CLIENT_ID',
-  defaultValue: '6o6jofrs8m69ls9rq4n9pvn9cl',
-);
-// Resolved at runtime based on platform.
-String get cognitoUserPoolClientId =>
-    kIsWeb ? _cognitoWebClientId : _cognitoAndroidClientId;
 
 // ── Hosted UI / OAuth (Google sign-in) ──────────────────────────────────────
 // Google federated sign-in goes through the SAME Cognito Hosted UI that the
@@ -59,18 +42,10 @@ const cognitoWebRedirectUri = String.fromEnvironment(
   defaultValue: '',
 );
 
-// App-owned redirect URI.
-// - Web: detected from Uri.base or overridden via --dart-define.
-// - Android: uses the HTTPS redirect URI registered on OpPoAppClient
-//   (https://hd-2004.github.io/OppoApp/). This requires App Links
-//   (Digital Asset Links) to be verified so Android routes the redirect
-//   back to the app.
-const cognitoAndroidRedirectUri = String.fromEnvironment(
-  'COGNITO_ANDROID_REDIRECT_URI',
-  defaultValue: 'https://hd-2004.github.io/OppoApp/',
-);
-
-// Legacy custom scheme kept for reference / fallback.
+// App-owned redirect URI. Derived from the Android applicationId / iOS bundle
+// id (com.oppo.tempjobs) so it is a real scheme this app controls. This exact
+// value must be added to the Cognito App Client's Allowed callback URLs and
+// Allowed sign-out URLs for federated sign-in to return to the app.
 const cognitoRedirectScheme = String.fromEnvironment(
   'COGNITO_REDIRECT_SCHEME',
   defaultValue: 'com.oppo.tempjobs',
@@ -79,20 +54,19 @@ const cognitoRedirectScheme = String.fromEnvironment(
 String get cognitoSignInRedirectUri => resolveCognitoRedirectUri(
   isWeb: kIsWeb,
   webRedirectUri: cognitoWebRedirectUri,
-  androidRedirectUri: cognitoAndroidRedirectUri,
+  redirectScheme: cognitoRedirectScheme,
 );
 
 String get cognitoSignOutRedirectUri => cognitoSignInRedirectUri;
 
 String resolveCognitoRedirectUri({
   required bool isWeb,
-  required String androidRedirectUri,
+  required String redirectScheme,
   String? webRedirectUri,
   Uri? baseUri,
 }) {
   if (!isWeb) {
-    // Android: use the HTTPS redirect URI registered on OpPoAppClient.
-    return androidRedirectUri;
+    return '${redirectScheme.trim()}://';
   }
 
   final configuredUri = _normalizeWebRedirectUri(webRedirectUri);
@@ -134,25 +108,18 @@ String? _normalizeWebRedirectUri(String? value) {
 bool get hasHostedUiConfig => cognitoHostedUiDomain.trim().isNotEmpty;
 
 bool get hasCognitoAppClientId {
-  final id = cognitoUserPoolClientId;
-  return id.trim().isNotEmpty &&
-      id != 'REPLACE_WITH_COGNITO_APP_CLIENT_ID';
+  return cognitoUserPoolClientId.trim().isNotEmpty &&
+      cognitoUserPoolClientId != 'REPLACE_WITH_COGNITO_APP_CLIENT_ID';
 }
 
-/// Kiểm tra User Pool ID có đúng format Cognito hay không.
-/// Format hợp lệ: `<region>_<alphanumeric>`, vd: ap-southeast-1_ShCajkmJd
 bool get hasCognitoUserPoolId {
-  final id = cognitoUserPoolId.trim();
-  if (id.isEmpty) return false;
-  // Cognito User Pool ID luôn có dạng: region_id
-  return RegExp(r'^[a-z]{2}-[a-z]+-\d+_\w+$').hasMatch(id);
+  return cognitoUserPoolId.trim().isNotEmpty &&
+      cognitoUserPoolId != 'REPLACE_WITH_COGNITO_USER_POOL_ID';
 }
 
-/// Kiểm tra Region có đúng format AWS hay không.
 bool get hasCognitoRegion {
-  final region = cognitoRegion.trim();
-  if (region.isEmpty) return false;
-  return RegExp(r'^[a-z]{2}-[a-z]+-\d+$').hasMatch(region);
+  return cognitoRegion.trim().isNotEmpty &&
+      cognitoRegion != 'REPLACE_WITH_COGNITO_REGION';
 }
 
 void logAmplifyConfigForDebug() {
@@ -160,8 +127,8 @@ void logAmplifyConfigForDebug() {
     return;
   }
 
-  debugPrint('Amplify Auth config: region=$cognitoRegion (valid=$hasCognitoRegion)');
-  debugPrint('Amplify Auth config: userPoolId=$cognitoUserPoolId (valid=$hasCognitoUserPoolId)');
+  debugPrint('Amplify Auth config: region=$cognitoRegion');
+  debugPrint('Amplify Auth config: userPoolId=$cognitoUserPoolId');
   debugPrint('Amplify Auth config: endpoint=$cognitoEndpoint');
   debugPrint('Amplify Auth config: hasAppClientId=$hasCognitoAppClientId');
   debugPrint('Amplify Auth config: hasHostedUiConfig=$hasHostedUiConfig');
@@ -192,7 +159,7 @@ String get _oauthBlock {
 
 String get _socialProviders => hasHostedUiConfig ? '"GOOGLE"' : '';
 
-String get amplifyconfig =>
+final amplifyconfig =
     '''
 {
   "UserAgent": "aws-amplify-flutter/2.0",
