@@ -12,6 +12,9 @@ import 'features/auth/data/auth_service.dart';
 /// Holds the Amplify configuration error (if any) so the UI can display it.
 String? amplifyConfigError;
 
+/// Debug info about the actual config values at runtime.
+String? amplifyConfigDebugInfo;
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // Hash-based URL strategy is kept (Flutter Web default) because GitHub Pages
@@ -29,19 +32,25 @@ Future<void> main() async {
   // On mobile, lazy configuration is fine because the app is never killed by an
   // OAuth redirect (the OS sends a deep link instead).
   if (kIsWeb) {
+    // Capture actual runtime config values for debugging
+    amplifyConfigDebugInfo =
+        'region="${cognitoRegion}" (valid=${hasCognitoRegion})\n'
+        'poolId="${cognitoUserPoolId}" (valid=${hasCognitoUserPoolId})\n'
+        'clientId="${cognitoUserPoolClientId}" (valid=${hasCognitoAppClientId})\n'
+        'hostedUi="${cognitoHostedUiDomain}"\n'
+        'redirectUri="${cognitoSignInRedirectUri}"\n'
+        'Amplify.isConfigured=${Amplify.isConfigured}';
     try {
       await AuthService().configureAmplify();
+      amplifyConfigDebugInfo =
+          '${amplifyConfigDebugInfo}\nAfter configure: Amplify.isConfigured=${Amplify.isConfigured}';
     } catch (e, st) {
       // Store error for UI display (console is unavailable in release mode)
       amplifyConfigError =
           'Amplify configure failed: $e\n'
-          'region=$cognitoRegion\n'
-          'poolId=$cognitoUserPoolId\n'
-          'clientId=$cognitoUserPoolClientId\n'
-          'hostedUi=$cognitoHostedUiDomain\n'
-          'redirectUri=$cognitoSignInRedirectUri\n'
           'stack=${st.toString().split('\n').take(5).join('\n')}';
-      safePrint('[main] $amplifyConfigError');
+      amplifyConfigDebugInfo =
+          '${amplifyConfigDebugInfo}\nEXCEPTION: $e';
     }
 
     // ── OAuth callback guard ──────────────────────────────────────────────────
