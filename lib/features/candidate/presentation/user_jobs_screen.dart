@@ -42,6 +42,8 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
 
   String _searchKeyword = '';
   String _searchLocation = '';
+  String _selectedPosition = '';
+  String _selectedIndustry = '';
 
   int _activeTab = _jobsTabAll;
 
@@ -337,6 +339,14 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
           .toList();
     }
 
+    // Apply Position
+    if (_selectedPosition.trim().isNotEmpty) {
+      final position = _selectedPosition.toLowerCase().trim();
+      baseList = baseList
+          .where((j) => j.title.toLowerCase().contains(position))
+          .toList();
+    }
+
     // Apply Job Type filters
     if (_filterFullTime || _filterPartTime) {
       baseList = baseList.where((j) {
@@ -348,6 +358,16 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
         }
         return false;
       }).toList();
+    }
+
+    // Apply Industry/Tag
+    if (_selectedIndustry.trim().isNotEmpty) {
+      final industry = _selectedIndustry.toLowerCase().trim();
+      baseList = baseList
+          .where(
+            (j) => j.tags.any((tag) => tag.toLowerCase().contains(industry)),
+          )
+          .toList();
     }
 
     // Apply Salary filters
@@ -454,12 +474,186 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
       _locationController.clear();
       _searchKeyword = '';
       _searchLocation = '';
+      _selectedPosition = '';
+      _selectedIndustry = '';
       _filterFullTime = false;
       _filterPartTime = false;
       _filterSalaryUnder25 = false;
       _filterSalary25to40 = false;
       _filterSalaryOver40 = false;
     });
+  }
+
+  bool get _hasActiveFilters =>
+      _searchKeyword.trim().isNotEmpty ||
+      _searchLocation.trim().isNotEmpty ||
+      _selectedPosition.trim().isNotEmpty ||
+      _selectedIndustry.trim().isNotEmpty ||
+      _filterFullTime ||
+      _filterPartTime ||
+      _filterSalaryUnder25 ||
+      _filterSalary25to40 ||
+      _filterSalaryOver40;
+
+  List<String> _availablePositions(List<JobPost> jobs) {
+    return _uniqueSortedOptions(jobs.map((job) => job.title));
+  }
+
+  List<String> _availableLocations(List<JobPost> jobs) {
+    return _uniqueSortedOptions(jobs.map((job) => job.location));
+  }
+
+  List<String> _availableIndustries(List<JobPost> jobs) {
+    return _uniqueSortedOptions(
+      jobs.expand((job) => job.tags).where((tag) => tag.trim().isNotEmpty),
+    );
+  }
+
+  List<String> _uniqueSortedOptions(Iterable<String> values) {
+    final normalized = <String, String>{};
+    for (final value in values) {
+      final trimmed = value.trim();
+      if (trimmed.isEmpty) continue;
+      normalized.putIfAbsent(trimmed.toLowerCase(), () => trimmed);
+    }
+    final result = normalized.values.toList();
+    result.sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+    return result;
+  }
+
+  void _showPositionSheet(List<JobPost> jobs) {
+    _showOptionsSheet(
+      title: 'Chọn vị trí',
+      options: _availablePositions(jobs),
+      selected: _selectedPosition,
+      emptyMessage: 'Chưa có dữ liệu vị trí.',
+      onSelected: (value) => setState(() => _selectedPosition = value),
+    );
+  }
+
+  void _showLocationSheet(List<JobPost> jobs) {
+    _showOptionsSheet(
+      title: 'Chọn khu vực',
+      options: _availableLocations(jobs),
+      selected: _searchLocation,
+      emptyMessage: 'Chưa có dữ liệu khu vực.',
+      onSelected: (value) => setState(() {
+        _searchLocation = value;
+        _locationController.text = value;
+      }),
+    );
+  }
+
+  void _showIndustrySheet(List<JobPost> jobs) {
+    _showOptionsSheet(
+      title: 'Chọn loại hình',
+      options: _availableIndustries(jobs),
+      selected: _selectedIndustry,
+      emptyMessage: 'Chưa có dữ liệu loại hình.',
+      onSelected: (value) => setState(() => _selectedIndustry = value),
+    );
+  }
+
+  void _showOptionsSheet({
+    required String title,
+    required List<String> options,
+    required String selected,
+    required String emptyMessage,
+    required ValueChanged<String> onSelected,
+  }) {
+    if (options.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(emptyMessage)));
+      return;
+    }
+
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) {
+        return SafeArea(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 420),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 12, 10),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          title,
+                          style: Theme.of(sheetContext).textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w900),
+                        ),
+                      ),
+                      if (selected.trim().isNotEmpty)
+                        TextButton(
+                          onPressed: () {
+                            Navigator.of(sheetContext).pop();
+                            onSelected('');
+                          },
+                          child: const Text(
+                            'Xóa',
+                            style: TextStyle(
+                              color: Color(0xFFFF3B30),
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                Divider(height: 1, color: Theme.of(context).dividerColor),
+                Flexible(
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: options.length,
+                    separatorBuilder: (_, _) => Divider(
+                      height: 1,
+                      color: Theme.of(
+                        context,
+                      ).dividerColor.withValues(alpha: 0.4),
+                    ),
+                    itemBuilder: (context, index) {
+                      final option = options[index];
+                      final isSelected =
+                          option.toLowerCase() == selected.trim().toLowerCase();
+                      return ListTile(
+                        title: Text(
+                          option,
+                          style: TextStyle(
+                            fontWeight: isSelected
+                                ? FontWeight.w800
+                                : FontWeight.w600,
+                          ),
+                        ),
+                        trailing: isSelected
+                            ? const Icon(
+                                Icons.check_rounded,
+                                color: AppColors.primary,
+                              )
+                            : null,
+                        onTap: () {
+                          Navigator.of(sheetContext).pop();
+                          onSelected(option);
+                        },
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _handleApply(JobPost job, AuthUserProfile? user) async {
@@ -1155,97 +1349,49 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
                           ),
                       ],
 
-                      // Filters section collapsible
+                      // Compact filters matching the web chip style
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: ExpansionTile(
-                          leading: const Icon(Icons.tune),
-                          title: const Text(
-                            'Bộ lọc việc làm',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          trailing: TextButton(
-                            onPressed: _clearFilters,
-                            child: const Text(
-                              'Xóa bộ lọc',
-                              style: TextStyle(color: Colors.red),
+                        child: _JobFiltersPanel(
+                          hasActiveFilters: _hasActiveFilters,
+                          positionLabel: _selectedPosition.trim().isEmpty
+                              ? 'Vị trí'
+                              : _selectedPosition.trim(),
+                          locationLabel: _searchLocation.trim().isEmpty
+                              ? 'Khu vực'
+                              : _searchLocation.trim(),
+                          industryLabel: _selectedIndustry.trim().isEmpty
+                              ? 'Loại hình F&B'
+                              : _selectedIndustry.trim(),
+                          isPositionActive: _selectedPosition.trim().isNotEmpty,
+                          isLocationActive: _searchLocation.trim().isNotEmpty,
+                          isIndustryActive: _selectedIndustry.trim().isNotEmpty,
+                          onClearFilters: _clearFilters,
+                          onPositionTap: () => _showPositionSheet(allJobs),
+                          onLocationTap: () => _showLocationSheet(allJobs),
+                          onIndustryTap: () => _showIndustrySheet(allJobs),
+                          advancedFilters: _AdvancedJobFilters(
+                            filterFullTime: _filterFullTime,
+                            filterPartTime: _filterPartTime,
+                            filterSalaryUnder25: _filterSalaryUnder25,
+                            filterSalary25to40: _filterSalary25to40,
+                            filterSalaryOver40: _filterSalaryOver40,
+                            onFullTimeChanged: (value) => setState(
+                              () => _filterFullTime = value ?? false,
+                            ),
+                            onPartTimeChanged: (value) => setState(
+                              () => _filterPartTime = value ?? false,
+                            ),
+                            onSalaryUnder25Changed: (value) => setState(
+                              () => _filterSalaryUnder25 = value ?? false,
+                            ),
+                            onSalary25to40Changed: (value) => setState(
+                              () => _filterSalary25to40 = value ?? false,
+                            ),
+                            onSalaryOver40Changed: (value) => setState(
+                              () => _filterSalaryOver40 = value ?? false,
                             ),
                           ),
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.all(12.0),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'Loại hình công việc',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                                  ),
-                                  CheckboxListTile(
-                                    title: const Text('Toàn thời gian'),
-                                    value: _filterFullTime,
-                                    onChanged: (val) => setState(
-                                      () => _filterFullTime = val ?? false,
-                                    ),
-                                    controlAffinity:
-                                        ListTileControlAffinity.leading,
-                                    dense: true,
-                                  ),
-                                  CheckboxListTile(
-                                    title: const Text('Bán thời gian'),
-                                    value: _filterPartTime,
-                                    onChanged: (val) => setState(
-                                      () => _filterPartTime = val ?? false,
-                                    ),
-                                    controlAffinity:
-                                        ListTileControlAffinity.leading,
-                                    dense: true,
-                                  ),
-                                  const SizedBox(height: 12),
-                                  const Text(
-                                    'Thu nhập/giờ',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                                  ),
-                                  CheckboxListTile(
-                                    title: const Text('Dưới 25.000đ/giờ'),
-                                    value: _filterSalaryUnder25,
-                                    onChanged: (val) => setState(
-                                      () => _filterSalaryUnder25 = val ?? false,
-                                    ),
-                                    controlAffinity:
-                                        ListTileControlAffinity.leading,
-                                    dense: true,
-                                  ),
-                                  CheckboxListTile(
-                                    title: const Text(
-                                      'Từ 25.000đ - 40.000đ/giờ',
-                                    ),
-                                    value: _filterSalary25to40,
-                                    onChanged: (val) => setState(
-                                      () => _filterSalary25to40 = val ?? false,
-                                    ),
-                                    controlAffinity:
-                                        ListTileControlAffinity.leading,
-                                    dense: true,
-                                  ),
-                                  CheckboxListTile(
-                                    title: const Text('Trên 40.000đ/giờ'),
-                                    value: _filterSalaryOver40,
-                                    onChanged: (val) => setState(
-                                      () => _filterSalaryOver40 = val ?? false,
-                                    ),
-                                    controlAffinity:
-                                        ListTileControlAffinity.leading,
-                                    dense: true,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
                         ),
                       ),
 
@@ -1387,6 +1533,299 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _JobFiltersPanel extends StatelessWidget {
+  const _JobFiltersPanel({
+    required this.hasActiveFilters,
+    required this.positionLabel,
+    required this.locationLabel,
+    required this.industryLabel,
+    required this.isPositionActive,
+    required this.isLocationActive,
+    required this.isIndustryActive,
+    required this.onClearFilters,
+    required this.onPositionTap,
+    required this.onLocationTap,
+    required this.onIndustryTap,
+    required this.advancedFilters,
+  });
+
+  final bool hasActiveFilters;
+  final String positionLabel;
+  final String locationLabel;
+  final String industryLabel;
+  final bool isPositionActive;
+  final bool isLocationActive;
+  final bool isIndustryActive;
+  final VoidCallback onClearFilters;
+  final VoidCallback onPositionTap;
+  final VoidCallback onLocationTap;
+  final VoidCallback onIndustryTap;
+  final Widget advancedFilters;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 4),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: theme.colorScheme.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.tune_rounded, color: AppColors.primary),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Bộ lọc việc làm',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w900,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: hasActiveFilters ? onClearFilters : null,
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFFFF3B30),
+                  disabledForegroundColor: const Color(
+                    0xFFFF3B30,
+                  ).withValues(alpha: 0.42),
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  textStyle: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                child: const Text('Xóa bộ lọc'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              _FilterChipButton(
+                key: const Key('position-filter-chip'),
+                label: positionLabel,
+                isActive: isPositionActive,
+                onTap: onPositionTap,
+              ),
+              _FilterChipButton(
+                key: const Key('location-filter-chip'),
+                label: locationLabel,
+                isActive: isLocationActive,
+                onTap: onLocationTap,
+              ),
+              _FilterChipButton(
+                key: const Key('industry-filter-chip'),
+                label: industryLabel,
+                isActive: isIndustryActive,
+                onTap: onIndustryTap,
+              ),
+            ],
+          ),
+          Material(
+            color: Colors.transparent,
+            child: Theme(
+              data: theme.copyWith(dividerColor: Colors.transparent),
+              child: ExpansionTile(
+                tilePadding: EdgeInsets.zero,
+                childrenPadding: const EdgeInsets.only(bottom: 8),
+                iconColor: AppColors.primary,
+                collapsedIconColor: theme.colorScheme.onSurfaceVariant,
+                title: Text(
+                  'Bộ lọc nâng cao',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                children: [advancedFilters],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FilterChipButton extends StatelessWidget {
+  const _FilterChipButton({
+    super.key,
+    required this.label,
+    required this.isActive,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool isActive;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final foregroundColor = isActive
+        ? Colors.white
+        : theme.colorScheme.onSurface;
+    final borderColor = isActive
+        ? AppColors.primary
+        : theme.colorScheme.outlineVariant;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: Ink(
+          decoration: BoxDecoration(
+            color: isActive ? AppColors.primary : theme.colorScheme.surface,
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: borderColor),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isActive ? 0.08 : 0.035),
+                blurRadius: isActive ? 10 : 6,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 42, maxWidth: 178),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Flexible(
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: foregroundColor,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    size: 18,
+                    color: isActive
+                        ? Colors.white
+                        : theme.colorScheme.onSurfaceVariant,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AdvancedJobFilters extends StatelessWidget {
+  const _AdvancedJobFilters({
+    required this.filterFullTime,
+    required this.filterPartTime,
+    required this.filterSalaryUnder25,
+    required this.filterSalary25to40,
+    required this.filterSalaryOver40,
+    required this.onFullTimeChanged,
+    required this.onPartTimeChanged,
+    required this.onSalaryUnder25Changed,
+    required this.onSalary25to40Changed,
+    required this.onSalaryOver40Changed,
+  });
+
+  final bool filterFullTime;
+  final bool filterPartTime;
+  final bool filterSalaryUnder25;
+  final bool filterSalary25to40;
+  final bool filterSalaryOver40;
+  final ValueChanged<bool?> onFullTimeChanged;
+  final ValueChanged<bool?> onPartTimeChanged;
+  final ValueChanged<bool?> onSalaryUnder25Changed;
+  final ValueChanged<bool?> onSalary25to40Changed;
+  final ValueChanged<bool?> onSalaryOver40Changed;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final titleStyle = theme.textTheme.bodyMedium?.copyWith(
+      fontWeight: FontWeight.w900,
+      color: theme.colorScheme.onSurface,
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Loại hình công việc', style: titleStyle),
+        _CompactCheckboxTile(
+          label: 'Toàn thời gian',
+          value: filterFullTime,
+          onChanged: onFullTimeChanged,
+        ),
+        _CompactCheckboxTile(
+          label: 'Bán thời gian',
+          value: filterPartTime,
+          onChanged: onPartTimeChanged,
+        ),
+        const SizedBox(height: 8),
+        Text('Thu nhập/giờ', style: titleStyle),
+        _CompactCheckboxTile(
+          label: 'Dưới 25.000đ/giờ',
+          value: filterSalaryUnder25,
+          onChanged: onSalaryUnder25Changed,
+        ),
+        _CompactCheckboxTile(
+          label: 'Từ 25.000đ - 40.000đ/giờ',
+          value: filterSalary25to40,
+          onChanged: onSalary25to40Changed,
+        ),
+        _CompactCheckboxTile(
+          label: 'Trên 40.000đ/giờ',
+          value: filterSalaryOver40,
+          onChanged: onSalaryOver40Changed,
+        ),
+      ],
+    );
+  }
+}
+
+class _CompactCheckboxTile extends StatelessWidget {
+  const _CompactCheckboxTile({
+    required this.label,
+    required this.value,
+    required this.onChanged,
+  });
+
+  final String label;
+  final bool value;
+  final ValueChanged<bool?> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return CheckboxListTile(
+      title: Text(label),
+      value: value,
+      onChanged: onChanged,
+      controlAffinity: ListTileControlAffinity.leading,
+      dense: true,
+      contentPadding: EdgeInsets.zero,
+      visualDensity: const VisualDensity(horizontal: -2, vertical: -3),
     );
   }
 }

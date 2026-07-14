@@ -172,6 +172,23 @@ void main() {
       expect(job.status, 'expired');
     });
 
+    test('maps requirements from alternate backend field names', () {
+      final standard = AwsJobRepository.mapStandardJob({
+        'idJob': 'job-requirements',
+        'jobRequirements': 'Giao tiếp tốt\nCó thể làm cuối tuần',
+      });
+      final quick = AwsJobRepository.mapQuickJob({
+        'jobID': 'quick-requirements',
+        'qualification': 'Không yêu cầu kinh nghiệm, được đào tạo tại chỗ',
+      });
+
+      expect(standard.requirements, 'Giao tiếp tốt\nCó thể làm cuối tuần');
+      expect(
+        quick.requirements,
+        'Không yêu cầu kinh nghiệm, được đào tạo tại chỗ',
+      );
+    });
+
     test('rejects invalid coordinate ranges', () {
       final job = AwsJobRepository.mapStandardJob({
         'idJob': 'job-2',

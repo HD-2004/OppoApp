@@ -137,6 +137,35 @@ void main() {
     expect(find.text('Mở Google Maps'), findsOneWidget);
   });
 
+  testWidgets('job detail formats ISO work date and compacts long shift text', (
+    tester,
+  ) async {
+    final job = _jobFixture(
+      shiftTime: '2026-07-20 • T2,T3,T4,T5,T6 @ 07:00 - 11:30',
+    );
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [jobRepositoryProvider.overrideWithValue(_FakeJobRepo())],
+        child: MaterialApp(
+          home: UserJobDetailScreen(
+            job: job,
+            onApplyPressed: () {},
+            showApplyButton: false,
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+
+    expect(
+      find.text('20/07/2026 • T2,T3,T4 +2 @ 07:00 - 11:30'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('2026-07-20'), findsNothing);
+  });
+
   testWidgets('job detail renders work schedule as a selectable calendar', (
     tester,
   ) async {
@@ -157,7 +186,8 @@ void main() {
     expect(find.text('Thời gian tuyển dụng'), findsOneWidget);
     expect(find.text(recruitmentWindowValue(job)), findsOneWidget);
     expect(find.text('THỜI GIAN LÀM VIỆC'), findsOneWidget);
-    expect(find.text(rawSchedule), findsOneWidget);
+    expect(find.text('T2,T3,T4 +2 @ 07:00 - 11:30'), findsOneWidget);
+    expect(find.text(rawSchedule), findsNothing);
     expect(find.text('Lịch làm việc'), findsOneWidget);
     expect(find.text('07:00 - 11:30'), findsOneWidget);
     expect(find.text('THỜI GIAN'), findsNothing);
@@ -183,7 +213,8 @@ void main() {
     expect(find.text('Thời gian tuyển dụng'), findsOneWidget);
     expect(find.text(recruitmentWindowValue(job)), findsOneWidget);
     expect(find.text('THỜI GIAN LÀM VIỆC'), findsOneWidget);
-    expect(find.text(rawSchedule), findsOneWidget);
+    expect(find.text('T2,T3,T4 +2 @ 07:00 - 11:30'), findsOneWidget);
+    expect(find.text(rawSchedule), findsNothing);
     expect(find.text('Lịch làm việc'), findsNothing);
     expect(find.text('07:00 - 11:30'), findsNothing);
   });
