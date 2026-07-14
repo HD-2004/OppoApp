@@ -181,6 +181,168 @@ Future<void> openAiApplicationFlow({
   );
 }
 
+/// Call this from [_handleApply] **before** showing the CV-picker dialog.
+/// Returns `true` if the candidate already has an application for this job
+/// and the flow was handled (dialog/screen shown) — the caller should then
+/// skip the CV-selection step entirely. Returns `false` when there is no
+/// existing application and the normal CV-picker flow should proceed.
+Future<bool> checkExistingApplicationBeforeApply({
+  required BuildContext context,
+  required WidgetRef ref,
+  required JobPost job,
+  required AuthUserProfile user,
+}) async {
+  final applications = await ref
+      .read(applicationRepositoryProvider)
+      .getCandidateApplications(user.userId);
+
+  final existingApp =
+      existingApplicationForJob(applications, job.idJob) ??
+      existingApplicationForJob(applications, job.id);
+
+  if (existingApp == null) return false; // no existing application
+  if (!context.mounted) return true;
+
+  final status = (existingApp['status']?.toString().trim() ?? '').toLowerCase();
+
+  // ── pending: CV is waiting for employer review ──
+  if (status == 'pending') {
+    final hasAiScore = existingApp['aiScreeningScore'] != null &&
+        existingApp['aiScreeningScore'].toString().trim().isNotEmpty &&
+        existingApp['aiScreeningScore'].toString() != '0';
+
+    if (hasAiScore) {
+      // Show old AI screening results in read-only mode
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => AIScreeningScreen(
+            job: job,
+            cvFileName: existingApp['cvFilename']?.toString() ?? 'CV.pdf',
+            cvUrl: existingApp['cvUrl']?.toString() ?? '',
+            cvS3Key: existingApp['cvS3Key']?.toString(),
+            existingApplication: existingApp,
+          ),
+        ),
+      );
+    } else {
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Đã ứng tuyển'),
+          content: const Text(
+            'Bạn đã ứng tuyển công việc này. CV của bạn đang chờ Nhà tuyển dụng duyệt.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Đóng'),
+            ),
+          ],
+        ),
+      );
+    }
+    return true;
+  }
+
+  // ── rejected ──
+  if (status == 'rejected') {
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Không đạt yêu cầu'),
+        content: const Text(
+          'Rất tiếc, CV của bạn chưa phù hợp cho công việc này ở thời điểm hiện tại.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Đóng'),
+          ),
+        ],
+      ),
+    );
+    return true;
+  }
+
+  // ── already completed AI interview ──
+  final hasInterviewAudio =
+      (existingApp['aiInterviewAudio']?.toString().trim() ?? '').isNotEmpty ||
+      (existingApp['aiInterviewAudioKey']?.toString().trim() ?? '').isNotEmpty;
+  if (hasInterviewAudio) {
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Đã hoàn thành'),
+        content: const Text(
+          'Bạn đã hoàn thành phỏng vấn AI cho công việc này.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Đóng'),
+          ),
+        ],
+      ),
+    );
+    return true;
+  }
+
+  // ── approved/accepted: employer approved CV → go to Round 2 interview ──
+  if (status == 'approved' || status == 'accepted') {
+    if (job.isAiScreeningEnabled) {
+      final continuation = aiInterviewContinuationForExistingApplication(
+        applications: applications,
+        jobId: job.idJob,
+        alternateJobId: job.id,
+        selectedCvUrl: existingApp['cvUrl']?.toString() ?? '',
+        selectedCvFilename: existingApp['cvFilename']?.toString() ?? 'CV.pdf',
+        selectedCvS3Key: existingApp['cvS3Key']?.toString(),
+        jobRequiresAiInterview: true,
+      );
+
+      if (continuation != null && context.mounted) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => AIInterviewChatScreen(
+              job: job,
+              cvFileName: continuation.cvFilename,
+              cvUrl: continuation.cvUrl,
+              cvS3Key: continuation.cvS3Key,
+              applicationId: continuation.applicationId,
+              aiScreeningScore: continuation.aiScreeningScore,
+              aiScreeningResult: continuation.aiScreeningResult,
+              aiScreeningReason: continuation.aiScreeningReason,
+            ),
+          ),
+        );
+        return true;
+      }
+    }
+
+    // approved but no AI interview required
+    if (context.mounted) {
+      await showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('CV đã được duyệt'),
+          content: const Text(
+            'CV của bạn đã được nhà tuyển dụng duyệt cho công việc này.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Đóng'),
+            ),
+          ],
+        ),
+      );
+    }
+    return true;
+  }
+
+  return false; // unknown status → proceed normally
+}
+
 Future<bool> openExistingAiInterviewForDuplicateApplication({
   required BuildContext context,
   required WidgetRef ref,

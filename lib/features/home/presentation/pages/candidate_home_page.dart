@@ -170,6 +170,19 @@ class _CandidateHomePageState extends ConsumerState<CandidateHomePage> {
 
     _showLoading();
     try {
+      // Check if an existing application already exists → skip CV picker
+      final handled = await checkExistingApplicationBeforeApply(
+        context: context,
+        ref: ref,
+        job: job,
+        user: user,
+      );
+      if (!mounted) return;
+      if (handled) {
+        Navigator.of(context).pop(); // Dismiss loading
+        return;
+      }
+
       final repository = ref.read(applicationRepositoryProvider);
       final cvs = await repository.getCandidateCVs(user.userId);
       if (!mounted) return;

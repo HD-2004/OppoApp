@@ -4,6 +4,7 @@ import 'package:oppo_temp_jobs/core/theme/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../auth/application/auth_controller.dart';
+import '../../../auth/domain/auth_user_profile.dart';
 import '../../../candidate/data/aws_application_repository.dart';
 import '../../../candidate/domain/job_post.dart';
 import '../../../candidate/presentation/application_flow_navigation.dart';
@@ -72,6 +73,21 @@ class _JobsPageState extends ConsumerState<JobsPage> {
       builder: (_) => const Center(child: CircularProgressIndicator()),
     );
     try {
+      // Check if an existing application already exists → skip CV picker
+      if (user is AuthUserProfile) {
+        final handled = await checkExistingApplicationBeforeApply(
+          context: context,
+          ref: ref,
+          job: job,
+          user: user,
+        );
+        if (!mounted) return;
+        if (handled) {
+          Navigator.of(context).pop(); // Dismiss loading
+          return;
+        }
+      }
+
       final repo = ref.read(applicationRepositoryProvider);
       final cvs = await repo.getCandidateCVs(user.userId);
       if (!mounted) return;
