@@ -13,6 +13,7 @@ class AIScreeningScreen extends ConsumerStatefulWidget {
   final String cvFileName;
   final String cvUrl;
   final String? cvS3Key;
+  final Map<String, dynamic>? existingApplication;
 
   const AIScreeningScreen({
     super.key,
@@ -20,6 +21,7 @@ class AIScreeningScreen extends ConsumerStatefulWidget {
     required this.cvFileName,
     required this.cvUrl,
     this.cvS3Key,
+    this.existingApplication,
   });
 
   @override
@@ -51,13 +53,67 @@ class _AIScreeningScreenState extends ConsumerState<AIScreeningScreen>
     _progressAnimation = Tween<double>(begin: 0, end: 0).animate(
       CurvedAnimation(parent: _progressController, curve: Curves.easeOutCubic),
     );
-    _runCVScreening();
+
+    if (widget.existingApplication != null) {
+      _loadExistingResults();
+    } else {
+      _runCVScreening();
+    }
   }
 
   @override
   void dispose() {
     _progressController.dispose();
     super.dispose();
+  }
+
+  void _loadExistingResults() {
+    final app = widget.existingApplication!;
+
+    final score = _parseExistingInt(app['aiScreeningScore']);
+    final result = (app['aiScreeningResult']?.toString().trim() ?? 'pass').toLowerCase();
+    final reason = app['aiScreeningReason']?.toString() ??
+        'CV đã được gửi đi. Đang chờ Nhà tuyển dụng duyệt.';
+
+    final rawStrengths = app['aiScreeningStrengths'];
+    final strengths = rawStrengths is List
+        ? rawStrengths.map((e) => e.toString()).toList()
+        : <String>[];
+
+    final rawWeaknesses = app['aiScreeningWeaknesses'];
+    final weaknesses = rawWeaknesses is List
+        ? rawWeaknesses.map((e) => e.toString()).toList()
+        : <String>[];
+
+    final appId = app['applicationId']?.toString();
+
+    setState(() {
+      _score = score;
+      _result = result;
+      _reason = reason;
+      _strengths = strengths;
+      _weaknesses = weaknesses;
+      _applicationId = appId;
+      _isLoading = false;
+      _errorMessage = null;
+      _applicationNotice =
+          'Hồ sơ đã được gửi! CV của bạn đang chờ Nhà tuyển dụng duyệt. '
+          'Bạn sẽ được thông báo khi Nhà tuyển dụng phê duyệt để tiếp tục vòng phỏng vấn AI.';
+
+      _progressAnimation = Tween<double>(begin: 0, end: score / 100.0)
+          .animate(
+            CurvedAnimation(
+              parent: _progressController,
+              curve: Curves.easeOutCubic,
+            ),
+          );
+      _progressController.forward();
+    });
+  }
+
+  int _parseExistingInt(dynamic value) {
+    if (value is num) return value.toInt();
+    return double.tryParse(value?.toString().trim() ?? '')?.round() ?? 0;
   }
 
   Future<void> _runCVScreening() async {
