@@ -1171,7 +1171,7 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             const Text(
-              'Phỏng vấn AI cùng Oppo',
+              'Phỏng vấn AI cùng Ốp Pờ',
               style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
             ),
             Text(

@@ -84,7 +84,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           location == '/' ||
           location == '/missing-role' ||
           location.startsWith('/employer') ||
-          location == '/candidate/kyc' ||
           location == '/candidate/update-profile') {
         return '/candidate';
       }
@@ -166,7 +165,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/candidate/kyc',
-        builder: (context, state) => const KycVerificationScreen(),
+        builder: (context, state) {
+          return KycVerificationScreen(
+            callbackStatus: state.uri.queryParameters['status'],
+          );
+        },
       ),
       GoRoute(
         path: '/candidate/update-profile',

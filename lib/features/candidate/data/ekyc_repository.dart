@@ -1,4 +1,5 @@
 import 'dart:convert';
+
 import 'package:amplify_auth_cognito/amplify_auth_cognito.dart';
 import 'package:amplify_flutter/amplify_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -25,66 +26,33 @@ class EkycRepository {
   Map<String, String> _buildHeaders(String? token) {
     return {
       'Content-Type': 'application/json',
-      if (token != null) 'Authorization': 'Bearer $token',
+      if (token != null && token.trim().isNotEmpty)
+        'Authorization': 'Bearer ${token.trim()}',
     };
   }
 
-  String _encodeBody(Map<String, dynamic> body) {
-    body.removeWhere((_, value) => value == null);
-    return jsonEncode(body);
-  }
-
-  /// OCR ID Card Front & optional Back images
-  /// both should be base64 data URLs: "data:image/jpeg;base64,..."
-  Future<Map<String, dynamic>> ocrCCCD({
-    required String imageFront,
-    String? imageBack,
+  Future<Map<String, dynamic>> createVerificationSession({
+    required String callbackUrl,
   }) async {
     final token = await _getAuthToken();
     final response = await http.post(
-      Uri.parse('$_apiBaseUrl/ekyc/ocr'),
+      Uri.parse('$_apiBaseUrl/ekyc/session'),
       headers: _buildHeaders(token),
-      body: _encodeBody({'imageFront': imageFront, 'imageBack': imageBack}),
+      body: jsonEncode({'callbackUrl': callbackUrl}),
     );
 
-    final body = jsonDecode(response.body);
-    if (response.statusCode == 200) {
+    final body = _decodeBody(response.body);
+    if (response.statusCode >= 200 && response.statusCode < 300) {
       return body;
-    } else {
-      throw Exception(
-        body['errorMsg'] ?? 'OCR failed (${response.statusCode})',
-      );
     }
-  }
 
-  /// Face matching & Liveness verification
-  Future<Map<String, dynamic>> verifyFace({
-    required String faceImage,
-    String? frontHash,
-    String? frontToken,
-  }) async {
-    final token = await _getAuthToken();
-    final response = await http.post(
-      Uri.parse('$_apiBaseUrl/ekyc/verify-face'),
-      headers: _buildHeaders(token),
-      body: _encodeBody({
-        'faceImage': faceImage,
-        'front_hash': frontHash,
-        'front_token': frontToken,
-      }),
+    throw Exception(
+      body['errorMsg'] ??
+          body['message'] ??
+          'Tạo phiên xác minh thất bại (${response.statusCode})',
     );
-
-    final body = jsonDecode(response.body);
-    if (response.statusCode == 200) {
-      return body;
-    } else {
-      throw Exception(
-        body['errorMsg'] ?? 'Face verification failed (${response.statusCode})',
-      );
-    }
   }
 
-  /// Fetch candidate's current KYC status
   Future<Map<String, dynamic>> getKycStatus(String userId) async {
     final token = await _getAuthToken();
     final response = await http.get(
@@ -92,14 +60,22 @@ class EkycRepository {
       headers: _buildHeaders(token),
     );
 
-    final body = jsonDecode(response.body);
-    if (response.statusCode == 200) {
+    final body = _decodeBody(response.body);
+    if (response.statusCode >= 200 && response.statusCode < 300) {
       return body;
-    } else {
-      throw Exception(
-        body['errorMsg'] ?? 'Failed to get KYC status (${response.statusCode})',
-      );
     }
+
+    throw Exception(
+      body['errorMsg'] ??
+          body['message'] ??
+          'Không lấy được trạng thái KYC (${response.statusCode})',
+    );
+  }
+
+  Map<String, dynamic> _decodeBody(String body) {
+    if (body.trim().isEmpty) return <String, dynamic>{};
+    final decoded = jsonDecode(body);
+    return decoded is Map<String, dynamic> ? decoded : <String, dynamic>{};
   }
 }
 

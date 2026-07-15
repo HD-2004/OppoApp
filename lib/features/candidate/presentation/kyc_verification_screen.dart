@@ -1,18 +1,21 @@
-import 'dart:convert';
-import 'dart:typed_data';
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-
-import 'package:oppo_temp_jobs/core/theme/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image_picker/image_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
 
-import '../../../core/formatters/app_date_formatter.dart';
 import '../../../core/localization/app_localizations.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../auth/application/auth_controller.dart';
 import '../data/ekyc_repository.dart';
 
+enum _KycPhase { idle, redirectReady, polling, done, failed }
+
 class KycVerificationScreen extends ConsumerStatefulWidget {
-  const KycVerificationScreen({super.key});
+  const KycVerificationScreen({super.key, this.callbackStatus});
+
+  final String? callbackStatus;
 
   @override
   ConsumerState<KycVerificationScreen> createState() =>
@@ -20,312 +23,337 @@ class KycVerificationScreen extends ConsumerStatefulWidget {
 }
 
 class _KycVerificationScreenState extends ConsumerState<KycVerificationScreen> {
-  final ImagePicker _picker = ImagePicker();
+  static const _pollInterval = Duration(seconds: 5);
+  static const _pollMaxAttempts = 60;
 
-  int _currentStep = 0; // 0: CCCD OCR, 1: Selfie, 2: Success
-  bool _loading = false;
-  String _loadingMsg = '';
-  String _error = '';
-
-  // Step 0 - CCCD Images
-  XFile? _frontFile;
-  XFile? _backFile;
-  Uint8List? _frontBytes;
-  Uint8List? _backBytes;
-
-  // Step 0 - OCR Results
-  Map<String, dynamic>? _ocrResult;
-  String? _frontHash;
-  String? _frontToken;
-  bool _ocrConfirmed = false;
-
-  // Step 1 - Selfie Image
-  XFile? _selfieFile;
-  Uint8List? _selfieBytes;
+  Timer? _pollTimer;
+  var _phase = _KycPhase.idle;
+  var _loading = true;
+  var _loadingMessage = '';
+  var _error = '';
+  var _redirectUrl = '';
+  var _pollCount = 0;
+  var _statusChecked = false;
 
   @override
   void initState() {
     super.initState();
-    _checkExistingKyc();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_checkInitialStatus());
+    });
   }
 
-  Future<void> _checkExistingKyc() async {
+  @override
+  void dispose() {
+    _stopPolling();
+    super.dispose();
+  }
+
+  Future<void> _checkInitialStatus() async {
+    final user = ref.read(authControllerProvider).asData?.value.user;
+    if (user == null) {
+      setState(() {
+        _loading = false;
+        _loadingMessage = '';
+      });
+      return;
+    }
+
+    setState(() {
+      _loading = true;
+      _loadingMessage = 'Đang kiểm tra trạng thái xác thực...';
+      _error = '';
+    });
+
+    try {
+      final status = await ref
+          .read(ekycRepositoryProvider)
+          .getKycStatus(user.userId);
+      if (_isVerified(status)) {
+        await _markLocalKycCompletedIfNeeded();
+        if (!mounted) return;
+        setState(() => _phase = _KycPhase.done);
+      } else if (_isFailed(status)) {
+        setState(() {
+          _phase = _KycPhase.failed;
+          _error = 'Xác minh không thành công. Vui lòng thử lại.';
+        });
+      } else if (_hasCompletionCallback) {
+        setState(() => _phase = _KycPhase.polling);
+        _startPolling();
+      }
+    } catch (e) {
+      debugPrint('[KYC] Initial status check failed: $e');
+      if (_hasCompletionCallback) {
+        setState(() {
+          _phase = _KycPhase.polling;
+          _error = '';
+        });
+        _startPolling();
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _loadingMessage = '';
+          _statusChecked = true;
+        });
+      }
+    }
+  }
+
+  Future<void> _startVerification() async {
+    final user = ref.read(authControllerProvider).asData?.value.user;
+    if (user == null) {
+      setState(() {
+        _error = 'Cần đăng nhập để xác minh danh tính.';
+      });
+      return;
+    }
+
+    setState(() {
+      _loading = true;
+      _loadingMessage = 'Đang tạo phiên xác minh...';
+      _error = '';
+    });
+
+    try {
+      final result = await ref
+          .read(ekycRepositoryProvider)
+          .createVerificationSession(callbackUrl: _buildCallbackUrl());
+      final redirectUrl =
+          result['redirect_url']?.toString() ??
+          result['redirectUrl']?.toString() ??
+          '';
+      if (result['success'] == false || redirectUrl.trim().isEmpty) {
+        throw Exception(
+          result['errorMsg'] ??
+              result['message'] ??
+              'Không lấy được link xác minh.',
+        );
+      }
+
+      setState(() {
+        _redirectUrl = redirectUrl.trim();
+        _phase = _KycPhase.redirectReady;
+      });
+    } catch (e) {
+      setState(() {
+        _phase = _KycPhase.idle;
+        _error = _cleanError(e);
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _loadingMessage = '';
+        });
+      }
+    }
+  }
+
+  Future<void> _openDidit() async {
+    if (_redirectUrl.trim().isEmpty) return;
+
+    final uri = Uri.tryParse(_redirectUrl);
+    if (uri == null) {
+      setState(() => _error = 'Link xác minh không hợp lệ.');
+      return;
+    }
+
+    setState(() {
+      _phase = _KycPhase.polling;
+      _error = '';
+    });
+    _startPolling();
+
+    final launched = await launchUrl(
+      uri,
+      mode: kIsWeb
+          ? LaunchMode.platformDefault
+          : LaunchMode.externalApplication,
+      webOnlyWindowName: '_blank',
+    );
+    if (!launched && mounted) {
+      setState(() {
+        _error =
+            'Không mở được trang Didit. Vui lòng kiểm tra trình duyệt và thử lại.';
+      });
+    }
+  }
+
+  Future<void> _manualCheck() async {
     final user = ref.read(authControllerProvider).asData?.value.user;
     if (user == null) return;
 
     setState(() {
       _loading = true;
-      _loadingMsg = 'Đang kiểm tra trạng thái xác thực...';
+      _loadingMessage = 'Đang kiểm tra kết quả...';
+      _error = '';
     });
 
     try {
-      final res = await ref
+      final status = await ref
           .read(ekycRepositoryProvider)
           .getKycStatus(user.userId);
-      if (res['success'] == true &&
-          (res['kycCompleted'] == true || res['kycStatus'] == 'VERIFIED')) {
-        if (mounted) {
-          // If already completed, pop back to profile screen
-          Navigator.of(context).pop();
-        }
-      }
+      await _handleStatusResult(status, showNoResultMessage: true);
     } catch (e) {
-      debugPrint('Error checking KYC status on load: $e');
+      setState(() {
+        _error = _cleanError(e);
+      });
     } finally {
       if (mounted) {
         setState(() {
           _loading = false;
-          _loadingMsg = '';
+          _loadingMessage = '';
         });
       }
     }
   }
 
-  // ─── Image Picking Helper ──────────────────────────────────────────────────
-  Future<void> _pickImage(String field, ImageSource source) async {
-    setState(() {
-      _error = '';
+  void _startPolling() {
+    if (_pollTimer != null) return;
+    _pollCount = 0;
+    _pollTimer = Timer.periodic(_pollInterval, (_) {
+      unawaited(_pollStatus());
     });
-
-    try {
-      final XFile? file = await _picker.pickImage(
-        source: source,
-        maxWidth: 1200,
-        maxHeight: 1200,
-        imageQuality: 85,
-      );
-
-      if (file == null) return;
-
-      final bytes = await file.readAsBytes();
-
-      if (bytes.lengthInBytes > 10 * 1024 * 1024) {
-        setState(() {
-          _error = 'Kích thước ảnh tối đa là 10MB';
-        });
-        return;
-      }
-
-      setState(() {
-        if (field == 'front') {
-          _frontFile = file;
-          _frontBytes = bytes;
-          _ocrResult = null; // Clear old OCR results if images change
-          _ocrConfirmed = false;
-          _frontHash = null;
-          _frontToken = null;
-        } else if (field == 'back') {
-          _backFile = file;
-          _backBytes = bytes;
-          _ocrResult = null;
-          _ocrConfirmed = false;
-        } else if (field == 'selfie') {
-          _selfieFile = file;
-          _selfieBytes = bytes;
-        }
-      });
-    } catch (e) {
-      setState(() {
-        _error = 'Không thể mở camera hoặc chọn ảnh: $e';
-      });
-    }
   }
 
-  void _showImageSourceSelector(String field) {
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (ctx) => SafeArea(
-        child: Wrap(
-          children: [
-            ListTile(
-              leading: const Icon(Icons.camera_alt_outlined),
-              title: const Text('Chụp ảnh mới'),
-              onTap: () {
-                Navigator.of(ctx).pop();
-                _pickImage(field, ImageSource.camera);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library_outlined),
-              title: const Text('Chọn ảnh từ thư viện'),
-              onTap: () {
-                Navigator.of(ctx).pop();
-                _pickImage(field, ImageSource.gallery);
-              },
-            ),
-          ],
-        ),
-      ),
-    );
+  void _stopPolling() {
+    _pollTimer?.cancel();
+    _pollTimer = null;
   }
 
-  // ─── API Flow Calls ────────────────────────────────────────────────────────
-  Future<void> _submitOcr() async {
-    if (_frontFile == null || _frontBytes == null) {
-      setState(() => _error = 'Vui lòng tải lên ảnh mặt trước CCCD');
+  Future<void> _pollStatus() async {
+    final user = ref.read(authControllerProvider).asData?.value.user;
+    if (user == null || !mounted) return;
+
+    setState(() => _pollCount++);
+
+    if (_pollCount > _pollMaxAttempts) {
+      _stopPolling();
+      setState(() {
+        _phase = _KycPhase.idle;
+        _error =
+            'Chưa nhận được kết quả xác minh. Vui lòng kiểm tra lại sau vài phút.';
+      });
       return;
     }
 
-    setState(() {
-      _loading = true;
-      _loadingMsg = 'Đang đọc thông tin CCCD…';
-      _error = '';
-    });
-
     try {
-      final frontBase64 = base64Encode(_frontBytes!);
-      final frontMime = _frontFile!.path.endsWith('.png')
-          ? 'image/png'
-          : 'image/jpeg';
-      final frontDataUrl = 'data:$frontMime;base64,$frontBase64';
-
-      String? backDataUrl;
-      if (_backFile != null && _backBytes != null) {
-        final backBase64 = base64Encode(_backBytes!);
-        final backMime = _backFile!.path.endsWith('.png')
-            ? 'image/png'
-            : 'image/jpeg';
-        backDataUrl = 'data:$backMime;base64,$backBase64';
-      }
-
-      final res = await ref
+      final status = await ref
           .read(ekycRepositoryProvider)
-          .ocrCCCD(imageFront: frontDataUrl, imageBack: backDataUrl);
-
-      if (res['success'] == true) {
-        setState(() {
-          _ocrResult = res['object'] as Map<String, dynamic>;
-          _frontHash = res['front_hash'] as String?;
-          _frontToken = res['front_token'] as String?;
-        });
-      } else {
-        throw Exception(res['errorMsg'] ?? 'OCR thất bại');
-      }
+          .getKycStatus(user.userId);
+      await _handleStatusResult(status);
     } catch (e) {
-      setState(() {
-        _error = e.toString().replaceAll('Exception: ', '');
-      });
-    } finally {
-      setState(() {
-        _loading = false;
-        _loadingMsg = '';
-      });
+      debugPrint('[KYC] Poll failed: $e');
     }
   }
 
-  Future<void> _submitFaceVerify() async {
-    if (_selfieFile == null || _selfieBytes == null) {
-      setState(() => _error = 'Vui lòng chụp hoặc chọn ảnh khuôn mặt');
+  Future<void> _handleStatusResult(
+    Map<String, dynamic> status, {
+    bool showNoResultMessage = false,
+  }) async {
+    if (_isVerified(status)) {
+      _stopPolling();
+      await _markLocalKycCompletedIfNeeded();
+      if (!mounted) return;
+      setState(() {
+        _phase = _KycPhase.done;
+        _error = '';
+      });
       return;
     }
 
-    setState(() {
-      _loading = true;
-      _loadingMsg = 'Đang xác minh khuôn mặt…';
-      _error = '';
-    });
-
-    try {
-      final selfieBase64 = base64Encode(_selfieBytes!);
-      final selfieMime = _selfieFile!.path.endsWith('.png')
-          ? 'image/png'
-          : 'image/jpeg';
-      final selfieDataUrl = 'data:$selfieMime;base64,$selfieBase64';
-
-      final res = await ref
-          .read(ekycRepositoryProvider)
-          .verifyFace(
-            faceImage: selfieDataUrl,
-            frontHash: _frontHash,
-            frontToken: _frontToken,
-          );
-
-      if (res['kycStatus'] == 'VERIFIED') {
-        // Sync name, DOB, and CCCD to database candidate profile
-        final authUser = ref.read(authControllerProvider).asData?.value.user;
-        if (authUser != null && _ocrResult != null) {
-          try {
-            final normalizedOcrDob = AppDateFormatter.normalizeDateOnly(
-              _ocrResult!['dob']?.toString(),
-            );
-            await ref
-                .read(authControllerProvider.notifier)
-                .completeProfile(
-                  fullName:
-                      _ocrResult!['name']?.toString() ?? authUser.fullName,
-                  cccd: _ocrResult!['id']?.toString() ?? authUser.cccd,
-                  dateOfBirth: normalizedOcrDob ?? authUser.dateOfBirth,
-                  phone: authUser.phone,
-                  location: authUser.location,
-                  title: authUser.title,
-                  bio: authUser.bio,
-                  skills: authUser.skills,
-                  profileImage: authUser.profileImage,
-                );
-          } catch (dbErr) {
-            debugPrint('DB sync warning: $dbErr');
-          }
-        }
-
-        // Show verification success and transition to Step 2 (Success)
-        Future.delayed(const Duration(seconds: 2), () {
-          if (mounted) {
-            setState(() {
-              _currentStep = 2;
-            });
-          }
-        });
-      } else {
-        final double similarity =
-            double.tryParse(res['object']?['similarity']?.toString() ?? '') ??
-            0.0;
-        setState(() {
-          _error =
-              'Xác minh thất bại. Độ tương đồng: ${similarity.toStringAsFixed(1)}% (yêu cầu ≥ 85%). Vui lòng chụp lại.';
-        });
-      }
-    } catch (e) {
+    if (_isFailed(status)) {
+      _stopPolling();
       setState(() {
-        _error = e.toString().replaceAll('Exception: ', '');
+        _phase = _KycPhase.failed;
+        _error = 'Xác minh không thành công. Vui lòng thử lại.';
       });
-    } finally {
+      return;
+    }
+
+    if (showNoResultMessage) {
       setState(() {
-        _loading = false;
-        _loadingMsg = '';
+        _error =
+            'Chưa có kết quả. Didit cần vài phút để xử lý. Vui lòng thử lại sau.';
       });
     }
   }
 
-  // ─── UI Rendering ──────────────────────────────────────────────────────────
+  Future<void> _markLocalKycCompletedIfNeeded() async {
+    final user = ref.read(authControllerProvider).asData?.value.user;
+    if (user == null || user.kycCompleted) return;
+
+    try {
+      await ref.read(authControllerProvider.notifier).completeKyc();
+    } catch (e) {
+      debugPrint('[KYC] Local profile sync warning: $e');
+    }
+  }
+
+  bool _isVerified(Map<String, dynamic> status) {
+    final normalizedStatus = status['kycStatus']?.toString().toUpperCase();
+    final normalizedEkyc = status['ekycStatus']?.toString().toUpperCase();
+    return status['kycCompleted'] == true ||
+        normalizedStatus == 'VERIFIED' ||
+        normalizedEkyc == 'VERIFIED' ||
+        normalizedEkyc == 'APPROVED';
+  }
+
+  bool _isFailed(Map<String, dynamic> status) {
+    final normalizedStatus = status['kycStatus']?.toString().toUpperCase();
+    final normalizedEkyc = status['ekycStatus']?.toString().toUpperCase();
+    return normalizedStatus == 'FAILED' ||
+        normalizedStatus == 'REJECTED' ||
+        normalizedEkyc == 'FAILED' ||
+        normalizedEkyc == 'REJECTED';
+  }
+
+  bool get _hasCompletionCallback {
+    final status =
+        widget.callbackStatus ??
+        Uri.base.queryParameters['status'] ??
+        _fragmentQueryParameters['status'];
+    final normalized = status?.toLowerCase();
+    return normalized == 'completed' ||
+        normalized == 'approved' ||
+        normalized == 'success';
+  }
+
+  Map<String, String> get _fragmentQueryParameters {
+    final fragment = Uri.base.fragment;
+    final queryIndex = fragment.indexOf('?');
+    if (queryIndex < 0 || queryIndex == fragment.length - 1) {
+      return const <String, String>{};
+    }
+    return Uri.splitQueryString(fragment.substring(queryIndex + 1));
+  }
+
+  String _buildCallbackUrl() {
+    final base = Uri.base;
+    final normalizedPath = base.path.isEmpty
+        ? '/'
+        : base.path.endsWith('/')
+        ? base.path
+        : '${base.path}/';
+    return base
+        .replace(
+          path: normalizedPath,
+          query: '',
+          fragment: '/candidate/kyc?status=completed',
+        )
+        .toString();
+  }
+
+  String _cleanError(Object error) {
+    return error.toString().replaceFirst(RegExp(r'^Exception:\s*'), '');
+  }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-
-    // Full screen loading indicator overlay
-    if (_loading) {
-      return Scaffold(
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const CircularProgressIndicator(strokeWidth: 3),
-              const SizedBox(height: 20),
-              Text(
-                _loadingMsg,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -335,48 +363,35 @@ class _KycVerificationScreenState extends ConsumerState<KycVerificationScreen> {
         elevation: 0.5,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Color(0xFF1E293B)),
-          onPressed: () {
-            if (_currentStep > 0 && _currentStep < 2) {
-              setState(() {
-                _currentStep--;
-                _error = '';
-              });
-            } else {
-              Navigator.of(context).pop();
-            }
-          },
+          onPressed: () => Navigator.of(context).maybePop(),
         ),
       ),
-      body: SafeArea(
-        child: _currentStep == 2
-            ? _buildSuccessScreen()
-            : SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 24,
-                ),
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 600),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        _buildHeader(),
-                        const SizedBox(height: 24),
-                        _buildStepper(),
-                        const SizedBox(height: 32),
-                        if (_error.isNotEmpty) ...[
-                          _buildErrorBanner(),
-                          const SizedBox(height: 20),
-                        ],
-                        _currentStep == 0
-                            ? _buildStepCccd()
-                            : _buildStepSelfie(),
+      body: Stack(
+        children: [
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 28),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 640),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _buildHeader(),
+                      const SizedBox(height: 28),
+                      if (_error.isNotEmpty) ...[
+                        _buildErrorBanner(),
+                        const SizedBox(height: 18),
                       ],
-                    ),
+                      _buildPhaseCard(),
+                    ],
                   ),
                 ),
               ),
+            ),
+          ),
+          if (_loading) _buildLoadingOverlay(),
+        ],
       ),
     );
   }
@@ -385,150 +400,318 @@ class _KycVerificationScreenState extends ConsumerState<KycVerificationScreen> {
     return Column(
       children: [
         Container(
-          padding: const EdgeInsets.all(12),
+          width: 68,
+          height: 68,
           decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.1),
-            shape: BoxShape.circle,
+            color: AppColors.primary,
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withValues(alpha: 0.25),
+                blurRadius: 24,
+                offset: const Offset(0, 8),
+              ),
+            ],
           ),
           child: const Icon(
             Icons.shield_outlined,
-            color: AppColors.primary,
-            size: 36,
+            color: Colors.white,
+            size: 34,
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         const Text(
-          'Xác Minh eKYC',
+          'Xác Minh Danh Tính',
+          textAlign: TextAlign.center,
           style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.w800,
+            fontSize: 24,
+            fontWeight: FontWeight.w900,
             color: Color(0xFF1E293B),
           ),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 8),
         const Text(
-          'Hoàn tất 2 bước để xác minh danh tính và bắt đầu ứng tuyển',
+          'Xác minh CCCD để bắt đầu ứng tuyển việc làm trên OpPo',
           textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+          style: TextStyle(fontSize: 14, color: Color(0xFF64748B), height: 1.5),
         ),
       ],
     );
   }
 
-  Widget _buildStepper() {
-    final double progress = _currentStep > 0 ? 100 : 0;
+  Widget _buildPhaseCard() {
+    return switch (_phase) {
+      _KycPhase.done => _buildDoneCard(),
+      _KycPhase.redirectReady => _buildRedirectCard(),
+      _KycPhase.polling => _buildPollingCard(),
+      _KycPhase.failed || _KycPhase.idle => _buildIntroCard(),
+    };
+  }
 
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        // Connecting line
-        Positioned(
-          left: 60,
-          right: 60,
-          child: Container(height: 3, color: const Color(0xFFE2E8F0)),
-        ),
-        Positioned(
-          left: 60,
-          right: 60,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            height: 3,
-            width: double.infinity,
-            alignment: Alignment.centerLeft,
-            child: FractionallySizedBox(
-              widthFactor: progress / 100,
-              child: Container(color: AppColors.primary),
+  Widget _buildIntroCard() {
+    return _KycCard(
+      accentColor: AppColors.primary,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildInfoBox(
+            'Quy trình xác minh được thực hiện qua nền tảng Didit, đảm bảo an toàn và bảo mật. Bạn sẽ được chuyển đến trang Didit để hoàn tất xác minh CCCD và nhận diện khuôn mặt.',
+          ),
+          const SizedBox(height: 22),
+          const _KycStepItem(
+            number: '1',
+            text:
+                'Nhấn "Bắt đầu xác minh" để hệ thống tạo phiên xác minh bảo mật.',
+          ),
+          const _KycStepItem(
+            number: '2',
+            text: 'Bạn sẽ được chuyển đến Didit để chụp CCCD và selfie.',
+          ),
+          const _KycStepItem(
+            number: '3',
+            text: 'Quay lại Ốp Pờ, kết quả xác minh sẽ được cập nhật tự động.',
+            isLast: true,
+          ),
+          const SizedBox(height: 26),
+          FilledButton.icon(
+            onPressed: _loading ? null : _startVerification,
+            icon: const Icon(Icons.shield_outlined, size: 18),
+            label: const Text('Bắt Đầu Xác Minh Danh Tính'),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              minimumSize: const Size.fromHeight(52),
+              textStyle: const TextStyle(fontWeight: FontWeight.w800),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
           ),
-        ),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            _buildStepCircle(
-              index: 0,
-              label: 'Xác minh CCCD',
-              active: _currentStep == 0,
-              completed: _currentStep > 0,
-            ),
-            _buildStepCircle(
-              index: 1,
-              label: 'Khuôn mặt',
-              active: _currentStep == 1,
-              completed: _currentStep > 1,
+          if (_statusChecked) ...[
+            const SizedBox(height: 12),
+            TextButton.icon(
+              onPressed: _loading ? null : _manualCheck,
+              icon: const Icon(Icons.refresh_rounded, size: 16),
+              label: const Text('Kiểm tra trạng thái hiện tại'),
             ),
           ],
-        ),
-      ],
+        ],
+      ),
     );
   }
 
-  Widget _buildStepCircle({
-    required int index,
-    required String label,
-    required bool active,
-    required bool completed,
-  }) {
-    Color bg = const Color(0xFFF1F5F9);
-    Color border = const Color(0xFFCBD5E1);
-    Widget child = Text(
-      '${index + 1}',
-      style: const TextStyle(
-        fontWeight: FontWeight.bold,
-        color: Color(0xFF64748B),
+  Widget _buildRedirectCard() {
+    return _KycCard(
+      accentColor: AppColors.primary,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const _CenteredStatusHeader(
+            icon: Icons.open_in_new_rounded,
+            color: AppColors.primary,
+            background: Color(0xFFEFF6FF),
+            title: 'Phiên xác minh đã sẵn sàng',
+            body:
+                'Nhấn nút bên dưới để mở trang xác minh Didit trong tab mới. Sau khi hoàn tất, quay lại trang này.',
+          ),
+          const SizedBox(height: 24),
+          FilledButton.icon(
+            onPressed: _openDidit,
+            icon: const Icon(Icons.open_in_new_rounded, size: 18),
+            label: const Text('Mở Trang Xác Minh Didit'),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              minimumSize: const Size.fromHeight(52),
+              textStyle: const TextStyle(fontWeight: FontWeight.w800),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          OutlinedButton(
+            onPressed: () {
+              _stopPolling();
+              setState(() {
+                _phase = _KycPhase.idle;
+                _redirectUrl = '';
+                _error = '';
+              });
+            },
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size.fromHeight(48),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Text('Hủy'),
+          ),
+        ],
       ),
     );
+  }
 
-    if (completed) {
-      bg = const Color(0xFF10B981);
-      border = const Color(0xFF10B981);
-      child = const Icon(Icons.check, color: Colors.white, size: 18);
-    } else if (active) {
-      bg = AppColors.primary;
-      border = AppColors.primary;
-      child = Text(
-        '${index + 1}',
-        style: const TextStyle(
-          fontWeight: FontWeight.bold,
-          color: Colors.white,
-        ),
-      );
-    }
-
-    return Column(
-      children: [
-        Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: bg,
-            shape: BoxShape.circle,
-            border: Border.all(color: border, width: 2),
-            boxShadow: active
-                ? [
-                    BoxShadow(
-                      color: AppColors.primary.withValues(alpha: 0.3),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
+  Widget _buildPollingCard() {
+    return _KycCard(
+      accentColor: const Color(0xFFF59E0B),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const _CenteredStatusHeader(
+            icon: Icons.schedule_rounded,
+            color: Color(0xFFD97706),
+            background: Color(0xFFFEF3C7),
+            title: 'Đang chờ kết quả xác minh',
+            body:
+                'Nếu bạn đã hoàn tất xác minh trên Didit, hệ thống sẽ tự động cập nhật trong vài phút.',
+          ),
+          const SizedBox(height: 20),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const SizedBox.square(
+                  dimension: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2.2),
+                ),
+                const SizedBox(width: 12),
+                Flexible(
+                  child: Text(
+                    'Đang kiểm tra kết quả... ($_pollCount/$_pollMaxAttempts)',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Color(0xFF64748B),
+                      fontWeight: FontWeight.w600,
                     ),
-                  ]
-                : null,
+                  ),
+                ),
+              ],
+            ),
           ),
-          child: Center(child: child),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: active || completed ? FontWeight.bold : FontWeight.w500,
-            color: active
-                ? AppColors.primary
-                : completed
-                ? const Color(0xFF10B981)
-                : const Color(0xFF64748B),
+          const SizedBox(height: 18),
+          OutlinedButton.icon(
+            onPressed: _loading ? null : _manualCheck,
+            icon: const Icon(Icons.refresh_rounded, size: 16),
+            label: const Text('Kiểm tra ngay'),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size.fromHeight(48),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
           ),
-        ),
-      ],
+          if (_redirectUrl.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            TextButton.icon(
+              onPressed: _openDidit,
+              icon: const Icon(Icons.open_in_new_rounded, size: 15),
+              label: const Text('Mở lại trang Didit'),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDoneCard() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 44),
+      decoration: BoxDecoration(
+        color: const Color(0xFF10B981),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF10B981).withValues(alpha: 0.25),
+            blurRadius: 36,
+            offset: const Offset(0, 16),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 76,
+            height: 76,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.18),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.check_circle_outline_rounded,
+              color: Colors.white,
+              size: 48,
+            ),
+          ),
+          const SizedBox(height: 24),
+          const Text(
+            'Xác Minh Danh Tính Hoàn Tất!',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 22,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'Danh tính của bạn đã được xác minh thành công qua Didit. Tài khoản đã được cập nhật, bạn có thể bắt đầu ứng tuyển.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.white, height: 1.6, fontSize: 14),
+          ),
+          const SizedBox(height: 30),
+          FilledButton(
+            onPressed: () => Navigator.of(context).maybePop(),
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.white,
+              foregroundColor: const Color(0xFF059669),
+              minimumSize: const Size.fromHeight(50),
+              textStyle: const TextStyle(fontWeight: FontWeight.w800),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Text('Về Hồ Sơ'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoBox(String text) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withValues(alpha: 0.04),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.18)),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(
+            Icons.info_outline_rounded,
+            color: AppColors.primary,
+            size: 20,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(
+                color: Color(0xFF334155),
+                fontSize: 13,
+                height: 1.55,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -543,7 +726,7 @@ class _KycVerificationScreenState extends ConsumerState<KycVerificationScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.error_outline, color: Color(0xFFEF4444), size: 20),
+          const Icon(Icons.cancel_outlined, color: Color(0xFFEF4444), size: 20),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
@@ -560,690 +743,187 @@ class _KycVerificationScreenState extends ConsumerState<KycVerificationScreen> {
     );
   }
 
-  // ─── Step 0: CCCD OCR UI ───────────────────────────────────────────────────
-
-  Widget _buildStepCccd() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Text(
-            'Xác Minh CCCD / CMND',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF1E293B),
-            ),
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            'Tải lên ảnh 2 mặt để hệ thống tự động đọc thông tin',
-            style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
-          ),
-          const SizedBox(height: 20),
-          _buildInfoBox([
-            'Ảnh rõ nét, đủ sáng, không bị mờ hoặc chói sáng',
-            'Định dạng JPG, PNG — tối đa 10MB mỗi ảnh',
-          ]),
-          const SizedBox(height: 24),
-          Row(
-            children: [
-              Expanded(
-                child: _buildUploadBox(
-                  title: 'Mặt trước *',
-                  bytes: _frontBytes,
-                  onTap: () => _showImageSourceSelector('front'),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildUploadBox(
-                  title: 'Mặt sau (tuỳ chọn)',
-                  bytes: _backBytes,
-                  onTap: () => _showImageSourceSelector('back'),
-                ),
+  Widget _buildLoadingOverlay() {
+    return ColoredBox(
+      color: Colors.black.withValues(alpha: 0.45),
+      child: Center(
+        child: Container(
+          margin: const EdgeInsets.all(24),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 22),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.12),
+                blurRadius: 24,
+                offset: const Offset(0, 12),
               ),
             ],
           ),
-          const SizedBox(height: 24),
-          if (_frontFile != null && _ocrResult == null) ...[
-            ElevatedButton.icon(
-              onPressed: _submitOcr,
-              icon: const Icon(Icons.document_scanner_outlined, size: 18),
-              label: const Text(
-                'Gửi Đọc Thông Tin CCCD',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-          ],
-          if (_ocrResult != null) ...[
-            _buildOcrResultCard(),
-            const SizedBox(height: 24),
-          ],
-          Row(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text('Hủy bỏ'),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: _ocrConfirmed
-                      ? () {
-                          setState(() {
-                            _currentStep = 1;
-                            _error = '';
-                          });
-                        }
-                      : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text(
-                    'Tiếp theo',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildUploadBox({
-    required String title,
-    required Uint8List? bytes,
-    required VoidCallback onTap,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF334155),
-          ),
-        ),
-        const SizedBox(height: 8),
-        GestureDetector(
-          onTap: onTap,
-          child: CustomPaint(
-            painter: DashedBorderPainter(
-              color: bytes != null
-                  ? const Color(0xFF10B981)
-                  : const Color(0xFFCBD5E1),
-              strokeWidth: 2,
-              gap: 6,
-            ),
-            child: Container(
-              height: 150,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: bytes != null
-                    ? const Color(0xFF10B981).withValues(alpha: 0.02)
-                    : const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              padding: const EdgeInsets.all(12),
-              child: Center(
-                child: bytes != null
-                    ? ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: Image.memory(bytes, fit: BoxFit.contain),
-                      )
-                    : const Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.cloud_upload_outlined,
-                            color: AppColors.primary,
-                            size: 32,
-                          ),
-                          SizedBox(height: 8),
-                          Text(
-                            'Tải ảnh lên',
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF1E293B),
-                            ),
-                          ),
-                          SizedBox(height: 4),
-                          Text(
-                            'JPG, PNG',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: Color(0xFF94A3B8),
-                            ),
-                          ),
-                        ],
-                      ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildOcrResultCard() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF0FDF4),
-        border: Border.all(color: const Color(0xFFBBF7D0)),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Row(
-            children: [
-              Icon(
-                Icons.check_circle_outline,
-                color: Color(0xFF16A34A),
-                size: 18,
-              ),
-              SizedBox(width: 8),
+              const CircularProgressIndicator(strokeWidth: 3),
+              const SizedBox(height: 16),
               Text(
-                'Thông tin đọc từ CCCD',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF15803D),
+                _loadingMessage,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Color(0xFF1E293B),
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          _buildOcrGrid(),
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    setState(() {
-                      _ocrResult = null;
-                      _frontHash = null;
-                      _frontToken = null;
-                      _ocrConfirmed = false;
-                    });
-                  },
-                  icon: const Icon(Icons.refresh, size: 16),
-                  label: const Text('Đọc lại'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF15803D),
-                    side: const BorderSide(color: Color(0xFF86EFAC)),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    setState(() {
-                      _ocrConfirmed = true;
-                    });
-                  },
-                  icon: const Icon(Icons.check, size: 16),
-                  label: Text(_ocrConfirmed ? 'Đã xác nhận' : 'Xác nhận đúng'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF16A34A),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildOcrGrid() {
-    if (_ocrResult == null) return const SizedBox();
-
-    final id = _ocrResult!['id']?.toString() ?? '–';
-    final name = _ocrResult!['name']?.toString() ?? '–';
-    final rawDob = _ocrResult!['dob']?.toString();
-    final dob = AppDateFormatter.formatVietnameseDateString(
-      rawDob,
-      fallback: rawDob ?? '–',
-    );
-    final sex = _ocrResult!['sex']?.toString() ?? '–';
-    final address = _ocrResult!['address']?.toString() ?? '–';
-
-    return Column(
-      children: [
-        _buildOcrField('Số CCCD', id),
-        const Divider(height: 16),
-        _buildOcrField('Họ tên', name),
-        const Divider(height: 16),
-        Row(
-          children: [
-            Expanded(child: _buildOcrField('Ngày sinh', dob)),
-            const SizedBox(width: 16),
-            Expanded(child: _buildOcrField('Giới tính', sex)),
-          ],
         ),
-        const Divider(height: 16),
-        _buildOcrField('Địa chỉ thường trú', address),
-      ],
-    );
-  }
-
-  Widget _buildOcrField(String label, String value) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label.toUpperCase(),
-          style: const TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF166534),
-          ),
-        ),
-        const SizedBox(height: 3),
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
-            color: Color(0xFF14532D),
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ─── Step 1: Selfie eKYC UI ────────────────────────────────────────────────
-
-  Widget _buildStepSelfie() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Text(
-            'Xác Minh Khuôn Mặt',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF1E293B),
-            ),
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            'Chụp selfie để so khớp với ảnh chân dung trên CCCD',
-            style: TextStyle(fontSize: 13, color: Color(0xFF64748B)),
-          ),
-          const SizedBox(height: 20),
-          _buildInfoBox([
-            'Nhìn thẳng vào camera, đủ sáng, không đeo kính râm hoặc khẩu trang',
-            'Khuôn mặt sẽ được so khớp với ảnh CCCD (độ tương đồng ≥ 85%)',
-          ]),
-          const SizedBox(height: 24),
-          Center(child: _buildSelfiePreview()),
-          const SizedBox(height: 32),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: () {
-                    setState(() {
-                      _currentStep = 0;
-                      _error = '';
-                    });
-                  },
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text('Quay lại'),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: _selfieFile == null ? null : _submitFaceVerify,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text(
-                    'Hoàn Tất Xác Minh',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSelfiePreview() {
-    if (_selfieBytes != null) {
-      return Column(
-        children: [
-          Container(
-            height: 220,
-            width: 220,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: AppColors.primary, width: 3),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.08),
-                  blurRadius: 16,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: ClipOval(
-              child: Image.memory(_selfieBytes!, fit: BoxFit.cover),
-            ),
-          ),
-          const SizedBox(height: 16),
-          TextButton.icon(
-            onPressed: () => _showImageSourceSelector('selfie'),
-            icon: const Icon(Icons.refresh, size: 16),
-            label: const Text('Chụp / chọn lại'),
-          ),
-        ],
-      );
-    }
-
-    return GestureDetector(
-      onTap: () => _showImageSourceSelector('selfie'),
-      child: Container(
-        height: 200,
-        width: 200,
-        decoration: BoxDecoration(
-          color: const Color(0xFFF8FAFC),
-          shape: BoxShape.circle,
-          border: Border.all(color: const Color(0xFFCBD5E1), width: 2),
-        ),
-        child: const Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.face_outlined, color: Color(0xFF64748B), size: 48),
-            SizedBox(height: 12),
-            Text(
-              'Chụp ảnh Selfie',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF334155),
-              ),
-            ),
-            SizedBox(height: 4),
-            Text(
-              'Nhấn để bắt đầu',
-              style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ─── Step 2: Success Screen UI ─────────────────────────────────────────────
-
-  Widget _buildSuccessScreen() {
-    return Center(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 480),
-          child: Container(
-            padding: const EdgeInsets.all(32),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF10B981).withValues(alpha: 0.08),
-                  blurRadius: 32,
-                  offset: const Offset(0, 16),
-                ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFD1FAE5),
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF10B981).withValues(alpha: 0.2),
-                        blurRadius: 16,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.check_circle_rounded,
-                    color: Color(0xFF10B981),
-                    size: 56,
-                  ),
-                ),
-                const SizedBox(height: 28),
-                const Text(
-                  '🎉 Xác Minh eKYC Hoàn Tất!',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w900,
-                    color: Color(0xFF1E293B),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                const Text(
-                  'Danh tính của bạn đã được xác minh thành công qua VNPT eKYC. Tài khoản đã được cập nhật, bạn có thể bắt đầu ứng tuyển.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF64748B),
-                    height: 1.6,
-                  ),
-                ),
-                const SizedBox(height: 32),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF10B981),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      elevation: 0,
-                    ),
-                    child: const Text(
-                      'Về Hồ Sơ',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ─── Visual Helper Widgets ─────────────────────────────────────────────────
-
-  Widget _buildInfoBox(List<String> bullets) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.primary.withValues(alpha: 0.04),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.12)),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        children: bullets
-            .map(
-              (text) => Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Icon(
-                      Icons.info_outline,
-                      color: AppColors.primary,
-                      size: 16,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        text,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Color(0xFF334155),
-                          height: 1.4,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            )
-            .toList(),
       ),
     );
   }
 }
 
-// ─── Custom Dashed Painter ─────────────────────────────────────────────────
+class _KycCard extends StatelessWidget {
+  const _KycCard({required this.child, required this.accentColor});
 
-class DashedBorderPainter extends CustomPainter {
-  final Color color;
-  final double strokeWidth;
-  final double gap;
+  final Widget child;
+  final Color accentColor;
 
-  DashedBorderPainter({
-    required this.color,
-    this.strokeWidth = 2.0,
-    this.gap = 5.0,
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 28,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(height: 4, color: accentColor),
+          Padding(padding: const EdgeInsets.all(24), child: child),
+        ],
+      ),
+    );
+  }
+}
+
+class _KycStepItem extends StatelessWidget {
+  const _KycStepItem({
+    required this.number,
+    required this.text,
+    this.isLast = false,
   });
 
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = strokeWidth
-      ..style = PaintingStyle.stroke;
+  final String number;
+  final String text;
+  final bool isLast;
 
-    final path = Path();
-    final rrect = RRect.fromRectAndRadius(
-      Rect.fromLTWH(0, 0, size.width, size.height),
-      const Radius.circular(16),
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.only(bottom: isLast ? 0 : 14),
+      margin: EdgeInsets.only(bottom: isLast ? 0 : 14),
+      decoration: BoxDecoration(
+        border: isLast
+            ? null
+            : const Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 28,
+            height: 28,
+            decoration: const BoxDecoration(
+              color: AppColors.primary,
+              shape: BoxShape.circle,
+            ),
+            child: Center(
+              child: Text(
+                number,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                text,
+                style: const TextStyle(
+                  color: Color(0xFF334155),
+                  fontSize: 14,
+                  height: 1.45,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
-    path.addRRect(rrect);
-
-    final dashPath = Path();
-    final double dashWidth = gap;
-
-    for (final metric in path.computeMetrics()) {
-      double distance = 0.0;
-      while (distance < metric.length) {
-        final isDash = (distance ~/ dashWidth) % 2 == 0;
-        if (isDash) {
-          dashPath.addPath(
-            metric.extractPath(distance, distance + dashWidth),
-            Offset.zero,
-          );
-        }
-        distance += dashWidth;
-      }
-    }
-
-    canvas.drawPath(dashPath, paint);
   }
+}
+
+class _CenteredStatusHeader extends StatelessWidget {
+  const _CenteredStatusHeader({
+    required this.icon,
+    required this.color,
+    required this.background,
+    required this.title,
+    required this.body,
+  });
+
+  final IconData icon;
+  final Color color;
+  final Color background;
+  final String title;
+  final String body;
 
   @override
-  bool shouldRepaint(covariant DashedBorderPainter oldDelegate) {
-    return oldDelegate.color != color ||
-        oldDelegate.strokeWidth != strokeWidth ||
-        oldDelegate.gap != gap;
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Container(
+          width: 66,
+          height: 66,
+          decoration: BoxDecoration(color: background, shape: BoxShape.circle),
+          child: Icon(icon, color: color, size: 30),
+        ),
+        const SizedBox(height: 16),
+        Text(
+          title,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: Color(0xFF1E293B),
+            fontSize: 20,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          body,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: Color(0xFF64748B),
+            fontSize: 14,
+            height: 1.55,
+          ),
+        ),
+      ],
+    );
   }
 }
