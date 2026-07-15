@@ -30,6 +30,35 @@ void main() {
     },
   );
 
+  testWidgets('job detail can show round 2 interview CTA copy', (tester) async {
+    final job = _job.copyWith(isAiScreeningEnabled: true);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [jobRepositoryProvider.overrideWithValue(_FakeJobRepo())],
+        child: MaterialApp(
+          home: UserJobDetailScreen(
+            job: job,
+            onApplyPressed: () {},
+            applyButtonLabel: 'Bắt đầu phỏng vấn vòng 2',
+            aiNoticeText:
+                'CV của bạn đã được duyệt. Bạn được mời vào phỏng vấn vòng 2 bằng AI.',
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+
+    expect(find.text('Bắt đầu phỏng vấn vòng 2'), findsOneWidget);
+    expect(
+      find.text(
+        'CV của bạn đã được duyệt. Bạn được mời vào phỏng vấn vòng 2 bằng AI.',
+      ),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('job detail renders every description line as a bullet', (
     tester,
   ) async {

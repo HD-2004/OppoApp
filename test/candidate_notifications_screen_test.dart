@@ -43,6 +43,8 @@ void main() {
       ProviderScope(
         overrides: [
           candidateNotificationRepositoryProvider.overrideWithValue(repository),
+          activeJobsProvider.overrideWith((_) async => <JobPost>[]),
+          activeQuickJobsProvider.overrideWith((_) async => <JobPost>[]),
         ],
         child: const MaterialApp(home: CandidateNotificationsScreen()),
       ),

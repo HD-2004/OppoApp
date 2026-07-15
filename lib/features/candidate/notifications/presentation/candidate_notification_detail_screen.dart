@@ -11,6 +11,7 @@ import 'package:oppo_temp_jobs/features/candidate/domain/job_post.dart';
 import 'package:oppo_temp_jobs/features/candidate/notifications/application/notification_navigation.dart';
 import 'package:oppo_temp_jobs/features/candidate/notifications/domain/candidate_notification.dart';
 import 'package:oppo_temp_jobs/features/candidate/notifications/domain/notification_type.dart';
+import 'package:oppo_temp_jobs/features/candidate/presentation/application_flow_navigation.dart';
 import 'package:oppo_temp_jobs/features/candidate/presentation/digital_wallet_screen.dart';
 import 'package:oppo_temp_jobs/features/candidate/presentation/user_profile_screen.dart';
 import 'package:oppo_temp_jobs/features/messaging/presentation/pages/messages_screen.dart';
@@ -35,13 +36,19 @@ class CandidateNotificationDetailScreen extends ConsumerWidget {
     final destination = resolveCandidateNotificationDestination(notification);
     final theme = Theme.of(context);
     final tone = _toneFor(notification.type);
+    final allJobs = [
+      ...?ref.watch(activeJobsProvider).asData?.value,
+      ...?ref.watch(activeQuickJobsProvider).asData?.value,
+    ];
     final relatedJobs = _needsRelatedJobLookup(notification)
-        ? [
-            ...?ref.watch(activeJobsProvider).asData?.value,
-            ...?ref.watch(activeQuickJobsProvider).asData?.value,
-          ]
+        ? allJobs
         : const <JobPost>[];
+    final round2Job = _round2JobForNotification(notification, allJobs);
+    final displayNotification = round2Job == null
+        ? notification
+        : _withRound2Invitation(notification, round2Job);
     final senderName = _senderName(notification, relatedJobs: relatedJobs);
+    final user = ref.watch(authControllerProvider).asData?.value.user;
 
     return Scaffold(
       backgroundColor: AppColors.background(context),
@@ -63,16 +70,50 @@ class CandidateNotificationDetailScreen extends ConsumerWidget {
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
         children: [
           _NotificationHeader(
-            notification: notification,
+            notification: displayNotification,
             tone: tone,
             senderName: senderName,
           ),
           const SizedBox(height: 14),
           _LetterMetadataSection(
-            notification: notification,
+            notification: displayNotification,
             tone: tone,
             senderName: senderName,
           ),
+          if (round2Job != null) ...[
+            const SizedBox(height: 18),
+            FilledButton.icon(
+              onPressed: () async {
+                if (user == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Vui lòng đăng nhập để bắt đầu phỏng vấn.'),
+                    ),
+                  );
+                  return;
+                }
+                await openRound2AiInterviewForJob(
+                  context: context,
+                  ref: ref,
+                  job: round2Job,
+                  user: user,
+                );
+              },
+              icon: const Icon(Icons.mic_rounded, size: 18),
+              label: const Text('Bắt đầu phỏng vấn vòng 2'),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                textStyle: theme.textTheme.labelLarge?.copyWith(
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ],
           if (destination.hasAction) ...[
             const SizedBox(height: 18),
             FilledButton.icon(
@@ -868,6 +909,86 @@ bool _needsRelatedJobLookup(CandidateNotification notification) {
   }
   return _valuesForKeys(notification.data, _jobIdKeys).isNotEmpty ||
       _valuesForKeys(notification.data, _employerIdKeys).isNotEmpty;
+}
+
+JobPost? _round2JobForNotification(
+  CandidateNotification notification,
+  List<JobPost> relatedJobs,
+) {
+  if (notification.type != CandidateNotificationType.cvAccepted) return null;
+
+  final jobIds = _valuesForKeys(
+    notification.data,
+    _jobIdKeys,
+  ).map(_normalizeLookupValue).where((value) => value.isNotEmpty).toSet();
+  if (jobIds.isEmpty) return null;
+
+  for (final job in relatedJobs) {
+    final ids = {
+      _normalizeLookupValue(job.id),
+      _normalizeLookupValue(job.idJob),
+    };
+    if (!ids.any(jobIds.contains)) continue;
+
+    final hasAiInterview =
+        job.isAiScreeningEnabled ||
+        _notificationBool(notification, const [
+          'requiresAiInterview',
+          'requireAiInterview',
+          'aiInterviewRequired',
+          'aiInterviewEnabled',
+          'isAiInterviewEnabled',
+          'isAIInterviewEnabled',
+          'isAiScreeningEnabled',
+          'aiScreeningEnabled',
+        ]);
+    return hasAiInterview ? job : null;
+  }
+
+  return null;
+}
+
+CandidateNotification _withRound2Invitation(
+  CandidateNotification notification,
+  JobPost job,
+) {
+  final body = notification.body.trim();
+  final alreadyMentionsRound2 =
+      body.toLowerCase().contains('vòng 2') ||
+      body.toLowerCase().contains('vong 2');
+  final invitation =
+      'Bạn được mời vào phỏng vấn vòng 2 bằng AI. Hãy bấm "Bắt đầu phỏng vấn vòng 2" để cấp quyền micro và tiếp tục.';
+
+  return CandidateNotification(
+    id: notification.id,
+    type: notification.type,
+    title: notification.title,
+    body: alreadyMentionsRound2
+        ? notification.body
+        : body.isEmpty
+        ? invitation
+        : '$body $invitation',
+    status: notification.status,
+    createdAt: notification.createdAt,
+    entityType: notification.entityType,
+    entityId: notification.entityId,
+    deepLink: notification.deepLink,
+    readAt: notification.readAt,
+    data: notification.data,
+  );
+}
+
+bool _notificationBool(CandidateNotification notification, List<String> keys) {
+  for (final key in keys) {
+    final value = notification.data[key];
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+    final text = value?.toString().trim().toLowerCase() ?? '';
+    if (text == 'true' || text == '1' || text == 'yes' || text == 'enabled') {
+      return true;
+    }
+  }
+  return false;
 }
 
 String _senderNameFromRelatedJob(

@@ -52,4 +52,32 @@ void main() {
     expect(source, isNot(contains('_buildInputBar')));
     expect(source, isNot(contains('_buildMessageBubble')));
   });
+
+  test('interview screen requires rules and microphone before starting', () {
+    expect(source, contains('_prepareAndStartInterview'));
+    expect(source, contains('requestBrowserMicrophonePermission'));
+    expect(source, contains('Quy chế Phỏng vấn AI bắt buộc'));
+    expect(source, contains('Tôi đã đọc hiểu và cam kết tuân thủ quy chế'));
+    expect(source, contains('Cần cấp quyền Micro để bắt đầu'));
+    expect(source, contains('Bắt đầu ngay'));
+  });
+
+  test('interview speech capture does not stop on early final chunks', () {
+    final start = source.indexOf('void _handleSpeechResult');
+    expect(start, greaterThanOrEqualTo(0));
+
+    final end = source.indexOf('\n  void _handleSpeechStatus', start);
+    expect(end, greaterThan(start));
+
+    final resultHandlerSource = source.substring(start, end);
+    expect(resultHandlerSource, isNot(contains('_stopListening')));
+    expect(source, contains('pauseFor: const Duration(seconds: 12)'));
+    expect(source, contains('listenFor: const Duration(seconds: 90)'));
+  });
+
+  test('interview speech capture uses Vietnamese locale on web', () {
+    expect(source, contains("package:flutter/foundation.dart"));
+    expect(source, contains('kIsWeb'));
+    expect(source, contains("'vi-VN'"));
+  });
 }

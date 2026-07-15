@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_tts/flutter_tts.dart';
@@ -15,6 +16,7 @@ import '../application/voice_rss_tts.dart';
 import '../data/aws_application_repository.dart';
 import '../domain/ai_interview_models.dart';
 import '../domain/job_post.dart';
+import 'browser_microphone_permission.dart';
 import 'tts_helper.dart';
 
 enum _VoiceInterviewPhase {
@@ -72,6 +74,7 @@ class _AIInterviewChatScreenState extends ConsumerState<AIInterviewChatScreen> {
   String? _noticeMessage;
   String? _speechLocaleId;
   bool _hasReplayedCurrent = false;
+  bool _browserMicPermissionGranted = false;
 
   Map<String, dynamic>? _report;
 
@@ -79,7 +82,9 @@ class _AIInterviewChatScreenState extends ConsumerState<AIInterviewChatScreen> {
   void initState() {
     super.initState();
     _configureTextToSpeech();
-    _startInterviewSession();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_prepareAndStartInterview());
+    });
   }
 
   @override
@@ -141,6 +146,294 @@ class _AIInterviewChatScreenState extends ConsumerState<AIInterviewChatScreen> {
     _ttsConfigured = true;
   }
 
+  Future<void> _prepareAndStartInterview() async {
+    final accepted = await _showAiInterviewRulesModal();
+    if (!mounted) return;
+
+    if (!accepted) {
+      Navigator.of(context).maybePop();
+      return;
+    }
+
+    await _startInterviewSession();
+  }
+
+  Future<bool> _showAiInterviewRulesModal() async {
+    var rulesAccepted = false;
+    var micPermissionGranted = false;
+    var micPermissionError = '';
+    var isRequestingMic = false;
+
+    final result = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            Future<void> requestMicPermission() async {
+              setModalState(() {
+                isRequestingMic = true;
+                micPermissionError = '';
+              });
+
+              try {
+                final hasBrowserMicPermission =
+                    await requestBrowserMicrophonePermission();
+                if (!hasBrowserMicPermission) {
+                  throw StateError('browser microphone permission denied');
+                }
+
+                final available = await _speechToText.initialize(
+                  onStatus: _handleSpeechStatus,
+                  onError: _handleSpeechError,
+                );
+
+                if (!available) {
+                  throw StateError('speech recognition unavailable');
+                }
+
+                if (!context.mounted) return;
+                setModalState(() {
+                  micPermissionGranted = true;
+                  _speechReady = true;
+                  _browserMicPermissionGranted = true;
+                  micPermissionError = '';
+                });
+              } catch (_) {
+                try {
+                  await _speechToText.cancel();
+                } catch (_) {}
+                if (!context.mounted) return;
+                setModalState(() {
+                  micPermissionGranted = false;
+                  micPermissionError =
+                      'Không mở được micro. Nếu bạn đã bấm Block/Từ chối, hãy bật lại quyền microphone trong trình duyệt rồi thử lại.';
+                });
+              } finally {
+                if (context.mounted) {
+                  setModalState(() => isRequestingMic = false);
+                }
+              }
+            }
+
+            return AlertDialog(
+              titlePadding: const EdgeInsets.fromLTRB(24, 22, 24, 0),
+              contentPadding: const EdgeInsets.fromLTRB(24, 14, 24, 8),
+              actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              title: const Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('⚖️', style: TextStyle(fontSize: 36)),
+                  SizedBox(height: 8),
+                  Text(
+                    'Quy chế Phỏng vấn AI bắt buộc',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+                  ),
+                ],
+              ),
+              content: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 520),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Text(
+                        'Vui lòng đọc kỹ và cam kết tuân thủ các quy tắc dưới đây để đảm bảo tính minh bạch và công bằng:',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Color(0xFF475569),
+                          height: 1.45,
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FAFC),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Column(
+                          children: [
+                            _AiRuleRow(
+                              icon: Icons.logout_rounded,
+                              title: 'Không tự ý thoát',
+                              body:
+                                  'Buổi phỏng vấn phải diễn ra liên tục. Bạn không được đóng cửa sổ phỏng vấn nửa chừng.',
+                            ),
+                            _AiRuleRow(
+                              icon: Icons.warning_amber_rounded,
+                              title: 'Cấm chuyển Tab',
+                              body:
+                                  'Chuyển tab hoặc rời khỏi trang lần 1 sẽ bị cảnh cáo. Chuyển tab lần 2 sẽ ngưng phỏng vấn ngay lập tức.',
+                            ),
+                            _AiRuleRow(
+                              icon: Icons.smart_toy_outlined,
+                              title: 'Cấm sử dụng công cụ hỗ trợ',
+                              body:
+                                  'Nghiêm cấm sử dụng AI khác, công cụ đọc giọng nói hoặc sao chép văn bản bên ngoài. Mọi câu trả lời phải là tiếng nói trực tiếp của bạn.',
+                            ),
+                            _AiRuleRow(
+                              icon: Icons.refresh_rounded,
+                              title: 'Không tải lại trang',
+                              body:
+                                  'Không bấm F5 hoặc tải lại trang web trong suốt phiên làm việc.',
+                            ),
+                            _AiRuleRow(
+                              icon: Icons.lock_outline_rounded,
+                              title: 'Khóa Sao chép/Dán',
+                              body:
+                                  'Tính năng sao chép và dán bị vô hiệu hóa hoàn toàn trong suốt buổi phỏng vấn.',
+                            ),
+                            _AiRuleRow(
+                              icon: Icons.mic_rounded,
+                              iconColor: Color(0xFF2563EB),
+                              title: 'Yêu cầu cấp quyền Micro',
+                              body:
+                                  'Bạn cần cấp quyền sử dụng micro trước khi phỏng vấn. Phỏng vấn chạy toàn màn hình để đảm bảo tính công bằng.',
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      CheckboxListTile(
+                        value: rulesAccepted,
+                        onChanged: (value) {
+                          setModalState(() {
+                            rulesAccepted = value ?? false;
+                          });
+                        },
+                        controlAffinity: ListTileControlAffinity.leading,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                        ),
+                        tileColor: const Color(0xFFEFF6FF),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          side: const BorderSide(color: Color(0xFFBFDBFE)),
+                        ),
+                        title: const Text(
+                          'Tôi đã đọc hiểu và cam kết tuân thủ quy chế phỏng vấn',
+                          style: TextStyle(
+                            color: Color(0xFF1E40AF),
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: micPermissionGranted
+                              ? const Color(0xFFF0FDF4)
+                              : const Color(0xFFFEFCE8),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: micPermissionGranted
+                                ? const Color(0xFF86EFAC)
+                                : const Color(0xFFFDE047),
+                            width: 1.5,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              micPermissionGranted
+                                  ? Icons.check_circle_outline_rounded
+                                  : Icons.mic_none_rounded,
+                              color: micPermissionGranted
+                                  ? const Color(0xFF166534)
+                                  : const Color(0xFF92400E),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    micPermissionGranted
+                                        ? 'Đã cấp quyền Micro thành công!'
+                                        : 'Cần cấp quyền Micro để bắt đầu',
+                                    style: TextStyle(
+                                      fontSize: 13.5,
+                                      fontWeight: FontWeight.w800,
+                                      color: micPermissionGranted
+                                          ? const Color(0xFF166534)
+                                          : const Color(0xFF92400E),
+                                    ),
+                                  ),
+                                  if (!micPermissionGranted)
+                                    const Padding(
+                                      padding: EdgeInsets.only(top: 2),
+                                      child: Text(
+                                        'Nhấn nút bên phải để cấp quyền',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Color(0xFF78716C),
+                                        ),
+                                      ),
+                                    ),
+                                  if (micPermissionError.isNotEmpty)
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 4),
+                                      child: Text(
+                                        micPermissionError,
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          color: Color(0xFFDC2626),
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                            if (!micPermissionGranted) ...[
+                              const SizedBox(width: 10),
+                              FilledButton(
+                                onPressed: isRequestingMic
+                                    ? null
+                                    : requestMicPermission,
+                                child: isRequestingMic
+                                    ? const SizedBox.square(
+                                        dimension: 16,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    : const Text('Cấp quyền'),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(false),
+                  child: const Text('Hủy'),
+                ),
+                FilledButton(
+                  onPressed: rulesAccepted && micPermissionGranted
+                      ? () => Navigator.of(dialogContext).pop(true)
+                      : null,
+                  child: const Text('Bắt đầu ngay'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    return result == true;
+  }
+
   Future<void> _startInterviewSession() async {
     _playbackToken++;
     await _speechToText.cancel();
@@ -168,7 +461,8 @@ class _AIInterviewChatScreenState extends ConsumerState<AIInterviewChatScreen> {
       final fullName = user?.fullName.isNotEmpty == true
           ? user!.fullName
           : 'Ứng viên';
-      final experience = (user?.experience != null && user!.experience!.isNotEmpty)
+      final experience =
+          (user?.experience != null && user!.experience!.isNotEmpty)
           ? user.experience!
           : 'Đã có kinh nghiệm làm việc ở vị trí tương đương.';
       final education = (user?.education != null && user!.education!.isNotEmpty)
@@ -401,7 +695,16 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
         }
       }
     } catch (_) {
+      if (kIsWeb) {
+        _speechLocaleId = 'vi-VN';
+        return _speechLocaleId;
+      }
       return null;
+    }
+
+    if (kIsWeb) {
+      _speechLocaleId = 'vi-VN';
+      return _speechLocaleId;
     }
 
     return null;
@@ -452,6 +755,24 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
     final localeId = await _preferredSpeechLocale();
     if (!mounted) return;
 
+    if (kIsWeb && !_browserMicPermissionGranted) {
+      setState(() {
+        _noticeMessage = 'Đang kiểm tra quyền microphone...';
+      });
+      final hasBrowserMicPermission =
+          await requestBrowserMicrophonePermission();
+      if (!mounted) return;
+      if (!hasBrowserMicPermission) {
+        setState(() {
+          _phase = _VoiceInterviewPhase.ready;
+          _noticeMessage =
+              'Trình duyệt chưa cho phép dùng microphone. Hãy bấm Allow/Cho phép rồi thử lại.';
+        });
+        return;
+      }
+      _browserMicPermissionGranted = true;
+    }
+
     setState(() {
       _phase = _VoiceInterviewPhase.listening;
       _pendingAnswer = '';
@@ -472,8 +793,8 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
           cancelOnError: true,
           partialResults: true,
           listenMode: ListenMode.dictation,
-          pauseFor: const Duration(seconds: 3),
-          listenFor: const Duration(seconds: 45),
+          pauseFor: const Duration(seconds: 12),
+          listenFor: const Duration(seconds: 90),
           localeId: localeId,
         ),
       );
@@ -496,10 +817,6 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
         _pendingAnswer = recognized;
       });
     }
-
-    if (result.finalResult) {
-      unawaited(_stopListening());
-    }
   }
 
   void _handleSpeechStatus(String status) {
@@ -509,9 +826,14 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
     if (normalized == 'done' ||
         normalized == 'notlistening' ||
         normalized == 'not_listening') {
+      final hasAnswer = _pendingAnswer.trim().isNotEmpty;
       setState(() {
         _phase = _VoiceInterviewPhase.ready;
         _soundLevel = 0;
+        if (!hasAnswer) {
+          _noticeMessage =
+              'Mic đã tự ngắt trước khi ghi nhận được câu trả lời. Hãy bấm mic và nói lại, nói gần microphone hơn một chút.';
+        }
       });
     }
   }
@@ -872,8 +1194,8 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
       body: _errorMessage != null
           ? _buildErrorState()
           : _phase == _VoiceInterviewPhase.connecting
-              ? _buildLoadingState()
-              : _buildChatLayout(),
+          ? _buildLoadingState()
+          : _buildChatLayout(),
     );
   }
 
@@ -939,7 +1261,8 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
     final isListening = _phase == _VoiceInterviewPhase.listening;
     final isProcessing = _phase == _VoiceInterviewPhase.processing;
     final isSpeaking = _phase == _VoiceInterviewPhase.speaking;
-    final canReplay = _currentQuestion != null && !_finished && !isListening && !isProcessing;
+    final canReplay =
+        _currentQuestion != null && !_finished && !isListening && !isProcessing;
     final canSubmit = _pendingAnswer.trim().isNotEmpty && !isProcessing;
 
     return Column(
@@ -1011,10 +1334,7 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
                   const SizedBox(height: 8),
                   Text(
                     _supportingText,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey[600],
-                    ),
+                    style: TextStyle(fontSize: 13, color: Colors.grey[600]),
                     textAlign: TextAlign.center,
                   ),
                 ],
@@ -1035,10 +1355,7 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
           margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           decoration: BoxDecoration(
             color: const Color(0xFFF8FAFC),
-            border: Border.all(
-              color: const Color(0xFFCBD5E1),
-              width: 1.5,
-            ),
+            border: Border.all(color: const Color(0xFFCBD5E1), width: 1.5),
             borderRadius: BorderRadius.circular(16),
           ),
           padding: const EdgeInsets.all(16),
@@ -1149,8 +1466,8 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
         shape: BoxShape.circle,
         boxShadow: [
           BoxShadow(
-            color: (isListening ? Colors.red : AppColors.secondary).withValues(alpha:
-              disabled ? 0.05 : 0.25,
+            color: (isListening ? Colors.red : AppColors.secondary).withValues(
+              alpha: disabled ? 0.05 : 0.25,
             ),
             blurRadius: 16,
             offset: const Offset(0, 4),
@@ -1192,8 +1509,9 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
       ),
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
-          backgroundColor:
-              enabled ? const Color(0xFF10B981) : const Color(0xFFCBD5E1),
+          backgroundColor: enabled
+              ? const Color(0xFF10B981)
+              : const Color(0xFFCBD5E1),
           foregroundColor: Colors.white,
           disabledBackgroundColor: const Color(0xFFCBD5E1),
           padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -1318,5 +1636,51 @@ Yêu cầu: ${widget.job.requirements ?? "Có kinh nghiệm lập trình và thi
       _VoiceInterviewPhase.processing => 'Vui lòng đợi trong giây lát',
       _VoiceInterviewPhase.finished => 'Hệ thống đã tổng hợp kết quả của bạn',
     };
+  }
+}
+
+class _AiRuleRow extends StatelessWidget {
+  const _AiRuleRow({
+    required this.icon,
+    required this.title,
+    required this.body,
+    this.iconColor = const Color(0xFFEF4444),
+  });
+
+  final IconData icon;
+  final String title;
+  final String body;
+  final Color iconColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 19, color: iconColor),
+          const SizedBox(width: 8),
+          Expanded(
+            child: RichText(
+              text: TextSpan(
+                style: const TextStyle(
+                  color: Color(0xFF334155),
+                  fontSize: 13.5,
+                  height: 1.5,
+                ),
+                children: [
+                  TextSpan(
+                    text: '$title: ',
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                  TextSpan(text: body),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

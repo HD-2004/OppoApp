@@ -23,11 +23,15 @@ class UserJobDetailScreen extends ConsumerStatefulWidget {
     required this.job,
     required this.onApplyPressed,
     this.showApplyButton = true,
+    this.applyButtonLabel,
+    this.aiNoticeText,
   });
 
   final JobPost job;
   final VoidCallback onApplyPressed;
   final bool showApplyButton;
+  final String? applyButtonLabel;
+  final String? aiNoticeText;
 
   @override
   ConsumerState<UserJobDetailScreen> createState() =>
@@ -142,6 +146,8 @@ class _UserJobDetailScreenState extends ConsumerState<UserJobDetailScreen> {
                 isAiEnabled: widget.job.isAiScreeningEnabled,
                 isRecruitable: isRecruitable,
                 isExpired: isExpired,
+                applyButtonLabel: widget.applyButtonLabel,
+                aiNoticeText: widget.aiNoticeText,
               ),
             ),
         ],
@@ -1852,12 +1858,16 @@ class _StickyApplyBar extends StatelessWidget {
     required this.isAiEnabled,
     required this.isRecruitable,
     required this.isExpired,
+    this.applyButtonLabel,
+    this.aiNoticeText,
   });
 
   final VoidCallback onApply;
   final bool isAiEnabled;
   final bool isRecruitable;
   final bool isExpired;
+  final String? applyButtonLabel;
+  final String? aiNoticeText;
 
   @override
   Widget build(BuildContext context) {
@@ -1890,14 +1900,19 @@ class _StickyApplyBar extends StatelessWidget {
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: const Color(0xFF7C3AED), width: 1),
               ),
-              child: const Row(
+              child: Row(
                 children: [
-                  Icon(Icons.auto_awesome, size: 16, color: Color(0xFF7C3AED)),
-                  SizedBox(width: 8),
+                  const Icon(
+                    Icons.auto_awesome,
+                    size: 16,
+                    color: Color(0xFF7C3AED),
+                  ),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Lưu ý: Công việc này yêu cầu Phỏng vấn chọn lọc qua AI sau khi gửi CV.',
-                      style: TextStyle(
+                      aiNoticeText ??
+                          'Lưu ý: Công việc này yêu cầu Phỏng vấn chọn lọc qua AI sau khi gửi CV.',
+                      style: const TextStyle(
                         color: Color(0xFF6D28D9),
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
@@ -1927,7 +1942,7 @@ class _StickyApplyBar extends StatelessWidget {
                 isExpired
                     ? 'Đã hết hạn'
                     : isRecruitable
-                    ? 'Ứng tuyển ngay'
+                    ? (applyButtonLabel ?? 'Ứng tuyển ngay')
                     : 'Chưa mở tuyển',
                 style: TextStyle(
                   fontSize: 16,

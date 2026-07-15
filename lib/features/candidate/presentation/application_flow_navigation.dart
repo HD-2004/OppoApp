@@ -28,11 +28,13 @@ Future<void> openAiApplicationFlow({
       existingApplicationForJob(applications, job.id);
 
   if (existingApp != null && context.mounted) {
-    final status = (existingApp['status']?.toString().trim() ?? '').toLowerCase();
+    final status = (existingApp['status']?.toString().trim() ?? '')
+        .toLowerCase();
 
     // ── pending: CV is waiting for employer review → block ──
     if (status == 'pending') {
-      final hasAiScore = existingApp['aiScreeningScore'] != null &&
+      final hasAiScore =
+          existingApp['aiScreeningScore'] != null &&
           existingApp['aiScreeningScore'].toString().trim().isNotEmpty &&
           existingApp['aiScreeningScore'].toString() != '0';
 
@@ -43,7 +45,8 @@ Future<void> openAiApplicationFlow({
           MaterialPageRoute(
             builder: (_) => AIScreeningScreen(
               job: job,
-              cvFileName: existingApp['cvFilename']?.toString() ?? selectedCvFilename,
+              cvFileName:
+                  existingApp['cvFilename']?.toString() ?? selectedCvFilename,
               cvUrl: existingApp['cvUrl']?.toString() ?? selectedCvUrl,
               cvS3Key: existingApp['cvS3Key']?.toString() ?? selectedCvS3Key,
               existingApplication: existingApp,
@@ -92,8 +95,10 @@ Future<void> openAiApplicationFlow({
     }
 
     // ── already completed AI interview → block ──
-    final hasInterviewAudio = (existingApp['aiInterviewAudio']?.toString().trim() ?? '').isNotEmpty ||
-        (existingApp['aiInterviewAudioKey']?.toString().trim() ?? '').isNotEmpty;
+    final hasInterviewAudio =
+        (existingApp['aiInterviewAudio']?.toString().trim() ?? '').isNotEmpty ||
+        (existingApp['aiInterviewAudioKey']?.toString().trim() ?? '')
+            .isNotEmpty;
     if (hasInterviewAudio) {
       if (!context.mounted) return;
       await showDialog<void>(
@@ -220,7 +225,8 @@ Future<bool> checkExistingApplicationBeforeApply({
 
   // ── pending: CV is waiting for employer review ──
   if (status == 'pending') {
-    final hasAiScore = existingApp['aiScreeningScore'] != null &&
+    final hasAiScore =
+        existingApp['aiScreeningScore'] != null &&
         existingApp['aiScreeningScore'].toString().trim().isNotEmpty &&
         existingApp['aiScreeningScore'].toString() != '0';
 
@@ -394,6 +400,43 @@ Future<bool> openExistingAiInterviewForDuplicateApplication({
   return true;
 }
 
+Future<bool> openRound2AiInterviewForJob({
+  required BuildContext context,
+  required WidgetRef ref,
+  required JobPost job,
+  required AuthUserProfile user,
+}) async {
+  final applications = await ref
+      .read(applicationRepositoryProvider)
+      .getCandidateApplications(user.userId);
+  final continuation = aiInterviewContinuationForExistingApplication(
+    applications: applications,
+    jobId: job.idJob,
+    alternateJobId: job.id,
+    selectedCvUrl: '',
+    selectedCvFilename: 'CV.pdf',
+    jobRequiresAiInterview: job.isAiScreeningEnabled,
+  );
+  if (continuation == null) return false;
+  if (!context.mounted) return true;
+
+  Navigator.of(context).push(
+    MaterialPageRoute(
+      builder: (_) => AIInterviewChatScreen(
+        job: job,
+        cvFileName: continuation.cvFilename,
+        cvUrl: continuation.cvUrl,
+        cvS3Key: continuation.cvS3Key,
+        applicationId: continuation.applicationId,
+        aiScreeningScore: continuation.aiScreeningScore,
+        aiScreeningResult: continuation.aiScreeningResult,
+        aiScreeningReason: continuation.aiScreeningReason,
+      ),
+    ),
+  );
+  return true;
+}
+
 Future<void> submitApplicationWithBackgroundEval({
   required BuildContext context,
   required WidgetRef ref,
@@ -460,43 +503,55 @@ void _runBackgroundCvEvaluation({
 }) async {
   final applicationId = applicationIdFromSubmitResponse(response);
   if (applicationId == null) {
-    debugPrint('⚠️ [Background CV Evaluation] Skipped: applicationId is null in response');
+    debugPrint(
+      '⚠️ [Background CV Evaluation] Skipped: applicationId is null in response',
+    );
     return;
   }
 
   try {
-    debugPrint('🔍 [Background CV Evaluation] Starting for application $applicationId...');
+    debugPrint(
+      '🔍 [Background CV Evaluation] Starting for application $applicationId...',
+    );
 
     final fullName = user.fullName.isNotEmpty ? user.fullName : 'Ứng viên';
     final title = job.title;
-    final education = (user.education != null && user.education!.isNotEmpty) ? user.education! : 'Chưa cập nhật';
-    final experience = (user.experience != null && user.experience!.isNotEmpty) ? user.experience! : 'Đã có kinh nghiệm làm việc ở vị trí tương đương.';
-    final skills = (user.skills != null && user.skills!.isNotEmpty) ? user.skills!.join(', ') : 'Nhanh nhẹn, chăm chỉ, có trách nhiệm';
-    final bio = (user.bio != null && user.bio!.isNotEmpty) ? user.bio! : 'Chưa cập nhật';
+    final education = (user.education != null && user.education!.isNotEmpty)
+        ? user.education!
+        : 'Chưa cập nhật';
+    final experience = (user.experience != null && user.experience!.isNotEmpty)
+        ? user.experience!
+        : 'Đã có kinh nghiệm làm việc ở vị trí tương đương.';
+    final skills = (user.skills != null && user.skills!.isNotEmpty)
+        ? user.skills!.join(', ')
+        : 'Nhanh nhẹn, chăm chỉ, có trách nhiệm';
+    final bio = (user.bio != null && user.bio!.isNotEmpty)
+        ? user.bio!
+        : 'Chưa cập nhật';
 
-    final cvText = '''
+    final cvText =
+        '''
 Họ tên: $fullName
 Vị trí mong muốn: $title
 Kinh nghiệm làm việc: $experience
 Học vấn: $education
 Kỹ năng: $skills
 Giới thiệu bản thân: $bio
-'''.trim();
+'''
+            .trim();
 
-    final jdText = '''
+    final jdText =
+        '''
 Tiêu đề công việc: ${job.title}
 Mô tả công việc: ${job.description}
 Yêu cầu: ${job.requirements ?? "Có kinh nghiệm tương đương."}
 Nhiệm vụ: ${job.responsibilities ?? "Hoàn thành các công việc được giao."}
-'''.trim();
+'''
+            .trim();
 
     final screeningResult = await ref
         .read(aiInterviewRepositoryProvider)
-        .screenCv(
-          jobDescription: jdText,
-          cvText: cvText,
-          cvUrl: cvUrl,
-        );
+        .screenCv(jobDescription: jdText, cvText: cvText, cvUrl: cvUrl);
 
     final repository = ref.read(applicationRepositoryProvider);
     await repository.updateApplicationStatus(
@@ -505,7 +560,9 @@ Nhiệm vụ: ${job.responsibilities ?? "Hoàn thành các công việc được
       extraFields: screeningResult.toApplicationExtraFields(),
     );
 
-    debugPrint('✅ [Background CV Evaluation] Successfully attached AI score to application: $applicationId');
+    debugPrint(
+      '✅ [Background CV Evaluation] Successfully attached AI score to application: $applicationId',
+    );
   } catch (error) {
     debugPrint('⚠️ [Background CV Evaluation] Failed silently: $error');
   }

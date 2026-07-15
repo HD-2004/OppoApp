@@ -5,8 +5,14 @@ import 'package:flutter/material.dart';
 import 'package:oppo_temp_jobs/core/theme/app_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../auth/application/auth_controller.dart';
+import '../../../candidate/application/jobs_providers.dart';
+import '../../../candidate/domain/job_post.dart';
+import '../../../candidate/presentation/application_flow_navigation.dart';
+import '../../../candidate/presentation/user_job_detail_screen.dart';
 import '../application/notification_controller.dart';
 import '../domain/candidate_notification.dart';
+import '../domain/notification_type.dart';
 import 'candidate_notification_detail_screen.dart';
 import 'widgets/notification_card.dart';
 import 'widgets/notification_empty_state.dart';
@@ -259,6 +265,12 @@ class _NotificationListView extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final jobs = <JobPost>[
+      ...?ref.watch(activeJobsProvider).asData?.value,
+      ...?ref.watch(activeQuickJobsProvider).asData?.value,
+    ];
+    final user = ref.watch(authControllerProvider).asData?.value.user;
+
     if (items.isEmpty) {
       return RefreshIndicator(
         color: AppColors.primary,
@@ -292,21 +304,60 @@ class _NotificationListView extends ConsumerWidget {
           return CandidateNotificationCard(
             notification: item,
             onTap: () async {
-              if (context.mounted) {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) =>
-                        CandidateNotificationDetailScreen(notification: item),
-                  ),
-                );
-              }
-
               if (item.isUnread) {
                 unawaited(
                   ref
                       .read(candidateNotificationControllerProvider.notifier)
                       .markAsRead(item.id)
                       .catchError((_) {}),
+                );
+              }
+
+              final round2Job = await _resolveRound2JobForNotification(
+                ref,
+                item,
+                jobs,
+              );
+              if (!context.mounted) return;
+
+              if (round2Job != null) {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => UserJobDetailScreen(
+                      job: round2Job,
+                      applyButtonLabel: 'Bắt đầu phỏng vấn vòng 2',
+                      aiNoticeText:
+                          'CV của bạn đã được duyệt. Bạn được mời vào phỏng vấn vòng 2 bằng AI.',
+                      onApplyPressed: () async {
+                        if (user == null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Vui lòng đăng nhập để bắt đầu phỏng vấn.',
+                              ),
+                            ),
+                          );
+                          return;
+                        }
+                        await openRound2AiInterviewForJob(
+                          context: context,
+                          ref: ref,
+                          job: round2Job,
+                          user: user,
+                        );
+                      },
+                    ),
+                  ),
+                );
+                return;
+              }
+
+              if (context.mounted) {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        CandidateNotificationDetailScreen(notification: item),
+                  ),
                 );
               }
             },
@@ -318,6 +369,89 @@ class _NotificationListView extends ConsumerWidget {
       ),
     );
   }
+}
+
+JobPost? _round2JobForNotification(
+  CandidateNotification notification,
+  List<JobPost> jobs,
+) {
+  if (notification.type != CandidateNotificationType.cvAccepted) return null;
+
+  final jobId = _notificationJobId(notification);
+  if (jobId.isEmpty) return null;
+
+  for (final job in jobs) {
+    if (job.id != jobId && job.idJob != jobId) continue;
+    final hasAiInterview =
+        job.isAiScreeningEnabled ||
+        _notificationBool(notification, const [
+          'requiresAiInterview',
+          'requireAiInterview',
+          'aiInterviewRequired',
+          'aiInterviewEnabled',
+          'isAiInterviewEnabled',
+          'isAIInterviewEnabled',
+          'isAiScreeningEnabled',
+          'aiScreeningEnabled',
+        ]);
+    return hasAiInterview ? job : null;
+  }
+
+  return null;
+}
+
+Future<JobPost?> _resolveRound2JobForNotification(
+  WidgetRef ref,
+  CandidateNotification notification,
+  List<JobPost> currentJobs,
+) async {
+  final currentMatch = _round2JobForNotification(notification, currentJobs);
+  if (currentMatch != null ||
+      notification.type != CandidateNotificationType.cvAccepted ||
+      _notificationJobId(notification).isEmpty) {
+    return currentMatch;
+  }
+
+  try {
+    final standardJobs = await ref.read(activeJobsProvider.future);
+    final quickJobs = await ref.read(activeQuickJobsProvider.future);
+    return _round2JobForNotification(
+      notification,
+      [...standardJobs, ...quickJobs],
+    );
+  } catch (_) {
+    return null;
+  }
+}
+
+String _notificationJobId(CandidateNotification notification) {
+  for (final value in [
+    notification.data['jobId'],
+    notification.data['jobID'],
+    notification.data['job_id'],
+    notification.data['idJob'],
+    notification.data['jobPostId'],
+    notification.entityType?.toLowerCase() == 'job'
+        ? notification.entityId
+        : null,
+  ]) {
+    final text = value?.toString().trim() ?? '';
+    if (text.isNotEmpty) return text;
+  }
+  return '';
+}
+
+bool _notificationBool(CandidateNotification notification, List<String> keys) {
+  for (final key in keys) {
+    final value = notification.data[key];
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+    final text = value?.toString().trim().toLowerCase() ?? '';
+    if (text == 'true' || text == '1' || text == 'yes' || text == 'enabled') {
+      return true;
+    }
+  }
+  return false;
 }
 
 // ── Error state ────────────────────────────────────────────────────────────────
