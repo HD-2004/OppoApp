@@ -75,7 +75,10 @@ class ApiFeaturedEmployerPackageRepository
   Future<List<BannerAd>> getBanners() async {
     try {
       final list = await _getList('/packages?type=banners');
-      return list.map(BannerAd.fromJson).toList();
+      return list
+          .map(BannerAd.fromJson)
+          .where((banner) => banner.hasValidAppImageSize)
+          .toList(growable: false);
     } catch (_) {
       return const [];
     }

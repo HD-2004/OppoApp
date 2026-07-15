@@ -134,7 +134,7 @@ void main() {
     );
 
     await tester.pump();
-    expect(find.text('Đề xuất'), findsWidgets);
+    expect(find.text('Đề xuất'), findsNothing);
     expect(
       find.byKey(const Key('featured-employer-banner-dots')),
       findsOneWidget,
@@ -151,6 +151,32 @@ void main() {
       find.byKey(const Key('featured-employer-banner-slide-view')),
     );
     expect(secondPageView.controller?.page, closeTo(1, 0.01));
+  });
+
+  testWidgets('sponsored employer banner hides incorrectly sized banners', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SponsoredBannerSection(
+            banners: const [_firstBanner, _wrongSizeBanner],
+            isLoading: false,
+          ),
+        ),
+      ),
+    );
+
+    await tester.pump();
+
+    expect(
+      find.byKey(const Key('featured-employer-banner-slide-view')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('featured-employer-banner-dots')),
+      findsNothing,
+    );
   });
 
   testWidgets('popular job card shows compact schedule line', (tester) async {
@@ -376,12 +402,24 @@ const _firstBanner = BannerAd(
   bannerId: 'banner-1',
   title: 'First Cafe',
   imageUrl: 'https://example.com/banner-1.jpg',
+  imageWidth: 1600,
+  imageHeight: 517,
 );
 
 const _secondBanner = BannerAd(
   bannerId: 'banner-2',
   title: 'Second Bistro',
   imageUrl: 'https://example.com/banner-2.jpg',
+  imageWidth: 1600,
+  imageHeight: 517,
+);
+
+const _wrongSizeBanner = BannerAd(
+  bannerId: 'wrong-banner',
+  title: 'Wrong size',
+  imageUrl: 'https://example.com/wrong-banner.jpg',
+  imageWidth: 720,
+  imageHeight: 1280,
 );
 
 final _job = JobPost(

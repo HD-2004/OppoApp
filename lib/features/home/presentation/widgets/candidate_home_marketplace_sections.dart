@@ -263,18 +263,22 @@ class _SponsoredBannerSectionState extends State<SponsoredBannerSection> {
     super.dispose();
   }
 
+  List<BannerAd> get _validBanners => widget.banners
+      .where((banner) => banner.hasValidAppImageSize)
+      .toList(growable: false);
+
   int get _bannerCount => widget.banners.isNotEmpty
-      ? widget.banners.length
+      ? _validBanners.length
       : S3AssetConfig.candidateBanners.length;
 
   int _bannerCountFor(SponsoredBannerSection widget) =>
       widget.banners.isNotEmpty
-      ? widget.banners.length
+      ? widget.banners.where((banner) => banner.hasValidAppImageSize).length
       : S3AssetConfig.candidateBanners.length;
 
   String _bannerImageUrl(int index) {
     if (widget.banners.isNotEmpty) {
-      return widget.banners[index].imageUrl;
+      return _validBanners[index].imageUrl;
     }
     return S3AssetConfig.candidateBanners[index];
   }
@@ -282,8 +286,9 @@ class _SponsoredBannerSectionState extends State<SponsoredBannerSection> {
   /// The real banner at [index], or null when showing fallback assets that
   /// have no backing [BannerAd].
   BannerAd? _bannerAt(int index) {
-    if (widget.banners.isNotEmpty && index < widget.banners.length) {
-      return widget.banners[index];
+    final validBanners = _validBanners;
+    if (widget.banners.isNotEmpty && index < validBanners.length) {
+      return validBanners[index];
     }
     return null;
   }
@@ -387,7 +392,6 @@ class _CandidateBannerCard extends StatelessWidget {
             gaplessPlayback: true,
             errorBuilder: (_, _, _) => const _CandidateBannerFallback(),
           ),
-          const Positioned(left: 18, top: 16, child: _RecommendationBadge()),
         ],
       ),
     );
@@ -430,40 +434,6 @@ class _CandidateBannerFallback extends StatelessWidget {
           color: Colors.white.withValues(alpha: 0.55),
           size: 48,
         ),
-      ),
-    );
-  }
-}
-
-class _RecommendationBadge extends StatelessWidget {
-  const _RecommendationBadge();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.62),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: const Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.local_fire_department_rounded,
-            color: Color(0xFFFF8A3D),
-            size: 16,
-          ),
-          SizedBox(width: 4),
-          Text(
-            'Đề xuất',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 13,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-        ],
       ),
     );
   }

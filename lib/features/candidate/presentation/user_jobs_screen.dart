@@ -57,8 +57,6 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
   // Sorting: 'newest', 'salary_desc'
   String _sortBy = 'newest';
 
-  // Layout: 'list', 'grid'
-  String _viewMode = 'list';
   String? _lastSavedJobsCleanupSignature;
 
   @override
@@ -483,16 +481,21 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
     });
   }
 
-  bool get _hasActiveFilters =>
-      _searchKeyword.trim().isNotEmpty ||
-      _searchLocation.trim().isNotEmpty ||
-      _selectedPosition.trim().isNotEmpty ||
-      _selectedIndustry.trim().isNotEmpty ||
-      _filterFullTime ||
-      _filterPartTime ||
-      _filterSalaryUnder25 ||
-      _filterSalary25to40 ||
-      _filterSalaryOver40;
+  bool get _hasActiveFilters => _activeFilterCount > 0;
+
+  int get _activeFilterCount {
+    var count = 0;
+    if (_searchKeyword.trim().isNotEmpty) count++;
+    if (_searchLocation.trim().isNotEmpty) count++;
+    if (_selectedPosition.trim().isNotEmpty) count++;
+    if (_selectedIndustry.trim().isNotEmpty) count++;
+    if (_filterFullTime) count++;
+    if (_filterPartTime) count++;
+    if (_filterSalaryUnder25) count++;
+    if (_filterSalary25to40) count++;
+    if (_filterSalaryOver40) count++;
+    return count;
+  }
 
   List<String> _availablePositions(List<JobPost> jobs) {
     return _uniqueSortedOptions(jobs.map((job) => job.title));
@@ -1359,6 +1362,7 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: _JobFiltersPanel(
                           hasActiveFilters: _hasActiveFilters,
+                          activeFilterCount: _activeFilterCount,
                           positionLabel: _selectedPosition.trim().isEmpty
                               ? 'Vị trí'
                               : _selectedPosition.trim(),
@@ -1400,7 +1404,7 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
                         ),
                       ),
 
-                      // Layout View Mode and Sorting Controls
+                      // Sorting Controls
                       Padding(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 16,
@@ -1428,26 +1432,6 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
                                 }
                               },
                             ),
-                            IconButton(
-                              icon: Icon(
-                                Icons.view_list,
-                                color: _viewMode == 'list'
-                                    ? theme.colorScheme.primary
-                                    : null,
-                              ),
-                              onPressed: () =>
-                                  setState(() => _viewMode = 'list'),
-                            ),
-                            IconButton(
-                              icon: Icon(
-                                Icons.grid_view,
-                                color: _viewMode == 'grid'
-                                    ? theme.colorScheme.primary
-                                    : null,
-                              ),
-                              onPressed: () =>
-                                  setState(() => _viewMode = 'grid'),
-                            ),
                           ],
                         ),
                       ),
@@ -1461,8 +1445,7 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
                                 alignment: Alignment.center,
                                 child: _buildEmptyPlaceholder(user),
                               )
-                            : _viewMode == 'list'
-                            ? ListView.separated(
+                            : ListView.separated(
                                 shrinkWrap: true,
                                 physics: const NeverScrollableScrollPhysics(),
                                 itemCount: filteredJobs.length,
@@ -1474,26 +1457,6 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
                                   return JobPostCard(
                                     job: job,
                                     layout: JobCardLayout.list,
-                                    distance: _jobDistances[job.id],
-                                    isSaved: isSaved,
-                                    onDetailsPressed: () => _openDetails(job),
-                                    onApplyPressed: () =>
-                                        _handleApply(job, user),
-                                    onSavePressed: () => ref
-                                        .read(authControllerProvider.notifier)
-                                        .toggleSavedJob(job.id),
-                                  );
-                                },
-                              )
-                            : _JobMasonryGrid(
-                                jobs: filteredJobs,
-                                crossAxisCount: 2,
-                                spacing: 12,
-                                itemBuilder: (context, job) {
-                                  final isSaved = _isJobSaved(job, savedJobIds);
-                                  return JobPostCard(
-                                    job: job,
-                                    layout: JobCardLayout.grid,
                                     distance: _jobDistances[job.id],
                                     isSaved: isSaved,
                                     onDetailsPressed: () => _openDetails(job),
@@ -1542,9 +1505,10 @@ class _UserJobsScreenState extends ConsumerState<UserJobsScreen> {
   }
 }
 
-class _JobFiltersPanel extends StatelessWidget {
+class _JobFiltersPanel extends StatefulWidget {
   const _JobFiltersPanel({
     required this.hasActiveFilters,
+    required this.activeFilterCount,
     required this.positionLabel,
     required this.locationLabel,
     required this.industryLabel,
@@ -1559,6 +1523,7 @@ class _JobFiltersPanel extends StatelessWidget {
   });
 
   final bool hasActiveFilters;
+  final int activeFilterCount;
   final String positionLabel;
   final String locationLabel;
   final String industryLabel;
@@ -1572,40 +1537,144 @@ class _JobFiltersPanel extends StatelessWidget {
   final Widget advancedFilters;
 
   @override
+  State<_JobFiltersPanel> createState() => _JobFiltersPanelState();
+}
+
+class _JobFiltersPanelState extends State<_JobFiltersPanel> {
+  late bool _isExpanded;
+
+  @override
+  void initState() {
+    super.initState();
+    _isExpanded = widget.hasActiveFilters;
+  }
+
+  @override
+  void didUpdateWidget(covariant _JobFiltersPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.hasActiveFilters != widget.hasActiveFilters) {
+      _isExpanded = widget.hasActiveFilters;
+    }
+  }
+
+  void _toggleExpanded() {
+    setState(() => _isExpanded = !_isExpanded);
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final outlineColor = theme.colorScheme.outlineVariant.withValues(
+      alpha: AppColors.isDark(context) ? 0.65 : 0.9,
+    );
+    final clearColor = widget.hasActiveFilters
+        ? AppColors.danger
+        : theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.48);
+    final collapsedIconColor = theme.colorScheme.onSurfaceVariant;
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 4),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: theme.colorScheme.outlineVariant),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: outlineColor),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.04),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             children: [
-              const Icon(Icons.tune_rounded, color: AppColors.primary),
-              const SizedBox(width: 12),
               Expanded(
-                child: Text(
-                  'Bộ lọc việc làm',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w900,
-                    color: theme.colorScheme.onSurface,
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    key: const Key('job-filters-panel-toggle'),
+                    onTap: _toggleExpanded,
+                    borderRadius: BorderRadius.circular(14),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 2),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 34,
+                            height: 34,
+                            decoration: BoxDecoration(
+                              color: AppColors.softPrimaryFor(context),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(
+                              Icons.tune_rounded,
+                              color: AppColors.primary,
+                              size: 20,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Flexible(
+                            child: Text(
+                              'Bộ lọc việc làm',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w900,
+                                color: theme.colorScheme.onSurface,
+                              ),
+                            ),
+                          ),
+                          if (widget.activeFilterCount > 0) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              constraints: const BoxConstraints(minWidth: 24),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 7,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary,
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                '${widget.activeFilterCount}',
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                            ),
+                          ],
+                          const SizedBox(width: 8),
+                          AnimatedRotation(
+                            turns: _isExpanded ? 0.5 : 0,
+                            duration: const Duration(milliseconds: 180),
+                            curve: Curves.easeOutCubic,
+                            child: Icon(
+                              Icons.keyboard_arrow_down_rounded,
+                              color: collapsedIconColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),
               TextButton(
-                onPressed: hasActiveFilters ? onClearFilters : null,
+                onPressed: widget.hasActiveFilters
+                    ? widget.onClearFilters
+                    : null,
                 style: TextButton.styleFrom(
-                  foregroundColor: const Color(0xFFFF3B30),
-                  disabledForegroundColor: const Color(
-                    0xFFFF3B30,
-                  ).withValues(alpha: 0.42),
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  foregroundColor: clearColor,
+                  disabledForegroundColor: clearColor,
+                  minimumSize: const Size(0, 34),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
                   textStyle: theme.textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w800,
                   ),
@@ -1614,50 +1683,92 @@ class _JobFiltersPanel extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              _FilterChipButton(
-                key: const Key('position-filter-chip'),
-                label: positionLabel,
-                isActive: isPositionActive,
-                onTap: onPositionTap,
-              ),
-              _FilterChipButton(
-                key: const Key('location-filter-chip'),
-                label: locationLabel,
-                isActive: isLocationActive,
-                onTap: onLocationTap,
-              ),
-              _FilterChipButton(
-                key: const Key('industry-filter-chip'),
-                label: industryLabel,
-                isActive: isIndustryActive,
-                onTap: onIndustryTap,
-              ),
-            ],
-          ),
-          Material(
-            color: Colors.transparent,
-            child: Theme(
-              data: theme.copyWith(dividerColor: Colors.transparent),
-              child: ExpansionTile(
-                tilePadding: EdgeInsets.zero,
-                childrenPadding: const EdgeInsets.only(bottom: 8),
-                iconColor: AppColors.primary,
-                collapsedIconColor: theme.colorScheme.onSurfaceVariant,
-                title: Text(
-                  'Bộ lọc nâng cao',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                children: [advancedFilters],
-              ),
-            ),
+          AnimatedSize(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOutCubic,
+            alignment: Alignment.topCenter,
+            child: _isExpanded
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const SizedBox(height: 14),
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          const spacing = 10.0;
+                          final columnCount = constraints.maxWidth >= 500
+                              ? 3
+                              : 1;
+                          final chipWidth =
+                              (constraints.maxWidth -
+                                  spacing * (columnCount - 1)) /
+                              columnCount;
+
+                          return Wrap(
+                            spacing: spacing,
+                            runSpacing: spacing,
+                            children: [
+                              SizedBox(
+                                width: chipWidth,
+                                child: _FilterChipButton(
+                                  key: const Key('position-filter-chip'),
+                                  label: widget.positionLabel,
+                                  isActive: widget.isPositionActive,
+                                  onTap: widget.onPositionTap,
+                                ),
+                              ),
+                              SizedBox(
+                                width: chipWidth,
+                                child: _FilterChipButton(
+                                  key: const Key('location-filter-chip'),
+                                  label: widget.locationLabel,
+                                  isActive: widget.isLocationActive,
+                                  onTap: widget.onLocationTap,
+                                ),
+                              ),
+                              SizedBox(
+                                width: chipWidth,
+                                child: _FilterChipButton(
+                                  key: const Key('industry-filter-chip'),
+                                  label: widget.industryLabel,
+                                  isActive: widget.isIndustryActive,
+                                  onTap: widget.onIndustryTap,
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      Divider(height: 1, color: outlineColor),
+                      Material(
+                        color: Colors.transparent,
+                        child: Theme(
+                          data: theme.copyWith(
+                            dividerColor: Colors.transparent,
+                          ),
+                          child: ExpansionTile(
+                            tilePadding: EdgeInsets.zero,
+                            childrenPadding: const EdgeInsets.only(
+                              top: 4,
+                              bottom: 8,
+                            ),
+                            iconColor: AppColors.primary,
+                            collapsedIconColor:
+                                theme.colorScheme.onSurfaceVariant,
+                            title: Text(
+                              'Bộ lọc nâng cao',
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.w800,
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                            children: [widget.advancedFilters],
+                          ),
+                        ),
+                      ),
+                    ],
+                  )
+                : const SizedBox.shrink(),
           ),
         ],
       ),
@@ -1686,53 +1797,56 @@ class _FilterChipButton extends StatelessWidget {
     final borderColor = isActive
         ? AppColors.primary
         : theme.colorScheme.outlineVariant;
+    final backgroundColor = isActive
+        ? AppColors.primary
+        : AppColors.fieldFill(
+            context,
+          ).withValues(alpha: AppColors.isDark(context) ? 0.52 : 0.62);
 
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(16),
         child: Ink(
           decoration: BoxDecoration(
-            color: isActive ? AppColors.primary : theme.colorScheme.surface,
-            borderRadius: BorderRadius.circular(999),
+            color: backgroundColor,
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(color: borderColor),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: isActive ? 0.08 : 0.035),
-                blurRadius: isActive ? 10 : 6,
-                offset: const Offset(0, 3),
+                color: AppColors.primary.withValues(
+                  alpha: isActive ? 0.14 : 0.035,
+                ),
+                blurRadius: isActive ? 12 : 8,
+                offset: const Offset(0, 4),
               ),
             ],
           ),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 42, maxWidth: 178),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Flexible(
-                    child: Text(
-                      label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: foregroundColor,
-                        fontWeight: FontWeight.w800,
-                      ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: foregroundColor,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
-                  const SizedBox(width: 6),
-                  Icon(
-                    Icons.keyboard_arrow_down_rounded,
-                    size: 18,
-                    color: isActive
-                        ? Colors.white
-                        : theme.colorScheme.onSurfaceVariant,
-                  ),
-                ],
-              ),
+                ),
+                const SizedBox(width: 8),
+                Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  size: 18,
+                  color: isActive
+                      ? Colors.white
+                      : theme.colorScheme.onSurfaceVariant,
+                ),
+              ],
             ),
           ),
         ),
@@ -1777,7 +1891,9 @@ class _AdvancedJobFilters extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        const SizedBox(height: 4),
         Text('Loại hình công việc', style: titleStyle),
+        const SizedBox(height: 4),
         _CompactCheckboxTile(
           label: 'Toàn thời gian',
           value: filterFullTime,
@@ -1788,8 +1904,9 @@ class _AdvancedJobFilters extends StatelessWidget {
           value: filterPartTime,
           onChanged: onPartTimeChanged,
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 12),
         Text('Thu nhập/giờ', style: titleStyle),
+        const SizedBox(height: 4),
         _CompactCheckboxTile(
           label: 'Dưới 25.000đ/giờ',
           value: filterSalaryUnder25,
@@ -2313,54 +2430,4 @@ bool _sameStringList(List<String> a, List<String> b) {
     }
   }
   return true;
-}
-
-/// A dependency-free masonry grid: cards keep their natural height instead of
-/// being forced into a uniform aspect ratio. Items are distributed across
-/// [crossAxisCount] columns in round-robin order, and each column is a
-/// [Column] whose children size themselves to their content.
-class _JobMasonryGrid extends StatelessWidget {
-  const _JobMasonryGrid({
-    required this.jobs,
-    required this.itemBuilder,
-    this.crossAxisCount = 2,
-    this.spacing = 12,
-  });
-
-  final List<JobPost> jobs;
-  final Widget Function(BuildContext context, JobPost job) itemBuilder;
-  final int crossAxisCount;
-  final double spacing;
-
-  @override
-  Widget build(BuildContext context) {
-    if (jobs.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    final columns = List.generate(crossAxisCount, (_) => <JobPost>[]);
-    for (var i = 0; i < jobs.length; i++) {
-      columns[i % crossAxisCount].add(jobs[i]);
-    }
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        for (var col = 0; col < crossAxisCount; col++) ...[
-          if (col > 0) SizedBox(width: spacing),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                for (var row = 0; row < columns[col].length; row++) ...[
-                  if (row > 0) SizedBox(height: spacing),
-                  itemBuilder(context, columns[col][row]),
-                ],
-              ],
-            ),
-          ),
-        ],
-      ],
-    );
-  }
 }

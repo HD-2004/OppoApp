@@ -69,4 +69,57 @@ void main() {
     expect(plans.single.tier, EmployerPackageTier.premium);
     expect(plans.single.benefits, ['Ưu tiên tìm kiếm']);
   });
+
+  test('package repository only returns app-sized banners', () async {
+    final client = MockClient((request) async {
+      if (request.url.path == '/packages' &&
+          request.url.queryParameters['type'] == 'banners') {
+        return http.Response.bytes(
+          utf8.encode('''
+            {
+              "success": true,
+              "data": [
+                {
+                  "bannerId": "valid-banner",
+                  "title": "Valid banner",
+                  "imageUrl": "https://example.test/valid.jpg",
+                  "imageWidth": 1600,
+                  "imageHeight": 517
+                },
+                {
+                  "bannerId": "wrong-banner",
+                  "title": "Wrong banner",
+                  "imageUrl": "https://example.test/wrong.jpg",
+                  "imageWidth": 720,
+                  "imageHeight": 1280
+                },
+                {
+                  "bannerId": "missing-size",
+                  "title": "Missing size",
+                  "imageUrl": "https://example.test/missing.jpg"
+                }
+              ]
+            }
+            '''),
+          200,
+          headers: {'content-type': 'application/json; charset=utf-8'},
+        );
+      }
+      return http.Response('{}', 404);
+    });
+    final repository = ApiFeaturedEmployerPackageRepository(
+      client: client,
+      baseUrl: 'https://example.test',
+    );
+
+    final banners = await repository.getBanners();
+
+    expect(banners, hasLength(1));
+    expect(banners.single.bannerId, 'valid-banner');
+    expect(banners.single.hasValidAppImageSize, isTrue);
+    expect(
+      BannerAd.invalidAppImageSizeMessage,
+      'poster này của bạn không đúng với kích thước bên app vui lòng chọn đúng kích thước poster là 1600 x 517. Chỉ poster đúng kích thước 1600 x 517 mới được đăng.',
+    );
+  });
 }
