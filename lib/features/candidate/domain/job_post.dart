@@ -98,6 +98,7 @@ class JobPost {
     DateTime? recruitmentStartDate,
     DateTime? recruitmentEndDate,
     String? status,
+    String? employerAvatarUrl,
     bool? isAiScreeningEnabled,
     List<String>? customQuestions,
   }) {
@@ -106,7 +107,7 @@ class JobPost {
       idJob: idJob,
       employerId: employerId,
       employerName: employerName,
-      employerAvatarUrl: employerAvatarUrl,
+      employerAvatarUrl: employerAvatarUrl ?? this.employerAvatarUrl,
       title: title,
       jobType: jobType,
       location: location,

@@ -204,6 +204,7 @@ void main() {
   group('AwsJobRepository active listings', () {
     test('getActiveJobs removes expired standard jobs from API data', () async {
       final repository = AwsJobRepository(
+        tokenProvider: () async => null,
         client: MockClient(
           (_) async => _jsonResponse({
             'success': true,
@@ -233,10 +234,47 @@ void main() {
       expect(jobs.map((job) => job.idJob), ['job-open']);
     });
 
+    test('getActiveJobs enriches missing employer avatar from profile', () async {
+      const employerLogo =
+          'https://opporeview-cv-storage.s3.ap-southeast-1.amazonaws.com/employers/employer-1.jpg';
+      final repository = AwsJobRepository(
+        tokenProvider: () async => 'test-token',
+        client: MockClient((request) async {
+          if (request.url.path.endsWith('/profile/employer-1')) {
+            expect(
+              request.url.host,
+              'dlidp35x33.execute-api.ap-southeast-1.amazonaws.com',
+            );
+            expect(request.headers['Authorization'], 'Bearer test-token');
+            return _jsonResponse({
+              'success': true,
+              'data': {'companyLogo': employerLogo},
+            });
+          }
+
+          return _jsonResponse({
+            'success': true,
+            'data': [
+              _standardJobPayload(
+                idJob: 'job-open',
+                recruitmentEndDate: DateTime.now().add(const Duration(days: 3)),
+              ),
+            ],
+          });
+        }),
+      );
+
+      final jobs = await repository.getActiveJobs();
+
+      expect(jobs, hasLength(1));
+      expect(jobs.single.employerAvatarUrl, employerLogo);
+    });
+
     test(
       'getActiveQuickJobs removes expired quick jobs from API data',
       () async {
         final repository = AwsJobRepository(
+          tokenProvider: () async => null,
           client: MockClient(
             (_) async => _jsonResponse({
               'success': true,

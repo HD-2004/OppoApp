@@ -128,6 +128,49 @@ void main() {
     expect(find.byIcon(Icons.bookmark_border_rounded), findsNothing);
   });
 
+  testWidgets('job post card shows employer avatar image when available', (
+    tester,
+  ) async {
+    const transparentPng =
+        'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJ'
+        'AAAADUlEQVR42mP8z8BQDwAFgwJ/luzwVwAAAABJRU5ErkJggg==';
+
+    final jobWithAvatar = JobPost(
+      id: 'job-avatar',
+      idJob: 'job-avatar',
+      employerId: 'employer-1',
+      employerName: 'Katinat Quáº­n Cam',
+      employerAvatarUrl: transparentPng,
+      title: 'NhĂ¢n viĂªn phá»¥c vá»¥',
+      jobType: JobPostType.partTime,
+      location:
+          'NhĂ  VÄƒn hĂ³a Sinh ViĂªn, Khu Ä‘Ă´ thá»‹ Äáº¡i há»c Quá»‘c gia',
+      salary: '425.000 VND / ca',
+      shiftTime: '18:00 - 22:00',
+      description: 'Phá»¥c vá»¥ khĂ¡ch hĂ ng táº¡i quáº§y.',
+      requirements: 'CĂ³ kinh nghiá»‡m phá»¥c vá»¥',
+      tags: const ['F&B'],
+      postedAt: DateTime(2026, 6, 10, 18),
+      recruitmentStartDate: _openRecruitmentStart,
+      recruitmentEndDate: _openRecruitmentEnd,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: JobPostCard(
+            job: jobWithAvatar,
+            onDetailsPressed: () {},
+            onApplyPressed: () {},
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byType(Image), findsOneWidget);
+    expect(find.text('Katinat Quáº­n Cam'), findsOneWidget);
+  });
+
   testWidgets('job post card shows AI interview tag only for AI jobs', (
     tester,
   ) async {

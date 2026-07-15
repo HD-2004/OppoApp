@@ -1,9 +1,12 @@
 import 'dart:convert';
 import 'dart:developer' as developer;
 
+import 'package:amplify_auth_cognito/amplify_auth_cognito.dart';
+import 'package:amplify_flutter/amplify_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 
+import '../../../core/config/api_config.dart';
 import '../../../core/config/s3_asset_config.dart';
 import '../domain/job_post.dart';
 import '../domain/job_repository.dart';
@@ -15,8 +18,12 @@ final jobRepositoryProvider = Provider<JobRepository>((ref) {
   return AwsJobRepository(client: client);
 });
 
+typedef AuthTokenProvider = Future<String?> Function();
+
 class AwsJobRepository implements JobRepository {
-  AwsJobRepository({http.Client? client}) : _client = client ?? http.Client();
+  AwsJobRepository({http.Client? client, AuthTokenProvider? tokenProvider})
+    : _client = client ?? http.Client(),
+      _tokenProvider = tokenProvider ?? _getCognitoIdToken;
 
   static const _standardJobsUrl =
       'https://dlidp35x33.execute-api.ap-southeast-1.amazonaws.com/prod';
@@ -24,6 +31,7 @@ class AwsJobRepository implements JobRepository {
       'https://6zw89pkuxb.execute-api.ap-southeast-1.amazonaws.com/prod';
 
   final http.Client _client;
+  final AuthTokenProvider _tokenProvider;
 
   @override
   Future<List<JobPost>> getActiveJobs() async {
@@ -31,8 +39,9 @@ class AwsJobRepository implements JobRepository {
       Uri.parse('$_standardJobsUrl/jobs/active'),
     );
     final data = _decodeJobList(response, source: 'danh sách công việc');
-    return _visibleActiveJobs(data.map(mapStandardJob))
+    final jobs = _visibleActiveJobs(data.map(mapStandardJob))
       ..sort((a, b) => b.postedAt.compareTo(a.postedAt));
+    return _withEmployerProfileLogos(jobs);
   }
 
   @override
@@ -41,8 +50,91 @@ class AwsJobRepository implements JobRepository {
       Uri.parse('$_quickJobsUrl/quick-jobs/active'),
     );
     final data = _decodeJobList(response, source: 'danh sách tuyển gấp');
-    return _visibleActiveJobs(data.map(mapQuickJob))
+    final jobs = _visibleActiveJobs(data.map(mapQuickJob))
       ..sort((a, b) => b.postedAt.compareTo(a.postedAt));
+    return _withEmployerProfileLogos(jobs);
+  }
+
+  Future<List<JobPost>> _withEmployerProfileLogos(List<JobPost> jobs) async {
+    final token = await _tokenProvider();
+    if (token == null || token.trim().isEmpty) return jobs;
+
+    final logoByEmployerId = <String, String?>{};
+    final enriched = <JobPost>[];
+
+    for (final job in jobs) {
+      final currentLogo = job.employerAvatarUrl?.trim();
+      if (currentLogo != null && currentLogo.isNotEmpty) {
+        enriched.add(job);
+        continue;
+      }
+
+      final employerId = job.employerId.trim();
+      if (employerId.isEmpty) {
+        enriched.add(job);
+        continue;
+      }
+
+      final logo = logoByEmployerId.containsKey(employerId)
+          ? logoByEmployerId[employerId]
+          : await _fetchEmployerProfileLogo(employerId, token.trim());
+      logoByEmployerId[employerId] = logo;
+
+      if (logo != null && logo.isNotEmpty) {
+        enriched.add(job.copyWith(employerAvatarUrl: logo));
+      } else {
+        enriched.add(job);
+      }
+    }
+
+    return enriched;
+  }
+
+  Future<String?> _fetchEmployerProfileLogo(
+    String employerId,
+    String token,
+  ) async {
+    try {
+      final response = await _client.get(
+        Uri.parse(resolveUrl('$_standardJobsUrl/profile/$employerId')),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        return null;
+      }
+
+      final decoded = jsonDecode(response.body);
+      if (decoded is! Map<String, dynamic>) return null;
+
+      final data = decoded['data'];
+      if (data is Map<String, dynamic>) {
+        return employerLogoFrom(data);
+      }
+      return employerLogoFrom(decoded);
+    } catch (error, stackTrace) {
+      developer.log(
+        'Could not load employer profile logo for job card',
+        name: 'AwsJobRepository',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      return null;
+    }
+  }
+
+  static Future<String?> _getCognitoIdToken() async {
+    try {
+      final plugin = Amplify.Auth.getPlugin(AmplifyAuthCognito.pluginKey);
+      final session = await plugin.fetchAuthSession();
+      final tokens = session.userPoolTokensResult.valueOrNull;
+      return tokens?.idToken.raw;
+    } catch (error) {
+      safePrint('Error getting employer profile auth token: $error');
+      return null;
+    }
   }
 
   static List<JobPost> _visibleActiveJobs(Iterable<JobPost> jobs) {
@@ -255,6 +347,12 @@ class AwsJobRepository implements JobRepository {
       'logoUrl',
       'avatarUrl',
       'profileImage',
+      'logo',
+      'companyLogoUrl',
+      'businessLogo',
+      'businessLogoUrl',
+      'company_logo',
+      'profile_image',
     ]) {
       final value = _nullableString(job[key]);
       if (value != null) return _resolveEmployerLogoUrl(value);

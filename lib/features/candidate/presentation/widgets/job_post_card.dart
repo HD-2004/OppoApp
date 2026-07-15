@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 
 import 'package:oppo_temp_jobs/core/theme/app_colors.dart';
@@ -99,7 +101,11 @@ class JobPostCard extends StatelessWidget {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  _CompanyMark(companyName: companyName, size: avatarSize),
+                  _CompanyMark(
+                    companyName: companyName,
+                    avatarUrl: job.employerAvatarUrl,
+                    size: avatarSize,
+                  ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
@@ -313,15 +319,20 @@ class _SaveJobButton extends StatelessWidget {
 }
 
 class _CompanyMark extends StatelessWidget {
-  const _CompanyMark({required this.companyName, this.size = 44});
+  const _CompanyMark({
+    required this.companyName,
+    required this.avatarUrl,
+    this.size = 44,
+  });
 
   final String companyName;
+  final String? avatarUrl;
   final double size;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final initial = companyName.characters.first.toUpperCase();
+    final imageUrl = avatarUrl?.trim();
 
     return Container(
       width: size,
@@ -332,6 +343,68 @@ class _CompanyMark extends StatelessWidget {
         shape: BoxShape.circle,
         border: Border.all(color: theme.colorScheme.outlineVariant),
       ),
+      clipBehavior: Clip.antiAlias,
+      child: imageUrl != null && imageUrl.isNotEmpty
+          ? _CompanyLogoImage(
+              imageUrl: imageUrl,
+              fallback: _CompanyInitial(companyName: companyName),
+            )
+          : _CompanyInitial(companyName: companyName),
+    );
+  }
+}
+
+class _CompanyLogoImage extends StatelessWidget {
+  const _CompanyLogoImage({required this.imageUrl, required this.fallback});
+
+  final String imageUrl;
+  final Widget fallback;
+
+  @override
+  Widget build(BuildContext context) {
+    if (imageUrl.startsWith('data:image')) {
+      final commaIndex = imageUrl.indexOf(',');
+      if (commaIndex > 0 && commaIndex < imageUrl.length - 1) {
+        try {
+          return Image.memory(
+            base64Decode(imageUrl.substring(commaIndex + 1)),
+            fit: BoxFit.cover,
+            width: double.infinity,
+            height: double.infinity,
+            errorBuilder: (_, error, stackTrace) => fallback,
+          );
+        } catch (_) {
+          return fallback;
+        }
+      }
+      return fallback;
+    }
+
+    return Image.network(
+      imageUrl,
+      fit: BoxFit.cover,
+      width: double.infinity,
+      height: double.infinity,
+      errorBuilder: (_, error, stackTrace) => fallback,
+      loadingBuilder: (context, child, progress) {
+        if (progress == null) return child;
+        return fallback;
+      },
+    );
+  }
+}
+
+class _CompanyInitial extends StatelessWidget {
+  const _CompanyInitial({required this.companyName});
+
+  final String companyName;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final initial = companyName.characters.first.toUpperCase();
+
+    return Center(
       child: Text(
         initial,
         style: theme.textTheme.titleMedium?.copyWith(
