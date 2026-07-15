@@ -48,6 +48,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
+    expect(find.byIcon(Icons.grid_view), findsNothing);
+    expect(find.byIcon(Icons.view_list), findsNothing);
     expect(find.byType(JobPostCard), findsNWidgets(1));
   });
 
@@ -77,6 +79,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    await tester.tap(find.byKey(const Key('job-filters-panel-toggle')));
+    await tester.pumpAndSettle();
+
     expect(find.byKey(const Key('position-filter-chip')), findsOneWidget);
     expect(find.byKey(const Key('location-filter-chip')), findsOneWidget);
     expect(find.byKey(const Key('industry-filter-chip')), findsOneWidget);
@@ -97,6 +102,52 @@ void main() {
     expect(find.text('Thu ngân'), findsOneWidget);
     expect(find.text('Nhân viên phục vụ'), findsNothing);
     expect(find.byType(JobPostCard), findsNWidgets(1));
+  });
+
+  testWidgets('job filters panel collapses and expands from the header', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          authControllerProvider.overrideWithBuild(
+            (_, _) => AuthState.authenticated(_activeCandidateUser),
+          ),
+          activeJobsProvider.overrideWith((_) async => [_job, _secondJob]),
+          activeQuickJobsProvider.overrideWith((_) async => <JobPost>[]),
+        ],
+        child: const MaterialApp(
+          localizationsDelegates: [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: UserJobsScreen(showBackButton: false),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Bộ lọc việc làm'), findsOneWidget);
+    expect(find.byKey(const Key('position-filter-chip')), findsNothing);
+    expect(find.byKey(const Key('location-filter-chip')), findsNothing);
+    expect(find.byKey(const Key('industry-filter-chip')), findsNothing);
+
+    await tester.tap(find.byKey(const Key('job-filters-panel-toggle')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('position-filter-chip')), findsOneWidget);
+    expect(find.byKey(const Key('location-filter-chip')), findsOneWidget);
+    expect(find.byKey(const Key('industry-filter-chip')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('job-filters-panel-toggle')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('position-filter-chip')), findsNothing);
+    expect(find.byKey(const Key('location-filter-chip')), findsNothing);
+    expect(find.byKey(const Key('industry-filter-chip')), findsNothing);
   });
 
   testWidgets('job type dropdown selects urgent jobs', (tester) async {

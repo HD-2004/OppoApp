@@ -107,6 +107,8 @@ class BannerAd {
     required this.bannerId,
     required this.title,
     required this.imageUrl,
+    this.imageWidth,
+    this.imageHeight,
     this.linkUrl,
     this.jobId,
     this.employerId,
@@ -114,9 +116,16 @@ class BannerAd {
     this.isActive = true,
   });
 
+  static const requiredImageWidth = 1600;
+  static const requiredImageHeight = 517;
+  static const invalidAppImageSizeMessage =
+      'poster này của bạn không đúng với kích thước bên app vui lòng chọn đúng kích thước poster là 1600 x 517. Chỉ poster đúng kích thước 1600 x 517 mới được đăng.';
+
   final String bannerId;
   final String title;
   final String imageUrl;
+  final int? imageWidth;
+  final int? imageHeight;
   final String? linkUrl;
 
   /// Id of the job post this banner promotes. Populated by the employer/admin
@@ -132,6 +141,10 @@ class BannerAd {
   /// Whether this banner points to a concrete job post the app can open.
   bool get hasJobLink => (jobId?.trim().isNotEmpty ?? false);
 
+  /// Only banners exported at the exact app slot size may appear in app.
+  bool get hasValidAppImageSize =>
+      imageWidth == requiredImageWidth && imageHeight == requiredImageHeight;
+
   factory BannerAd.fromJson(Map<String, dynamic> json) {
     String? firstNonEmpty(List<String> keys) {
       for (final key in keys) {
@@ -143,10 +156,33 @@ class BannerAd {
       return null;
     }
 
+    int? firstInt(List<String> keys) {
+      for (final key in keys) {
+        final value = json[key];
+        if (value is int) return value;
+        if (value is num) return value.toInt();
+        final parsed = int.tryParse(value?.toString().trim() ?? '');
+        if (parsed != null) return parsed;
+      }
+      return null;
+    }
+
     return BannerAd(
       bannerId: json['bannerId']?.toString() ?? '',
       title: json['title']?.toString() ?? '',
       imageUrl: json['imageUrl']?.toString() ?? '',
+      imageWidth: firstInt([
+        'imageWidth',
+        'bannerWidth',
+        'posterWidth',
+        'width',
+      ]),
+      imageHeight: firstInt([
+        'imageHeight',
+        'bannerHeight',
+        'posterHeight',
+        'height',
+      ]),
       linkUrl: json['linkUrl']?.toString(),
       // Read whatever linking key the backend provides — never fabricated.
       jobId: firstNonEmpty([
